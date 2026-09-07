@@ -9,6 +9,7 @@ var _level_label: Label
 var _xp_bar: ProgressBar
 var _energy_bar: ProgressBar
 var _energy_label: Label
+var _energy_timer_label: Label
 var _gold_label: Label
 var _gems_label: Label
 var _notification_badge: Label
@@ -36,6 +37,12 @@ func set_gold(value: int) -> void:
 
 func set_gems(value: int) -> void:
 	_gems_label.text = _compact_number(value)
+
+func set_energy_countdown(seconds_left: int) -> void:
+	if seconds_left <= 0:
+		_energy_timer_label.text = ""
+		return
+	_energy_timer_label.text = "PRÓXIMA: %d:%02d" % [seconds_left / 60, seconds_left % 60]
 
 func set_notifications(unread: int) -> void:
 	_notification_badge.visible = unread > 0
@@ -77,6 +84,11 @@ func _build() -> void:
 	_energy_label = Label.new()
 	_energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	energy_stack.add_child(_energy_label)
+	_energy_timer_label = Label.new()
+	_energy_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_energy_timer_label.add_theme_font_size_override("font_size", 11)
+	_energy_timer_label.add_theme_color_override("font_color", Color("9b8eaa"))
+	energy_stack.add_child(_energy_timer_label)
 
 	_gold_label = _add_value_panel(row, "ORO", "0", 0.85)
 	_gems_label = _add_value_panel(row, "JOYAS", "0", 0.85)

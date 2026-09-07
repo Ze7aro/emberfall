@@ -3,9 +3,11 @@ class_name EmberfallXPOrb
 
 var value := 10
 var collected := false
+var is_gold := false
 
-func setup(amount: int) -> void:
+func setup(amount: int, gold: bool = false) -> void:
 	value = amount
+	is_gold = gold
 	queue_redraw()
 
 func tick(player: Node2D, pickup_radius: float, delta: float) -> void:
@@ -19,5 +21,9 @@ func tick(player: Node2D, pickup_radius: float, delta: float) -> void:
 		queue_free()
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 9, Color(0.55, 0.25, 0.95))
-	draw_circle(Vector2.ZERO, 4, Color(0.85, 0.65, 1.0))
+	if is_gold:
+		draw_circle(Vector2.ZERO, 9, Color(0.85, 0.65, 0.15))
+		draw_circle(Vector2.ZERO, 4, Color(1.0, 0.9, 0.4))
+	else:
+		draw_circle(Vector2.ZERO, 9, Color(0.55, 0.25, 0.95))
+		draw_circle(Vector2.ZERO, 4, Color(0.85, 0.65, 1.0))

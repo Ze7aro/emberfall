@@ -1,10 +1,16 @@
-[gd_scene load_steps=2 format=3]
-[ext_resource path="res://scripts/MainLayout.gd" type="Script" id="1"]
-[node name="MainLayout" type="Control"]
+[gd_scene format=3 uid="uid://b5sygpfebl2gd"]
+
+[ext_resource type="Script" uid="uid://cfh123by0jjpg" path="res://scripts/MainLayout.gd" id="1"]
+
+[node name="MainLayout" type="Control" unique_id=441309376]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 142.0
+offset_top = 29.0
+offset_right = 142.0
+offset_bottom = 29.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")

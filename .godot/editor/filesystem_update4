@@ -1,6 +1,9 @@
-res://scripts/main.gd
-res://scripts/systems/game_state.gd
-res://scripts/ui/NavigationFooter.gd
-res://scripts/ui/MapSelection.gd
-res://scripts/ui/CharacterSelection.gd
 res://scripts/MainLayout.gd
+res://scripts/systems/game_state.gd
+res://scripts/ui/TopHud.gd
+res://scripts/ui/MapSelection.gd
+res://scripts/game_world.gd
+res://scripts/ui.gd
+res://scripts/components/player.gd
+res://scripts/ui/CharacterSelection.gd
+res://scripts/ui/DungeonSelectionScreen.gd

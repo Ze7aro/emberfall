@@ -27,12 +27,12 @@ func _ready() -> void:
 	_wire_top_hud()
 
 	navigation_footer = preload("res://scenes/ui/NavigationFooter.tscn").instantiate(); navigation_footer.name = "NavigationFooter"; navigation_footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); navigation_footer.offset_top = -112
-	navigation_footer.icons = [load("res://assets/iconos main/08_brujula.png"), load("res://assets/iconos main/03_espada.png"), load("res://assets/iconos main/07_objetivo.png"), load("res://assets/iconos main/04_pergamino.png"), load("res://assets/iconos main/09_tienda.png")]
+	navigation_footer.icons = [load("res://assets/iconos main/05_inicio.png"), load("res://assets/iconos main/03_espada.png"), load("res://assets/iconos main/08_mazmorras.png"), load("res://assets/iconos main/01_equipamiento.png"), load("res://assets/iconos main/09_tienda.png")]
 	hud_layer.add_child(navigation_footer)
 	navigation_footer.navigation_requested.connect(func(_index: int, route_id: StringName): navigate_to(route_id))
 
 	var modal_layer := CanvasLayer.new(); modal_layer.name = "ModalLayer"; modal_layer.layer = 20; add_child(modal_layer)
-	modal_host = Control.new(); modal_host.name = "ModalHost"; modal_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); modal_layer.add_child(modal_host)
+	modal_host = Control.new(); modal_host.name = "ModalHost"; modal_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); modal_host.mouse_filter = Control.MOUSE_FILTER_IGNORE; modal_layer.add_child(modal_host)
 
 	GameState.screen_changed.connect(_on_game_screen_changed)
 	navigate_to(&"home")
@@ -57,6 +57,7 @@ func _wire_top_hud() -> void:
 	top_hud.set_level(GameState.level)
 	top_hud.set_experience(GameState.experience, GameState.experience_to_next)
 	top_hud.set_energy(GameState.energy, GameState.MAX_ENERGY)
+	top_hud.set_energy_countdown(GameState.seconds_until_next_energy())
 	top_hud.set_gold(GameState.gold)
 	top_hud.set_gems(GameState.gems)
 	top_hud.set_notifications(GameState.unread_notification_count())
@@ -64,6 +65,7 @@ func _wire_top_hud() -> void:
 	GameState.level_changed.connect(top_hud.set_level)
 	GameState.experience_changed.connect(top_hud.set_experience)
 	GameState.energy_changed.connect(func(value: int): top_hud.set_energy(value, GameState.MAX_ENERGY))
+	GameState.energy_countdown_changed.connect(top_hud.set_energy_countdown)
 	GameState.gold_changed.connect(top_hud.set_gold)
 	GameState.gems_changed.connect(top_hud.set_gems)
 	GameState.notifications_changed.connect(top_hud.set_notifications)
@@ -127,10 +129,10 @@ func close_active_modal() -> void:
 
 func has_open_modal() -> bool: return is_instance_valid(active_modal)
 
-func start_run(map_id: StringName) -> void:
+func start_run(map_data: Dictionary) -> void:
 	if not GameState.can_start():
 		return
-	GameState.select_map(map_id)
+	GameState.begin_stage(map_data)
 	if not GameState.start_run():
 		return
 	close_active_modal()
@@ -179,7 +181,7 @@ func _result_screen(victory: bool) -> Control:
 	retry.text = "REINTENTAR"
 	retry.custom_minimum_size = Vector2(0, 52)
 	retry.disabled = not GameState.can_start()
-	retry.pressed.connect(func(): start_run(GameState.selected_map_id))
+	retry.pressed.connect(func(): start_run(GameState.last_stage_context))
 	box.add_child(retry)
 	var home := Button.new()
 	home.text = "VOLVER A INICIO"

@@ -2,9 +2,14 @@ extends MarginContainer
 
 signal previous_map_requested
 signal next_map_requested
-signal start_map_requested(map_id: StringName)
+signal start_map_requested(data: Dictionary)
+
+## Returns true if the given map dictionary should be playable. Screens that
+## embed this component override it (e.g. gate by stage/dungeon progress).
+var unlock_check: Callable = func(_data: Dictionary) -> bool: return true
 
 var _map_id: StringName = &"void_crypts"
+var _map_data: Dictionary = {}
 var _title: Label
 var _chapter: Label
 var _preview: TextureRect
@@ -25,8 +30,8 @@ func _build() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_theme_constant_override("margin_left", 18)
 	add_theme_constant_override("margin_right", 18)
-	add_theme_constant_override("margin_top", 8)
-	add_theme_constant_override("margin_bottom", 8)
+	add_theme_constant_override("margin_top", 160)
+	add_theme_constant_override("margin_bottom", 140)
 
 	var column := VBoxContainer.new()
 	column.name = "MapColumn"
@@ -97,23 +102,24 @@ func _build() -> void:
 	_start_button.add_theme_stylebox_override("pressed", _button_style(Color("13a98b"), Color("171027")))
 	_start_button.pressed.connect(func():
 		if not _start_button.disabled:
-			start_map_requested.emit(_map_id)
+			start_map_requested.emit(_map_data)
 	)
 	column.add_child(_start_button)
 
 func set_map(data: Dictionary) -> void:
 	_map_id = StringName(data.get("id", "void_crypts"))
+	_map_data = data
 	if not is_instance_valid(_title):
 		return
 	_title.text = str(data.get("name", "MAPA"))
 	_chapter.text = "Capítulo %s · Nivel %s" % [str(data.get("chapter", 1)), str(data.get("level", 1))]
-	_rewards.text = "Recompensas posibles\n%s" % str(data.get("rewards", "Oro · Gema · Cofre"))
+	_rewards.text = "Recompensas: %d oro · %d esmeraldas" % [int(data.get("gold_reward", 0)), int(data.get("gems_reward", 0))]
 	var texture = load(str(data.get("preview", "res://assets/environment/game_bg.png")))
 	if texture is Texture2D:
 		_preview.texture = texture
-	var unlocked := int(data.get("required", 0)) <= GameState.high_score
+	var unlocked: bool = unlock_check.call(data)
 	_start_button.disabled = not unlocked
-	_start_button.text = "INICIAR" if unlocked else "BLOQUEADO · %d" % int(data.get("required", 0))
+	_start_button.text = "INICIAR" if unlocked else "BLOQUEADO"
 
 func set_maps(list: Array[Dictionary]) -> void:
 	_maps = list
