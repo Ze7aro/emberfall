@@ -13,7 +13,7 @@ var select_button: Button
 
 func _ready() -> void:
 	for i in range(14):
-		var files := ["baculo","baculo","baculo","baculo","arco","baculo","hacha_dos_manos","espadon_dos_manos","dos_hachas","escudo_y_espada","dos_pistolas","baculo","punos","dos_espadas"]
+		var files := ["baculo","baculo","baculo","baculo","arco","baculo","hacha_dos_manos","espadon_dos_manos","dos_hachas","escudo_y_espada","dos_pistolas","baculo","puños","dos_espadas"]
 		characters.append({"id": StringName("variante_%02d" % (i + 1)), "name": "PERSONAJE %02d" % (i + 1), "weapon": files[i], "texture": "res://assets/variantes_con_armas/variante_%02d_%s.png" % [i + 1, files[i]]})
 	_build(); show_character_at(0)
 func _build() -> void:
@@ -36,6 +36,12 @@ func show_previous_character() -> void: show_character_at(index - 1)
 func show_next_character() -> void: show_character_at(index + 1)
 func select_current_character() -> void: selected_id = StringName(characters[index].get("id", "")); refresh_character_details(); character_selected.emit(selected_id)
 func set_selected_character(value: StringName) -> void: selected_id = value; refresh_character_details()
+func focus_character(id: StringName) -> void:
+	for i in characters.size():
+		if StringName(characters[i].get("id", "")) == id:
+			selected_id = id
+			show_character_at(i)
+			return
 func refresh_character_details() -> void:
 	if characters.is_empty() or not is_instance_valid(info_label): return
 	var c: Dictionary = characters[index]; var tex = load(str(c.get("texture", ""))); if tex is Texture2D: preview.texture = tex

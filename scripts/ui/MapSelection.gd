@@ -115,6 +115,12 @@ func set_map(data: Dictionary) -> void:
 	_start_button.disabled = not unlocked
 	_start_button.text = "INICIAR" if unlocked else "BLOQUEADO · %d" % int(data.get("required", 0))
 
+func set_maps(list: Array[Dictionary]) -> void:
+	_maps = list
+	_map_index = 0
+	if not _maps.is_empty():
+		set_map(_maps[0])
+
 func show_previous_map() -> void:
 	_map_index = posmod(_map_index - 1, _maps.size())
 	set_map(_maps[_map_index])

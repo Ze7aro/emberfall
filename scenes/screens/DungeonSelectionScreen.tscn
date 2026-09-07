@@ -1,5 +1,6 @@
-[gd_scene load_steps=2 format=3]
-[ext_resource path="res://scripts/ui/SimpleScreen.gd" type="Script" id="1"]
+[gd_scene load_steps=3 format=3]
+[ext_resource path="res://scenes/ui/MapSelection.tscn" type="PackedScene" id="1"]
+[ext_resource path="res://scripts/ui/DungeonSelectionScreen.gd" type="Script" id="2"]
 [node name="DungeonSelectionScreen" type="Control"]
-script = ExtResource("1")
-screen_title = "MAZMORRAS"
+script = ExtResource("2")
+[node name="MapSelection" parent="." instance=ExtResource("1")]

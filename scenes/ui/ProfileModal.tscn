@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://scripts/ui/ProfileModal.gd" type="Script" id="1"]
+
+[node name="ProfileModal" type="PanelContainer"]
+script = ExtResource("1")

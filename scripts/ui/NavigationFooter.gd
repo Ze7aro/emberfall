@@ -4,11 +4,11 @@ extends PanelContainer
 signal navigation_requested(index: int, id: StringName)
 
 @export var entries: Array[Dictionary] = [
-	{"id": &"shop", "tooltip": "Tienda"},
-	{"id": &"upgrades", "tooltip": "Mejoras permanentes"},
-	{"id": &"world", "tooltip": "Mundo"},
-	{"id": &"heroes", "tooltip": "Personajes"},
+	{"id": &"home", "tooltip": "Inicio"},
+	{"id": &"characters", "tooltip": "Personajes"},
 	{"id": &"dungeons", "tooltip": "Mazmorras"},
+	{"id": &"upgrades", "tooltip": "Mejoras"},
+	{"id": &"shop", "tooltip": "Tienda"},
 ]
 @export var icons: Array = []
 @export var selected_index := 0
@@ -17,12 +17,13 @@ var _buttons: Array[Button] = []
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	offset_top = -112.0
-	custom_minimum_size.y = 112.0
+	var safe_bottom := _safe_area_bottom_inset()
+	offset_top = -112.0 - safe_bottom
+	custom_minimum_size.y = 112.0 + safe_bottom
 	add_theme_stylebox_override("panel", _panel_style())
-	_build()
+	_build(safe_bottom)
 
-func _build() -> void:
+func _build(safe_bottom: float = 0.0) -> void:
 	for child in get_children():
 		child.queue_free()
 	_buttons.clear()
@@ -31,7 +32,7 @@ func _build() -> void:
 	margin.add_theme_constant_override("margin_left", 12)
 	margin.add_theme_constant_override("margin_right", 12)
 	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_theme_constant_override("margin_bottom", 10 + int(safe_bottom))
 	add_child(margin)
 
 	var row := HBoxContainer.new()
@@ -81,6 +82,12 @@ func _apply_button_styles(button: Button, selected: bool) -> void:
 	button.add_theme_stylebox_override("pressed", _slot_style(true))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.modulate = Color.WHITE if selected else Color(0.82, 0.78, 0.9)
+
+func _safe_area_bottom_inset() -> float:
+	var screen_index := DisplayServer.window_get_current_screen()
+	var screen_size := DisplayServer.screen_get_size(screen_index)
+	var usable := DisplayServer.screen_get_usable_rect(screen_index)
+	return maxf(0.0, float(screen_size.y - (usable.position.y + usable.size.y)))
 
 func _panel_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

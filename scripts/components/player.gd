@@ -42,7 +42,8 @@ func damage(amount: int) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	var tex := load("res://assets/characters/player.png") as Texture2D
+	var texture_path := GameState.selected_character_texture if GameState.selected_character_texture != "" else "res://assets/characters/player.png"
+	var tex := load(texture_path) as Texture2D
 	if tex:
 		draw_texture_rect(tex, Rect2(-34, -34, 68, 68), false)
 	draw_circle(Vector2.ZERO, 38, Color(0.2, 0.95, 0.85, 0.12))
