@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_10"
+display_name = "THERON"
+weapon = "escudo_y_espada"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_10_escudo_y_espada (Theron)/walk_right_00.png"
+sprite_folder = "variante_10_escudo_y_espada (Theron)"
+cost = 900
+currency = "gold"
+requirement = "stage_07"
+attack_name = "Estocada"
+attack_color = Color(0.851, 0.8, 0.549, 1)
+attack_sprite_folder = "theron"
+attack_range_scale = 0.35
+attack_frame_names = PackedStringArray("thrust_00.png", "thrust_01.png")
+attack_aoe_every = 4
+attack_aoe_frame_names = PackedStringArray("shield_aoe_00.png", "shield_aoe_01.png")
+attack_aoe_radius = 140.0
+hp_modifier = 2
+move_speed_modifier = 0.9

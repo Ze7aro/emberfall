@@ -5,8 +5,9 @@ signal closed
 var _xp_bar: ProgressBar
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	custom_minimum_size = Vector2(300, 320)
+	anchor_left = 0.5; anchor_right = 0.5; anchor_top = 0.5; anchor_bottom = 0.5
+	offset_left = -150; offset_right = 150; offset_top = -180; offset_bottom = 180
+	custom_minimum_size = Vector2(300, 360)
 	add_theme_stylebox_override("panel", _panel_style())
 	_build()
 	GameState.level_changed.connect(_on_level_changed)
@@ -26,41 +27,65 @@ func _build() -> void:
 	box.add_theme_constant_override("separation", 12)
 	margin.add_child(box)
 
-	var title := Label.new()
-	title.text = "PERFIL"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color("20e6bd"))
-	box.add_child(title)
-
-	var level_label := Label.new()
-	level_label.name = "LevelLabel"
-	level_label.text = "NIVEL %d" % GameState.level
-	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	level_label.add_theme_font_size_override("font_size", 18)
-	box.add_child(level_label)
-
-	_xp_bar = ProgressBar.new()
-	_xp_bar.show_percentage = false
-	_xp_bar.custom_minimum_size.y = 14
-	_xp_bar.max_value = max(GameState.experience_to_next, 1)
-	_xp_bar.value = GameState.experience
-	box.add_child(_xp_bar)
-
-	var stats := GridContainer.new()
-	stats.columns = 2
-	stats.add_theme_constant_override("h_separation", 16)
-	stats.add_theme_constant_override("v_separation", 8)
-	box.add_child(stats)
-	_add_stat(stats, "ORO", str(GameState.gold), "GoldValue")
-	_add_stat(stats, "JOYAS", str(GameState.gems), "GemsValue")
-	_add_stat(stats, "RÉCORD DE ELIMINACIONES", str(GameState.high_score), "")
+	var tabs := TabContainer.new()
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(tabs)
+	tabs.add_child(_build_profile_tab())
+	tabs.add_child(_build_settings_tab())
 
 	var close := Button.new()
 	close.text = "CERRAR"
 	close.custom_minimum_size = Vector2(0, 48)
 	close.pressed.connect(func(): closed.emit())
 	box.add_child(close)
+
+func _build_profile_tab() -> Control:
+	var tab := VBoxContainer.new()
+	tab.name = "PERFIL"
+	tab.add_theme_constant_override("separation", 12)
+
+	var level_label := Label.new()
+	level_label.name = "LevelLabel"
+	level_label.text = "NIVEL %d" % GameState.level
+	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level_label.add_theme_font_size_override("font_size", 18)
+	tab.add_child(level_label)
+
+	_xp_bar = ProgressBar.new()
+	_xp_bar.show_percentage = false
+	_xp_bar.custom_minimum_size.y = 14
+	_xp_bar.max_value = max(GameState.experience_to_next, 1)
+	_xp_bar.value = GameState.experience
+	tab.add_child(_xp_bar)
+
+	var stats := GridContainer.new()
+	stats.name = "GridContainer"
+	stats.columns = 2
+	stats.add_theme_constant_override("h_separation", 16)
+	stats.add_theme_constant_override("v_separation", 8)
+	tab.add_child(stats)
+	_add_stat(stats, "ORO", str(GameState.gold), "GoldValue")
+	_add_stat(stats, "JOYAS", str(GameState.gems), "GemsValue")
+	_add_stat(stats, "RÉCORD DE ELIMINACIONES", str(GameState.high_score), "")
+	return tab
+
+func _build_settings_tab() -> Control:
+	var tab := VBoxContainer.new()
+	tab.name = "AJUSTES"
+	tab.add_theme_constant_override("separation", 14)
+
+	var music := CheckButton.new()
+	music.text = "MÚSICA"
+	music.button_pressed = GameState.music_enabled
+	music.toggled.connect(GameState.set_music_enabled)
+	tab.add_child(music)
+
+	var effects := CheckButton.new()
+	effects.text = "EFECTOS DE SONIDO"
+	effects.button_pressed = GameState.effects_enabled
+	effects.toggled.connect(GameState.set_effects_enabled)
+	tab.add_child(effects)
+	return tab
 
 func _add_stat(parent: GridContainer, title: String, value: String, value_node_name: String) -> void:
 	var title_label := Label.new()
@@ -74,17 +99,17 @@ func _add_stat(parent: GridContainer, title: String, value: String, value_node_n
 	parent.add_child(value_label)
 
 func _on_level_changed(value: int) -> void:
-	$MarginContainer/VBoxContainer/LevelLabel.text = "NIVEL %d" % value
+	$MarginContainer/VBoxContainer/TabContainer/PERFIL/LevelLabel.text = "NIVEL %d" % value
 
 func _on_experience_changed(current: int, needed: int) -> void:
 	_xp_bar.max_value = max(needed, 1)
 	_xp_bar.value = current
 
 func _on_gold_changed(value: int) -> void:
-	$MarginContainer/VBoxContainer/GridContainer/GoldValue.text = str(value)
+	$MarginContainer/VBoxContainer/TabContainer/PERFIL/GridContainer/GoldValue.text = str(value)
 
 func _on_gems_changed(value: int) -> void:
-	$MarginContainer/VBoxContainer/GridContainer/GemsValue.text = str(value)
+	$MarginContainer/VBoxContainer/TabContainer/PERFIL/GridContainer/GemsValue.text = str(value)
 
 func _panel_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

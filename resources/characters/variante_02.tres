@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_02"
+display_name = "AZYREN"
+weapon = "baculo"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_02_baculo (Azyren)/walk_right_00.png"
+sprite_folder = "variante_02_baculo (Azyren)"
+cost = 50
+currency = "gold"
+requirement = ""
+attack_name = "Disparo de Hielo"
+attack_color = Color(0.4196, 0.8784, 1, 1)
+attack_sprite_folder = "disparo_hielo"
+damage_modifier = 0.85
+guaranteed_status = "freeze"

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_13"
+display_name = "RAIKEN"
+weapon = "puños"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_13_punos (Raiken)/walk_right_00.png"
+sprite_folder = "variante_13_punos (Raiken)"
+cost = 1200
+currency = "gold"
+requirement = "stage_10"
+attack_name = "Onda de Puño"
+attack_color = Color(0.9098, 0.898, 0.9333, 1)
+attack_sprite_folder = "raiken_onda_de_puno"
+attack_range_scale = 0.35

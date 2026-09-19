@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_03"
+display_name = "ORVEN"
+weapon = "baculo"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_03_baculo (Orven)/walk_right_00.png"
+sprite_folder = "variante_03_baculo (Orven)"
+cost = 200
+currency = "gold"
+requirement = ""
+attack_name = "Disparo de Veneno"
+attack_color = Color(0.4314, 0.8784, 0.4196, 1)
+attack_sprite_folder = "disparo_veneno"
+attack_speed_modifier = 1.1
+guaranteed_status = "poison"

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_14"
+display_name = "DARVEN"
+weapon = "dos_espadas"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_14_dos_espadas (Darven)/walk_right_00.png"
+sprite_folder = "variante_14_dos_espadas (Darven)"
+cost = 30
+currency = "gems"
+requirement = "dungeon_01"
+attack_name = "Corte en X"
+attack_color = Color(0.7529, 0.8, 0.898, 1)
+attack_sprite_folder = "darven"
+attack_range_scale = 0.35
+attack_frame_names = PackedStringArray("slash_x_00.png", "slash_x_01.png")

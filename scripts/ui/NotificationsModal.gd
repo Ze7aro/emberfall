@@ -5,7 +5,8 @@ signal closed
 var _list: VBoxContainer
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	anchor_left = 0.5; anchor_right = 0.5; anchor_top = 0.5; anchor_bottom = 0.5
+	offset_left = -160; offset_right = 160; offset_top = -190; offset_bottom = 190
 	custom_minimum_size = Vector2(320, 380)
 	add_theme_stylebox_override("panel", _panel_style())
 	_build()

@@ -1,0 +1,12 @@
+# Godot 4+ specific ignores
+.godot/
+
+# Godot-generated export artifacts
+*.pck
+*.exe
+*.dmg
+*.app
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db

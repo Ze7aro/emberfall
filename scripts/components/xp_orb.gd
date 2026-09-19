@@ -18,6 +18,7 @@ func tick(player: Node2D, pickup_radius: float, delta: float) -> void:
 		global_position = global_position.move_toward(player.global_position, 320.0 * delta)
 	if distance < 30.0:
 		collected = true
+		SfxPlayer.play("economy/pickup_gold.wav" if is_gold else "economy/pickup_xp.wav")
 		queue_free()
 
 func _draw() -> void:

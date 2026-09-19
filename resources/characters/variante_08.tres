@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_08"
+display_name = "KAELGOR"
+weapon = "espadon_dos_manos"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_08_espadon_dos_manos (Kaelgor)/walk_right_00.png"
+sprite_folder = "variante_08_espadon_dos_manos (Kaelgor)"
+cost = 16
+currency = "gems"
+requirement = ""
+attack_name = "Grieta de Impacto"
+attack_color = Color(0.698, 0.549, 0.349, 1)
+attack_sprite_folder = "kaelgor"
+attack_range_scale = 0.3
+attack_frame_names = PackedStringArray("ground_crack_00.png", "ground_crack_01.png")

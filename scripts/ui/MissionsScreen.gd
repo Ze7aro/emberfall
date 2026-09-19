@@ -1,0 +1,349 @@
+extends Control
+
+## PROMPT_MISIONES_EMBERFALL.md: Misiones diarias/semanales con progreso,
+## recompensas individuales y una barra de progreso acumulado con hitos
+## (cofres). Los hitos se escalan a la cantidad real de misiones por período
+## (3 diarias, 4 semanales) en vez del ejemplo ilustrativo del prompt
+## (1/3/5/7/10), que asume un catálogo más grande del que existe hoy.
+
+const BG := Color("120d1d")
+const PANEL := Color("1c1530")
+const STONE_BORDER := Color("5b4771")
+const TURQ := Color("20e6bd")
+const GOLD := Color("f4bd4e")
+const CLAIMED_BORDER := Color("3a3048")
+const CLAIMED_BG := Color("140f1e")
+const TEXT_MUTED := Color("9b8eaa")
+const TEXT_BRIGHT := Color("f1e8ff")
+
+const ICON_BY_TYPE := {
+	"daily_kills": "res://assets/iconos main/03_espada.png",
+	"weekly_kills": "res://assets/iconos main/03_espada.png",
+	"daily_gold": "res://assets/iconos main/07_objetivo.png",
+	"weekly_gold": "res://assets/iconos main/07_objetivo.png",
+	"daily_runs": "res://assets/iconos main/08_mazmorras.png",
+	"weekly_runs": "res://assets/iconos main/08_mazmorras.png",
+	"weekly_chests": "res://assets/iconos main/02_cofre.png",
+}
+
+var _tab_buttons: Array[Button] = []
+var _period_root: Control
+var _current_tab := "daily" # "daily" | "weekly"
+var _timer_label: Label
+var _milestone_row: HBoxContainer
+var _milestone_title: Label
+var _mission_list: VBoxContainer
+
+func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bg := ColorRect.new(); bg.color = BG; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
+
+	# PROMPT_MISIONES_EMBERFALL.md: reserve top/bottom safe zones for the
+	# persistent TopHud/NavigationFooter — this screen never draws them.
+	var root := VBoxContainer.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.offset_top = 165
+	root.offset_bottom = -128
+	root.offset_left = 14
+	root.offset_right = -14
+	root.add_theme_constant_override("separation", 10)
+	add_child(root)
+
+	var header := HBoxContainer.new()
+	root.add_child(header)
+	var title := Label.new()
+	title.text = "MISIONES"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", TURQ)
+	header.add_child(title)
+	var close := Button.new()
+	close.text = "✕"
+	close.custom_minimum_size = Vector2(48, 48)
+	close.add_theme_stylebox_override("normal", _stone_style(false))
+	close.pressed.connect(func():
+		var main_layout := _find_main_layout()
+		if main_layout:
+			main_layout.navigate_to(&"home")
+	)
+	header.add_child(close)
+
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 8)
+	root.add_child(tabs)
+	var daily_tab := _build_tab_button("DIARIAS", "daily")
+	var weekly_tab := _build_tab_button("SEMANALES", "weekly")
+	tabs.add_child(daily_tab); tabs.add_child(weekly_tab)
+	_tab_buttons = [daily_tab, weekly_tab]
+
+	_timer_label = Label.new()
+	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_timer_label.add_theme_font_size_override("font_size", 13)
+	_timer_label.add_theme_color_override("font_color", TEXT_MUTED)
+	root.add_child(_timer_label)
+
+	_build_milestone_panel(root)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+	_mission_list = VBoxContainer.new()
+	_mission_list.add_theme_constant_override("separation", 10)
+	_mission_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_mission_list)
+
+	GameState.missions_changed.connect(_refresh)
+	_select_tab("daily")
+
+func _find_main_layout() -> Node:
+	var node := get_parent()
+	while node:
+		if node.has_method("navigate_to"):
+			return node
+		node = node.get_parent()
+	return null
+
+func _process(_delta: float) -> void:
+	var seconds := GameState.seconds_until_daily_reset() if _current_tab == "daily" else GameState.seconds_until_weekly_reset()
+	_timer_label.text = "Reinicio: %s" % _format_seconds(seconds)
+
+func _format_seconds(total: int) -> String:
+	var hours := total / 3600
+	var minutes := (total % 3600) / 60
+	if hours >= 24:
+		return "Reinicio en %dd %02dh" % [hours / 24, hours % 24]
+	return "%d h %02d min" % [hours, minutes]
+
+func _build_tab_button(text_value: String, tab_id: String) -> Button:
+	var button := Button.new()
+	button.text = text_value
+	button.custom_minimum_size = Vector2(0, 52)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 16)
+	button.pressed.connect(_select_tab.bind(tab_id))
+	return button
+
+func _select_tab(tab_id: String) -> void:
+	_current_tab = tab_id
+	for i in _tab_buttons.size():
+		var is_active := (i == 0 and tab_id == "daily") or (i == 1 and tab_id == "weekly")
+		_tab_buttons[i].add_theme_stylebox_override("normal", _tab_style(is_active))
+		_tab_buttons[i].add_theme_stylebox_override("hover", _tab_style(is_active))
+		_tab_buttons[i].add_theme_stylebox_override("pressed", _tab_style(is_active))
+		_tab_buttons[i].add_theme_color_override("font_color", Color("120d1d") if is_active else TEXT_BRIGHT)
+	_refresh()
+
+func _build_milestone_panel(parent: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _stone_style(false))
+	parent.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	panel.add_child(box)
+
+	_milestone_title = Label.new()
+	_milestone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_milestone_title.add_theme_font_size_override("font_size", 14)
+	_milestone_title.add_theme_color_override("font_color", GOLD)
+	box.add_child(_milestone_title)
+
+	_milestone_row = HBoxContainer.new()
+	_milestone_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_milestone_row.add_theme_constant_override("separation", 14)
+	box.add_child(_milestone_row)
+
+## Cada hito es una "ficha" clickeable: apagada y con check si ya se
+## reclamó, con brillo turquesa y botón si está disponible, atenuada si
+## todavía no se alcanzó — igual criterio visual que las misiones mismas.
+func _refresh_milestones() -> void:
+	for child in _milestone_row.get_children():
+		child.queue_free()
+	var is_daily := _current_tab == "daily"
+	_milestone_title.text = "PROGRESO DIARIO" if is_daily else "PROGRESO SEMANAL"
+	var milestones: Array = GameState.DAILY_MILESTONES if is_daily else GameState.WEEKLY_MILESTONES
+	var claimed_count := GameState.daily_missions_claimed_count() if is_daily else GameState.weekly_missions_claimed_count()
+	for milestone in milestones:
+		var threshold := int(milestone.threshold)
+		var can_claim: bool = GameState.can_claim_daily_milestone(threshold) if is_daily else GameState.can_claim_weekly_milestone(threshold)
+		var already_claimed: bool = (GameState.claimed_daily_milestones if is_daily else GameState.claimed_weekly_milestones).has(threshold)
+		var reached := claimed_count >= threshold
+		_milestone_row.add_child(_build_milestone_chip(threshold, can_claim, already_claimed, reached, is_daily))
+
+func _build_milestone_chip(threshold: int, can_claim: bool, already_claimed: bool, reached: bool, is_daily: bool) -> Control:
+	var chip := VBoxContainer.new()
+	chip.alignment = BoxContainer.ALIGNMENT_CENTER
+	chip.add_theme_constant_override("separation", 4)
+
+	var badge := Button.new()
+	badge.custom_minimum_size = Vector2(52, 52)
+	badge.text = "✓" if already_claimed else str(threshold)
+	badge.disabled = not can_claim
+	var style := _stone_style(can_claim)
+	if already_claimed:
+		style = _claimed_style()
+	badge.add_theme_stylebox_override("normal", style)
+	badge.add_theme_stylebox_override("disabled", style)
+	badge.add_theme_color_override("font_color", TURQ if can_claim else (TEXT_MUTED if already_claimed else Color("4a3f5c")))
+	badge.add_theme_color_override("font_disabled_color", TURQ if can_claim else (TEXT_MUTED if already_claimed else Color("4a3f5c")))
+	if can_claim:
+		badge.pressed.connect(func():
+			if is_daily: GameState.claim_daily_milestone(threshold)
+			else: GameState.claim_weekly_milestone(threshold)
+		)
+	chip.add_child(badge)
+
+	var label := Label.new()
+	label.text = "%d misión%s" % [threshold, "es" if threshold != 1 else ""]
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", TEXT_MUTED)
+	chip.add_child(label)
+	return chip
+
+func _refresh() -> void:
+	_refresh_milestones()
+	var missions: Array = GameState.DAILY_MISSIONS if _current_tab == "daily" else GameState.WEEKLY_MISSIONS
+	for child in _mission_list.get_children():
+		child.queue_free()
+	for mission in missions:
+		_mission_list.add_child(_build_mission_card(mission))
+
+func _build_mission_card(mission: Dictionary) -> Control:
+	var claimed := GameState.is_mission_claimed(mission)
+	var progress := GameState.mission_progress(mission)
+	var target := int(mission.get("target", 0))
+	var can_claim := GameState.can_claim_mission(mission)
+
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _claimed_style() if claimed else _stone_style(can_claim))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	card.add_child(row)
+
+	var icon_frame := PanelContainer.new()
+	icon_frame.custom_minimum_size = Vector2(56, 56)
+	icon_frame.add_theme_stylebox_override("panel", _icon_frame_style())
+	var icon_path: String = ICON_BY_TYPE.get(str(mission.get("type", "")), "res://assets/iconos main/07_objetivo.png")
+	var icon := TextureRect.new()
+	icon.texture = load(icon_path)
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.modulate = Color(1, 1, 1) if not claimed else Color(0.5, 0.5, 0.55)
+	icon_frame.add_child(icon)
+	row.add_child(icon_frame)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(box)
+
+	var title := Label.new()
+	title.text = str(mission.get("name", ""))
+	title.add_theme_font_size_override("font_size", 15)
+	title.add_theme_color_override("font_color", TURQ if not claimed else Color("6a5f7a"))
+	box.add_child(title)
+
+	var desc := Label.new()
+	desc.text = str(mission.get("description", ""))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size", 12)
+	desc.add_theme_color_override("font_color", Color("d8c9ed") if not claimed else TEXT_MUTED)
+	box.add_child(desc)
+
+	var bar := ProgressBar.new()
+	bar.max_value = maxi(target, 1)
+	bar.value = mini(progress, target)
+	bar.show_percentage = false
+	bar.custom_minimum_size.y = 10
+	box.add_child(bar)
+
+	var footer := HBoxContainer.new()
+	box.add_child(footer)
+	var progress_label := Label.new()
+	progress_label.text = "%d / %d" % [mini(progress, target), target]
+	progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	progress_label.add_theme_font_size_override("font_size", 11)
+	progress_label.add_theme_color_override("font_color", TEXT_MUTED)
+	footer.add_child(progress_label)
+
+	var reward_bits: Array[String] = []
+	if int(mission.get("gold", 0)) > 0:
+		reward_bits.append("%d oro" % int(mission.get("gold", 0)))
+	if int(mission.get("gems", 0)) > 0:
+		reward_bits.append("%d esmeraldas" % int(mission.get("gems", 0)))
+	var reward_label := Label.new()
+	reward_label.text = " · ".join(reward_bits)
+	reward_label.add_theme_font_size_override("font_size", 11)
+	reward_label.add_theme_color_override("font_color", GOLD if not claimed else TEXT_MUTED)
+	footer.add_child(reward_label)
+
+	if claimed:
+		var action := Button.new()
+		action.custom_minimum_size = Vector2(96, 44)
+		action.text = "✓"
+		action.disabled = true
+		action.add_theme_stylebox_override("disabled", _claimed_style())
+		row.add_child(action)
+	elif can_claim:
+		var action := Button.new()
+		action.custom_minimum_size = Vector2(96, 44)
+		action.text = "RECLAMAR"
+		action.add_theme_color_override("font_color", Color("102018"))
+		action.add_theme_stylebox_override("normal", _claim_button_style())
+		action.add_theme_stylebox_override("hover", _claim_button_style())
+		action.pressed.connect(func(): GameState.claim_mission(str(mission.get("id", ""))))
+		row.add_child(action)
+	return card
+
+## "Marco grueso de piedra oscura" — chunky border, low corner radius (not
+## the softly-rounded panels used elsewhere), a turquoise border when
+## something here is actionable.
+func _stone_style(actionable: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = PANEL
+	style.border_color = TURQ if actionable else STONE_BORDER
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
+
+func _claimed_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = CLAIMED_BG
+	style.border_color = CLAIMED_BORDER
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
+
+func _icon_frame_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("140f1f")
+	style.border_color = STONE_BORDER
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(4)
+	return style
+
+func _claim_button_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = TURQ
+	style.border_color = TURQ
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	return style
+
+func _tab_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = TURQ if active else PANEL
+	style.border_color = TURQ if active else STONE_BORDER
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(6)
+	return style

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_01"
+display_name = "VAELOR"
+weapon = "baculo"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_01_baculo (Vaelor)/walk_right_00.png"
+sprite_folder = "variante_01_baculo (Vaelor)"
+cost = 0
+currency = "gold"
+requirement = ""
+attack_name = "Disparo de Fuego"
+attack_color = Color(1, 0.4157, 0.2392, 1)
+attack_sprite_folder = "disparo_fuego"
+hp_modifier = -2
+damage_modifier = 1.15
+guaranteed_status = "burn"

@@ -14,9 +14,15 @@ config/name="Emberfall"
 run/main_scene="res://scenes/MainLayout.tscn"
 config/features=PackedStringArray("4.7")
 
+[audio]
+
+buses/default_bus_layout="res://resources/audio/default_bus_layout.tres"
+
 [autoload]
 
 GameState="*res://scripts/systems/game_state.gd"
+MusicDirector="*res://scripts/systems/music_director.gd"
+SfxPlayer="*res://scripts/systems/sfx_player.gd"
 
 [display]
 

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_07"
+display_name = "MORDRAK"
+weapon = "hacha_dos_manos"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_07_hacha_dos_manos (Mordrak)/walk_right_00.png"
+sprite_folder = "variante_07_hacha_dos_manos (Mordrak)"
+cost = 12
+currency = "gems"
+requirement = ""
+attack_name = "Tajo en U"
+attack_color = Color(0.8, 0.298, 0.251, 1)
+attack_sprite_folder = "mordrak"
+attack_range_scale = 0.35
+attack_alt_frame_names = PackedStringArray("u_slash_right_to_left.png", "u_slash_left_to_right.png")
+damage_modifier = 1.15
+attack_speed_modifier = 1.1

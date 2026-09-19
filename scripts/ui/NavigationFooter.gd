@@ -4,16 +4,17 @@ extends PanelContainer
 signal navigation_requested(index: int, id: StringName)
 
 @export var entries: Array[Dictionary] = [
-	{"id": &"home", "tooltip": "Inicio"},
-	{"id": &"characters", "tooltip": "Personajes"},
-	{"id": &"dungeons", "tooltip": "Mazmorras"},
-	{"id": &"upgrades", "tooltip": "Mejoras"},
 	{"id": &"shop", "tooltip": "Tienda"},
+	{"id": &"missions", "tooltip": "Misiones"},
+	{"id": &"home", "tooltip": "Inicio"},
+	{"id": &"upgrades", "tooltip": "Progreso"},
+	{"id": &"dungeons", "tooltip": "Mazmorras"},
 ]
 @export var icons: Array = []
 @export var selected_index := 0
 
 var _buttons: Array[Button] = []
+var _missions_badge: ColorRect
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -22,6 +23,10 @@ func _ready() -> void:
 	custom_minimum_size.y = 112.0 + safe_bottom
 	add_theme_stylebox_override("panel", _panel_style())
 	_build(safe_bottom)
+	# PROMPT_MISIONES_EMBERFALL.md: "Si se completa una misión fuera de esta
+	# pantalla, mostrar un indicador en el icono de Misiones del footer."
+	GameState.missions_changed.connect(_refresh_missions_badge)
+	_refresh_missions_badge()
 
 func _build(safe_bottom: float = 0.0) -> void:
 	for child in get_children():
@@ -58,12 +63,28 @@ func _build(safe_bottom: float = 0.0) -> void:
 			icon.size = Vector2(56, 56)
 			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			button.add_child(icon)
+		if StringName(entries[index].get("id", &"")) == &"missions":
+			_missions_badge = ColorRect.new()
+			_missions_badge.color = Color("e65a5a")
+			_missions_badge.custom_minimum_size = Vector2(14, 14)
+			_missions_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+			_missions_badge.position = Vector2(-18, 6)
+			_missions_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_missions_badge.visible = false
+			button.add_child(_missions_badge)
 		_apply_button_styles(button, index == selected_index)
 		button.pressed.connect(_select.bind(index))
 		row.add_child(button)
 		_buttons.append(button)
+	_refresh_missions_badge()
+
+func _refresh_missions_badge() -> void:
+	if is_instance_valid(_missions_badge):
+		_missions_badge.visible = GameState.has_claimable_missions()
 
 func _select(index: int) -> void:
+	if index != selected_index:
+		SfxPlayer.play_ui("ui/ui_select.wav")
 	selected_index = index
 	for i in range(_buttons.size()):
 		_apply_button_styles(_buttons[i], i == selected_index)

@@ -13,7 +13,10 @@ var _map_data: Dictionary = {}
 var _title: Label
 var _chapter: Label
 var _preview: TextureRect
+var _lock_overlay: ColorRect
+var _lock_icon: TextureRect
 var _rewards: Label
+var _modifier: Label
 var _maps: Array[Dictionary] = [
 	{"id": &"void_crypts", "name": "CRIPTAS DEL VACÍO", "chapter": 1, "level": 1, "rewards": "Oro · Gema · Cofre", "preview": "res://assets/environment/game_bg.png", "required": 0},
 	{"id": &"verdant_ruins", "name": "RUINAS VERDANTES", "chapter": 1, "level": 2, "rewards": "Oro · Cofre · Reliquia", "preview": "res://assets/environment/world_map.png", "required": 1},
@@ -78,6 +81,24 @@ func _build() -> void:
 	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_preview)
 
+	_lock_overlay = ColorRect.new()
+	_lock_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_lock_overlay.color = Color(0, 0, 0, 0.55)
+	_lock_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lock_overlay.visible = false
+	panel.add_child(_lock_overlay)
+	_lock_icon = TextureRect.new()
+	_lock_icon.texture = load("res://assets/iconos main/06_candado.png")
+	_lock_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_lock_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_lock_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_lock_icon.size = Vector2(56, 56)
+	_lock_icon.set_anchors_preset(Control.PRESET_CENTER)
+	_lock_icon.position = Vector2(-28, -28)
+	_lock_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lock_icon.visible = false
+	panel.add_child(_lock_icon)
+
 	var next := Button.new()
 	next.text = "›"
 	next.custom_minimum_size = Vector2(44, 72)
@@ -90,6 +111,13 @@ func _build() -> void:
 	_rewards.add_theme_font_size_override("font_size", 14)
 	_rewards.add_theme_color_override("font_color", Color("d8c9ed"))
 	column.add_child(_rewards)
+
+	_modifier = Label.new()
+	_modifier.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_modifier.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_modifier.add_theme_font_size_override("font_size", 12)
+	_modifier.add_theme_color_override("font_color", Color("ff9c4d"))
+	column.add_child(_modifier)
 
 	_start_button = Button.new()
 	_start_button.name = "StartMapButton"
@@ -114,12 +142,17 @@ func set_map(data: Dictionary) -> void:
 	_title.text = str(data.get("name", "MAPA"))
 	_chapter.text = "Capítulo %s · Nivel %s" % [str(data.get("chapter", 1)), str(data.get("level", 1))]
 	_rewards.text = "Recompensas: %d oro · %d esmeraldas" % [int(data.get("gold_reward", 0)), int(data.get("gems_reward", 0))]
+	var modifier_label := str(data.get("modifier_label", ""))
+	_modifier.text = modifier_label
+	_modifier.visible = modifier_label != ""
 	var texture = load(str(data.get("preview", "res://assets/environment/game_bg.png")))
 	if texture is Texture2D:
 		_preview.texture = texture
 	var unlocked: bool = unlock_check.call(data)
 	_start_button.disabled = not unlocked
 	_start_button.text = "INICIAR" if unlocked else "BLOQUEADO"
+	_lock_overlay.visible = not unlocked
+	_lock_icon.visible = not unlocked
 
 func set_maps(list: Array[Dictionary]) -> void:
 	_maps = list

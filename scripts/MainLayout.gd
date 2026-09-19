@@ -23,11 +23,11 @@ func _ready() -> void:
 
 	hud_layer = CanvasLayer.new(); hud_layer.name = "HudLayer"; hud_layer.layer = 10; add_child(hud_layer)
 
-	top_hud = preload("res://scenes/ui/TopHud.tscn").instantiate() as TopHud; top_hud.name = "TopHud"; top_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE); top_hud.offset_bottom = 98; hud_layer.add_child(top_hud)
+	top_hud = preload("res://scenes/ui/TopHud.tscn").instantiate() as TopHud; top_hud.name = "TopHud"; top_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE); top_hud.offset_bottom = 160; hud_layer.add_child(top_hud)
 	_wire_top_hud()
 
 	navigation_footer = preload("res://scenes/ui/NavigationFooter.tscn").instantiate(); navigation_footer.name = "NavigationFooter"; navigation_footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); navigation_footer.offset_top = -112
-	navigation_footer.icons = [load("res://assets/iconos main/05_inicio.png"), load("res://assets/iconos main/03_espada.png"), load("res://assets/iconos main/08_mazmorras.png"), load("res://assets/iconos main/01_equipamiento.png"), load("res://assets/iconos main/09_tienda.png")]
+	navigation_footer.icons = [load("res://assets/iconos main/09_tienda.png"), load("res://assets/iconos main/04_misiones.png"), load("res://assets/iconos main/05_inicio.png"), load("res://assets/iconos main/01_equipamiento.png"), load("res://assets/iconos main/08_mazmorras.png")]
 	hud_layer.add_child(navigation_footer)
 	navigation_footer.navigation_requested.connect(func(_index: int, route_id: StringName): navigate_to(route_id))
 
@@ -37,6 +37,17 @@ func _ready() -> void:
 	GameState.screen_changed.connect(_on_game_screen_changed)
 	navigate_to(&"home")
 
+## Auto-pauses combat when the app loses focus or the OS suspends it (phone
+## call, home button, app switch, notification shade) — otherwise a long
+## background gap gets processed as a single huge delta on resume (enemies
+## piling up, a surprise multi-hit death) instead of just picking up where
+## the player left off. Never auto-resumes on focus/return: that's always an
+## explicit tap, same as manually unpausing.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		if is_instance_valid(_active_game) and GameState.screen == "playing":
+			GameState.change_screen("paused")
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_cancel"):
 		return
@@ -45,8 +56,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif is_instance_valid(_active_game):
 		if GameState.screen == "playing":
+			SfxPlayer.play_ui("ui/pause.wav")
 			GameState.change_screen("paused")
 		elif GameState.screen == "paused":
+			SfxPlayer.play_ui("ui/resume.wav")
 			GameState.change_screen("playing")
 		get_viewport().set_input_as_handled()
 	elif current_route != &"home":
@@ -75,7 +88,6 @@ func _wire_top_hud() -> void:
 		open_modal(&"notifications")
 		GameState.mark_notifications_read()
 	)
-	top_hud.settings_pressed.connect(func(): open_modal(&"settings"))
 
 func navigate_to(route_id: StringName) -> void:
 	if route_id == current_route and is_instance_valid(current_screen): return
@@ -91,7 +103,7 @@ func get_current_route() -> StringName: return current_route
 func _screen_for(route_id: StringName) -> Node:
 	match route_id:
 		&"home": return preload("res://scenes/screens/HomeScreen.tscn").instantiate()
-		&"characters": return preload("res://scenes/screens/CharacterSelectionScreen.tscn").instantiate()
+		&"missions": return preload("res://scenes/screens/MissionsScreen.tscn").instantiate()
 		&"dungeons": return preload("res://scenes/screens/DungeonSelectionScreen.tscn").instantiate()
 		&"upgrades": return preload("res://scenes/screens/PermanentUpgradesScreen.tscn").instantiate()
 		&"shop": return preload("res://scenes/screens/ShopScreen.tscn").instantiate()
@@ -119,7 +131,6 @@ func _modal_for(modal_id: StringName) -> Control:
 	match modal_id:
 		&"profile": return preload("res://scenes/ui/ProfileModal.tscn").instantiate()
 		&"notifications": return preload("res://scenes/ui/NotificationsModal.tscn").instantiate()
-		&"settings": return preload("res://scenes/ui/SettingsModal.tscn").instantiate()
 		_: return null
 
 func close_active_modal() -> void:
@@ -130,9 +141,16 @@ func close_active_modal() -> void:
 func has_open_modal() -> bool: return is_instance_valid(active_modal)
 
 func start_run(map_data: Dictionary) -> void:
+	# Guards against a double-tap (or any other stray repeat call) re-entering
+	# this while a run is already active — without it, energy could be spent
+	# twice and a second, orphaned game_world would keep running in the
+	# background and could grant its own victory/defeat reward later.
+	if is_instance_valid(_active_game):
+		return
 	if not GameState.can_start():
 		return
-	GameState.begin_stage(map_data)
+	if not GameState.begin_stage(map_data):
+		return
 	if not GameState.start_run():
 		return
 	close_active_modal()
@@ -183,6 +201,13 @@ func _result_screen(victory: bool) -> Control:
 	retry.disabled = not GameState.can_start()
 	retry.pressed.connect(func(): start_run(GameState.last_stage_context))
 	box.add_child(retry)
+	# Energy can regenerate while the player is looking at this screen, so
+	# keep the button's enabled state live instead of a one-time snapshot.
+	var update_retry := func(_energy: int):
+		if is_instance_valid(retry):
+			retry.disabled = not GameState.can_start()
+	GameState.energy_changed.connect(update_retry)
+	screen.tree_exiting.connect(func(): GameState.energy_changed.disconnect(update_retry))
 	var home := Button.new()
 	home.text = "VOLVER A INICIO"
 	home.custom_minimum_size = Vector2(0, 52)

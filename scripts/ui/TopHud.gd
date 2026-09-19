@@ -3,7 +3,6 @@ extends PanelContainer
 
 signal profile_pressed
 signal notifications_pressed
-signal settings_pressed
 
 var _level_label: Label
 var _xp_bar: ProgressBar
@@ -16,9 +15,22 @@ var _notification_badge: Label
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	custom_minimum_size.y = 88.0
+	custom_minimum_size.y = 160.0
 	add_theme_stylebox_override("panel", _panel_style())
-	_build()
+	# AUD-12: NavigationFooter already insets itself off the bottom gesture
+	# area (_safe_area_bottom_inset there) — TopHud sat flush at y=0 with no
+	# equivalent, so a phone's camera cutout/status bar could clip the level
+	# badge or the gold/gem counters. Shifts the inner content down instead
+	# of growing the panel's own height, since every screen that navigates
+	# under it (MapSelection, etc.) hardcodes a top margin sized to today's
+	# fixed 160px footprint — changing that would need auditing every one of
+	# them, which isn't safe to do without a notched device to verify against.
+	_build(_safe_area_top_inset())
+
+func _safe_area_top_inset() -> float:
+	var screen_index := DisplayServer.window_get_current_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen_index)
+	return maxf(0.0, float(usable.position.y))
 
 func set_level(value: int) -> void:
 	_level_label.text = str(value)
@@ -48,17 +60,21 @@ func set_notifications(unread: int) -> void:
 	_notification_badge.visible = unread > 0
 	_notification_badge.text = str(min(unread, 99)) if unread < 100 else "99+"
 
-func _build() -> void:
+func _build(safe_top: float = 0.0) -> void:
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 10)
 	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_top", 8 + int(safe_top))
 	margin.add_theme_constant_override("margin_bottom", 8)
 	add_child(margin)
 
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 4)
+	margin.add_child(column)
+
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	margin.add_child(row)
+	column.add_child(row)
 
 	_build_profile_button(row)
 
@@ -93,20 +109,34 @@ func _build() -> void:
 	_gold_label = _add_value_panel(row, "ORO", "0", 0.85)
 	_gems_label = _add_value_panel(row, "JOYAS", "0", 0.85)
 
-	_build_icon_button(row, "✉", 0.6, func(): notifications_pressed.emit())
+	var notif_row := HBoxContainer.new()
+	notif_row.alignment = BoxContainer.ALIGNMENT_END
+	notif_row.add_theme_constant_override("separation", 0)
+	column.add_child(notif_row)
+
+	var no_padding := StyleBoxEmpty.new()
+	var notif_button := Button.new()
+	notif_button.text = "✉"
+	notif_button.flat = true
+	notif_button.add_theme_font_size_override("font_size", 22)
+	notif_button.add_theme_stylebox_override("normal", no_padding)
+	notif_button.add_theme_stylebox_override("hover", no_padding)
+	notif_button.add_theme_stylebox_override("pressed", no_padding)
+	notif_button.add_theme_stylebox_override("focus", no_padding)
+	notif_button.pressed.connect(func(): notifications_pressed.emit())
+	notif_row.add_child(notif_button)
+
 	_notification_badge = Label.new()
 	_notification_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_notification_badge.offset_left = -22
-	_notification_badge.offset_bottom = 18
+	_notification_badge.offset_left = -14
+	_notification_badge.offset_bottom = 14
 	_notification_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_notification_badge.add_theme_font_size_override("font_size", 12)
 	_notification_badge.add_theme_color_override("font_color", Color("120d1d"))
 	_notification_badge.add_theme_color_override("font_outline_color", Color("20e6bd"))
 	_notification_badge.add_theme_constant_override("outline_size", 6)
 	_notification_badge.visible = false
-	row.get_child(row.get_child_count() - 1).add_child(_notification_badge)
-
-	_build_icon_button(row, "⚙", 0.6, func(): settings_pressed.emit())
+	notif_button.add_child(_notification_badge)
 
 	set_level(1)
 	set_experience(0, 100)
@@ -151,19 +181,6 @@ func _build_profile_button(parent: Container) -> void:
 	_xp_bar.add_theme_stylebox_override("background", _bar_style(Color("100b18")))
 	_xp_bar.add_theme_stylebox_override("fill", _bar_style(Color("c86bff")))
 	stack.add_child(_xp_bar)
-
-func _build_icon_button(parent: Container, icon_text: String, ratio: float, on_press: Callable) -> void:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = ratio
-	panel.add_theme_stylebox_override("panel", _slot_style())
-	parent.add_child(panel)
-	var button := Button.new()
-	button.text = icon_text
-	button.flat = true
-	button.add_theme_font_size_override("font_size", 24)
-	button.pressed.connect(on_press)
-	panel.add_child(button)
 
 func _add_value_panel(parent: Container, title: String, initial: String, ratio: float) -> Label:
 	var panel := PanelContainer.new()

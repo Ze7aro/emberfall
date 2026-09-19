@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/CharacterData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"variante_11"
+display_name = "CINDER"
+weapon = "dos_pistolas"
+texture_path = "res://assets/emberfall_sprites_2d_simple/variante_11_dos_pistolas (Cinder)/walk_right_00.png"
+sprite_folder = "variante_11_dos_pistolas (Cinder)"
+cost = 1000
+currency = "gold"
+requirement = "stage_08"
+attack_name = "Bala Compacta"
+attack_color = Color(0.898, 0.6157, 0.251, 1)
+attack_sprite_folder = "cinder_bala"
