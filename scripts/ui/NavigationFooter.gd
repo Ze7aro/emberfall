@@ -1,6 +1,8 @@
 class_name NavigationFooter
 extends PanelContainer
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 signal navigation_requested(index: int, id: StringName)
 
 @export var entries: Array[Dictionary] = [
@@ -65,7 +67,7 @@ func _build(safe_bottom: float = 0.0) -> void:
 			button.add_child(icon)
 		if StringName(entries[index].get("id", &"")) == &"missions":
 			_missions_badge = ColorRect.new()
-			_missions_badge.color = Color("e65a5a")
+			_missions_badge.color = UiTheme.DANGER
 			_missions_badge.custom_minimum_size = Vector2(14, 14)
 			_missions_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 			_missions_badge.position = Vector2(-18, 6)
@@ -111,24 +113,14 @@ func _safe_area_bottom_inset() -> float:
 	return maxf(0.0, float(screen_size.y - (usable.position.y + usable.size.y)))
 
 func _panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("120d1d")
-	style.border_color = Color("4e3a68")
-	style.set_border_width_all(4)
-	style.corner_radius_top_left = 12
-	style.corner_radius_top_right = 12
-	style.shadow_color = Color(0, 0, 0, 0.55)
-	style.shadow_size = 8
+	var style := UiTheme.panel(UiTheme.BORDER, UiTheme.CORNER, 4)
+	style.corner_radius_bottom_left = 0
+	style.corner_radius_bottom_right = 0
+	style.border_width_top = 4
 	return style
 
 func _slot_style(selected: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("21182d") if not selected else Color("302040")
-	style.border_color = Color("5b4771") if not selected else Color("20e6bd")
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(9)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	var style := UiTheme.slot(selected, 10)
+	if not selected:
+		style.border_color = Color("3a2b52")
 	return style

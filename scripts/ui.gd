@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 const POWER_NAMES := {
 	"directed": "DISPARO DIRIGIDO",
 	"orbital": "ONDA ORBITAL",
@@ -96,7 +98,7 @@ func setup(owner: Node) -> void:
 	boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	boss_label.text = "¡JEFE!"
 	boss_label.add_theme_font_size_override("font_size", 18)
-	boss_label.add_theme_color_override("font_color", Color("e65a5a"))
+	boss_label.add_theme_color_override("font_color", UiTheme.DANGER)
 	boss_label.visible = false
 	add_child(boss_label)
 	boss_bar = ProgressBar.new()
@@ -117,6 +119,7 @@ func setup(owner: Node) -> void:
 	pause_button.offset_left = -56; pause_button.offset_right = -16
 	pause_button.offset_top = 16; pause_button.offset_bottom = 60
 	pause_button.add_theme_font_size_override("font_size", 20)
+	pause_button.theme = UiTheme.make_theme()
 	pause_button.pressed.connect(_toggle_pause)
 	add_child(pause_button)
 
@@ -133,7 +136,7 @@ func _build_tutorial_hint() -> void:
 	_tutorial_hint.anchor_top = 1.0; _tutorial_hint.anchor_bottom = 1.0
 	_tutorial_hint.offset_top = -160; _tutorial_hint.offset_bottom = -100
 	_tutorial_hint.add_theme_font_size_override("font_size", 15)
-	_tutorial_hint.add_theme_color_override("font_color", Color("f1e8ff"))
+	_tutorial_hint.add_theme_color_override("font_color", UiTheme.TEXT)
 	_tutorial_hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
 	_tutorial_hint.add_theme_constant_override("shadow_offset_x", 1)
 	_tutorial_hint.add_theme_constant_override("shadow_offset_y", 1)
@@ -178,8 +181,22 @@ func _process(_delta: float) -> void:
 		panel.queue_free()
 		panel = null
 
+## Full-screen dimmer that also swallows touches, so the joystick underneath
+## can't react while a modal panel (level-up / pause) is open. Lives and dies
+## with the panel it backs.
+func _add_blocker_for(target: Control) -> void:
+	var blocker := ColorRect.new()
+	blocker.color = Color(0.03, 0.02, 0.07, 0.72)
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(blocker)
+	target.tree_exited.connect(blocker.queue_free)
+
 func show_level_up() -> void:
 	panel = PanelContainer.new()
+	panel.theme = UiTheme.make_theme()
+	panel.add_theme_stylebox_override("panel", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4))
+	_add_blocker_for(panel)
 	panel.position = Vector2(20, 190)
 	panel.size = Vector2(350, 370)
 	var box := VBoxContainer.new()
@@ -189,12 +206,13 @@ func show_level_up() -> void:
 	title.text = "¡SUBIR DE NIVEL!"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 23)
+	title.add_theme_color_override("font_color", UiTheme.PURPLE)
 	box.add_child(title)
 	var category := Label.new()
 	category.text = "PASIVAS" if world.current_options_are_boosts else "ACTIVAS"
 	category.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	category.add_theme_font_size_override("font_size", 14)
-	category.add_theme_color_override("font_color", Color("20e6bd"))
+	category.add_theme_color_override("font_color", UiTheme.ACCENT)
 	box.add_child(category)
 	if _tutorial_active:
 		var hint := Label.new()
@@ -202,7 +220,7 @@ func show_level_up() -> void:
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		hint.add_theme_font_size_override("font_size", 11)
-		hint.add_theme_color_override("font_color", Color("9b8eaa"))
+		hint.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		box.add_child(hint)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 260)
@@ -217,13 +235,14 @@ func show_level_up() -> void:
 		var level: int = world.ability_level(power)
 		button.text = "%s  (NV. %d/%d)" % [str(POWER_NAMES.get(power, power)), level, world.MAX_ABILITY_LEVEL]
 		button.custom_minimum_size = Vector2(0, 40)
+		UiTheme.apply_primary(button)
 		button.pressed.connect(_choose.bind(power))
 		list.add_child(button)
 		var desc := Label.new()
 		desc.text = str(POWER_DESCRIPTIONS.get(power, ""))
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.add_theme_font_size_override("font_size", 12)
-		desc.add_theme_color_override("font_color", Color("9b8eaa"))
+		desc.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		list.add_child(desc)
 	var reroll := Button.new()
 	reroll.text = "CAMBIAR OPCIONES  (%d)" % world.rerolls
@@ -253,6 +272,9 @@ func _reroll() -> void:
 
 func show_pause_panel() -> void:
 	pause_panel = PanelContainer.new()
+	pause_panel.theme = UiTheme.make_theme()
+	pause_panel.add_theme_stylebox_override("panel", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4))
+	_add_blocker_for(pause_panel)
 	pause_panel.anchor_left = 0.5; pause_panel.anchor_right = 0.5
 	pause_panel.anchor_top = 0.5; pause_panel.anchor_bottom = 0.5
 	pause_panel.offset_left = -140; pause_panel.offset_right = 140
@@ -270,6 +292,7 @@ func _build_pause_content() -> void:
 	var title := Label.new()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", UiTheme.PURPLE)
 	box.add_child(title)
 	if _confirm_exit:
 		title.text = "¿SALIR?"
@@ -277,11 +300,12 @@ func _build_pause_content() -> void:
 		warning.text = "Perdés el progreso de esta partida."
 		warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		warning.add_theme_color_override("font_color", Color("9b8eaa"))
+		warning.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		box.add_child(warning)
 		var confirm := Button.new()
 		confirm.text = "SÍ, SALIR"
 		confirm.custom_minimum_size = Vector2(0, 52)
+		confirm.add_theme_color_override("font_color", UiTheme.DANGER)
 		confirm.pressed.connect(_exit_run)
 		box.add_child(confirm)
 		var cancel := Button.new()
@@ -298,7 +322,7 @@ func _build_pause_content() -> void:
 		fusion_title.text = "FUSIONES"
 		fusion_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		fusion_title.add_theme_font_size_override("font_size", 14)
-		fusion_title.add_theme_color_override("font_color", Color("20e6bd"))
+		fusion_title.add_theme_color_override("font_color", UiTheme.ACCENT)
 		box.add_child(fusion_title)
 		var fusion_scroll := ScrollContainer.new()
 		fusion_scroll.custom_minimum_size = Vector2(0, 160)
@@ -313,6 +337,7 @@ func _build_pause_content() -> void:
 		var resume := Button.new()
 		resume.text = "REANUDAR"
 		resume.custom_minimum_size = Vector2(0, 52)
+		UiTheme.apply_primary(resume)
 		resume.pressed.connect(_toggle_pause)
 		box.add_child(resume)
 		var exit := Button.new()
@@ -333,7 +358,7 @@ func _build_fusion_row(fusion_name: String) -> Control:
 	label.text = ("✓ " if unlocked else "🔒 ") + fusion_name
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", Color("20e6bd") if unlocked else Color("9b8eaa"))
+	label.add_theme_color_override("font_color", UiTheme.ACCENT if unlocked else UiTheme.TEXT_MUTED)
 	row.add_child(label)
 	if not unlocked:
 		var req := Label.new()
@@ -346,7 +371,7 @@ func _build_fusion_row(fusion_name: String) -> Control:
 		req.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		req.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		req.add_theme_font_size_override("font_size", 9)
-		req.add_theme_color_override("font_color", Color("6a5f7a"))
+		req.add_theme_color_override("font_color", Color("8a7d9c"))
 		row.add_child(req)
 	return row
 

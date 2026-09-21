@@ -1,5 +1,7 @@
 extends MarginContainer
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 signal previous_map_requested
 signal next_map_requested
 signal start_map_requested(data: Dictionary)
@@ -30,6 +32,7 @@ func _ready() -> void:
 	set_map(_maps[_map_index])
 
 func _build() -> void:
+	theme = UiTheme.make_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_theme_constant_override("margin_left", 18)
 	add_theme_constant_override("margin_right", 18)
@@ -46,13 +49,13 @@ func _build() -> void:
 	_title = Label.new()
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.add_theme_font_size_override("font_size", 24)
-	_title.add_theme_color_override("font_color", Color("f1e8ff"))
+	_title.add_theme_color_override("font_color", UiTheme.TEXT)
 	column.add_child(_title)
 
 	_chapter = Label.new()
 	_chapter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chapter.add_theme_font_size_override("font_size", 13)
-	_chapter.add_theme_color_override("font_color", Color("20e6bd"))
+	_chapter.add_theme_color_override("font_color", UiTheme.ACCENT)
 	column.add_child(_chapter)
 
 	var preview_row := HBoxContainer.new()
@@ -125,9 +128,7 @@ func _build() -> void:
 	_start_button.custom_minimum_size = Vector2(0, 64)
 	_start_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_start_button.add_theme_font_size_override("font_size", 22)
-	_start_button.add_theme_stylebox_override("normal", _button_style(Color("20e6bd"), Color("171027")))
-	_start_button.add_theme_stylebox_override("hover", _button_style(Color("8affdf"), Color("171027")))
-	_start_button.add_theme_stylebox_override("pressed", _button_style(Color("13a98b"), Color("171027")))
+	UiTheme.apply_primary(_start_button)
 	_start_button.pressed.connect(func():
 		if not _start_button.disabled:
 			start_map_requested.emit(_map_data)
@@ -169,19 +170,6 @@ func show_next_map() -> void:
 	set_map(_maps[_map_index])
 
 func _preview_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("171027")
-	style.border_color = Color("20e6bd")
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(10)
-	return style
-
-func _button_style(border: Color, text_color: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("39244e")
-	style.border_color = border
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(10)
-	style.content_margin_left = 44
-	style.content_margin_right = 44
+	var style := UiTheme.slot(true, 4)
+	style.bg_color = UiTheme.BG_PANEL
 	return style

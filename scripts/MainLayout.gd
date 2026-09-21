@@ -1,5 +1,7 @@
 extends Control
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 signal route_changed(route_id: StringName)
 signal modal_opened(modal_id: StringName)
 signal modal_closed(modal_id: StringName)
@@ -16,9 +18,13 @@ var top_hud: TopHud
 var _active_modal_content: Control
 var _active_game: Node
 var _active_game_ui: Node
+var _starting_run := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Shared dark backdrop: screens without their own background (Inicio,
+	# Mazmorras) would otherwise show the engine's default gray.
+	var backdrop := ColorRect.new(); backdrop.name = "Backdrop"; backdrop.color = UiTheme.BG_DEEP; backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE; backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(backdrop)
 	content_host = Control.new(); content_host.name = "ContentHost"; content_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(content_host)
 
 	hud_layer = CanvasLayer.new(); hud_layer.name = "HudLayer"; hud_layer.layer = 10; add_child(hud_layer)
@@ -84,6 +90,7 @@ func _wire_top_hud() -> void:
 	GameState.notifications_changed.connect(top_hud.set_notifications)
 
 	top_hud.profile_pressed.connect(func(): open_modal(&"profile"))
+	top_hud.settings_pressed.connect(func(): open_modal(&"settings"))
 	top_hud.notifications_pressed.connect(func():
 		open_modal(&"notifications")
 		GameState.mark_notifications_read()
@@ -130,6 +137,7 @@ func open_modal(modal_id: StringName, payload: Variant = null) -> void:
 func _modal_for(modal_id: StringName) -> Control:
 	match modal_id:
 		&"profile": return preload("res://scenes/ui/ProfileModal.tscn").instantiate()
+		&"settings": return preload("res://scenes/ui/SettingsModal.tscn").instantiate()
 		&"notifications": return preload("res://scenes/ui/NotificationsModal.tscn").instantiate()
 		_: return null
 
@@ -145,7 +153,7 @@ func start_run(map_data: Dictionary) -> void:
 	# this while a run is already active — without it, energy could be spent
 	# twice and a second, orphaned game_world would keep running in the
 	# background and could grant its own victory/defeat reward later.
-	if is_instance_valid(_active_game):
+	if is_instance_valid(_active_game) or _starting_run:
 		return
 	if not GameState.can_start():
 		return
@@ -156,11 +164,35 @@ func start_run(map_data: Dictionary) -> void:
 	close_active_modal()
 	if is_instance_valid(current_screen): current_screen.queue_free(); current_screen = null
 	hud_layer.visible = false
+	# Warm the run's real resources through the threaded loader; the loading
+	# screen only becomes visible if something is actually still loading.
+	_starting_run = true
+	var loading := preload("res://scripts/ui/LoadingScreen.gd").new()
+	loading.setup(_run_resource_paths())
+	content_host.add_child(loading)
+	await loading.finished
+	loading.queue_free()
+	_starting_run = false
 	_active_game = load("res://scripts/game_world.gd").new()
 	content_host.add_child(_active_game)
 	_active_game_ui = load("res://scripts/ui.gd").new()
 	content_host.add_child(_active_game_ui)
 	_active_game_ui.setup(_active_game)
+
+func _run_resource_paths() -> Array[String]:
+	var paths: Array[String] = [
+		"res://scripts/game_world.gd", "res://scripts/ui.gd", "res://scripts/components/player.gd",
+		"res://assets/characters/enemy.png", "res://assets/environment/game_bg.png",
+	]
+	var folder := str(GameState.selected_character_sprite_folder)
+	if folder != "":
+		var base := "%s/%s" % [CharacterAnimations.BASE_DIR, folder]
+		for dir in ["right", "left"]:
+			for i in 3:
+				paths.append("%s/walk_%s_%02d.png" % [base, dir, i])
+		for i in 2:
+			paths.append("%s/attack_%02d.png" % [base, i])
+	return paths
 
 func _on_game_screen_changed(value: String) -> void:
 	if value == "victory" or value == "defeat":
@@ -179,24 +211,43 @@ func _end_run(victory: bool) -> void:
 func _result_screen(victory: bool) -> Control:
 	var screen := Control.new()
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new(); bg.color = Color("101a2b"); bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
+	screen.theme = UiTheme.make_theme()
+	var bg := ColorRect.new(); bg.color = UiTheme.BG_DEEP; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
+	var card := PanelContainer.new()
+	card.anchor_left = 0.5; card.anchor_right = 0.5; card.anchor_top = 0.5; card.anchor_bottom = 0.5
+	card.offset_left = -165; card.offset_right = 165; card.offset_top = -190; card.offset_bottom = 190
+	var accent: Color = UiTheme.ACCENT if victory else UiTheme.DANGER
+	card.add_theme_stylebox_override("panel", UiTheme.panel(accent, UiTheme.CORNER, 4))
+	screen.add_child(card)
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 18)
+	card.add_child(margin)
 	var box := VBoxContainer.new()
-	box.anchor_left = 0.5; box.anchor_right = 0.5; box.anchor_top = 0.5; box.anchor_bottom = 0.5
-	box.offset_left = -150; box.offset_right = 150; box.offset_top = -140; box.offset_bottom = 140
 	box.add_theme_constant_override("separation", 14)
-	screen.add_child(box)
+	margin.add_child(box)
 	var title := Label.new()
 	title.text = "VICTORIA" if victory else "CAÍSTE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 32)
-	title.add_theme_color_override("font_color", Color("20e6bd") if victory else Color("e65a5a"))
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", accent)
 	box.add_child(title)
+	var stage_name := str(GameState.last_stage_context.get("name", ""))
+	if stage_name != "":
+		var stage := Label.new()
+		stage.text = stage_name
+		stage.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		stage.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+		box.add_child(stage)
 	var info := Label.new()
 	info.text = "Progreso guardado.\nOro: %d  ·  Récord: %d" % [GameState.gold, GameState.high_score]
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	box.add_child(info)
 	var retry := Button.new()
-	retry.text = "REINTENTAR"
+	retry.text = "REINTENTAR  ·  %d ENERGÍA" % GameState.ENERGY_COST
+	UiTheme.apply_primary(retry)
 	retry.custom_minimum_size = Vector2(0, 52)
 	retry.disabled = not GameState.can_start()
 	retry.pressed.connect(func(): start_run(GameState.last_stage_context))

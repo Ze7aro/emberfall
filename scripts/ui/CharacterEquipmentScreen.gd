@@ -1,5 +1,7 @@
 extends Control
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 ## Unified hero + equipment screen. Two states live in the same scene
 ## (EQUIPMENT / HERO_SELECTION); switching between them is a Tween, never a
 ## scene change. Equipment is a single global loadout shared by every hero.
@@ -46,6 +48,7 @@ var _back_button: Button
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme = UiTheme.make_theme()
 	_load_type_icons()
 	_characters = _load_characters()
 
@@ -151,6 +154,7 @@ func _build_equipment_state() -> Control:
 	_change_hero_button.text = "CAMBIAR HÉROE"
 	_change_hero_button.custom_minimum_size = Vector2(0, 52)
 	_change_hero_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	UiTheme.apply_primary(_change_hero_button)
 	_change_hero_button.pressed.connect(_on_change_hero_pressed)
 	col.add_child(_change_hero_button)
 
@@ -186,7 +190,7 @@ func _build_slot_column(types: Array) -> VBoxContainer:
 		label.clip_text = true
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.add_theme_font_size_override("font_size", 9)
-		label.add_theme_color_override("font_color", Color("9b8eaa"))
+		label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		wrap.add_child(label)
 		var slot_center := CenterContainer.new()
 		slot_center.custom_minimum_size = Vector2(SLOT_COLUMN_WIDTH, 0)
@@ -225,7 +229,7 @@ func _build_inventory_panel() -> Control:
 	title.text = "MOCHILA"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 16)
-	title.add_theme_color_override("font_color", Color("20e6bd"))
+	title.add_theme_color_override("font_color", UiTheme.ACCENT)
 	panel.add_child(title)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 220)
@@ -322,12 +326,12 @@ func _stat_icon_row(icon: Control, label_text: String, value: String) -> Control
 	var label := Label.new()
 	label.text = label_text
 	label.add_theme_font_size_override("font_size", 11)
-	label.add_theme_color_override("font_color", Color("9b8eaa"))
+	label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	row.add_child(label)
 	var value_label := Label.new()
 	value_label.text = value
 	value_label.add_theme_font_size_override("font_size", 20)
-	value_label.add_theme_color_override("font_color", Color("f1e8ff"))
+	value_label.add_theme_color_override("font_color", UiTheme.TEXT)
 	row.add_child(value_label)
 	return row
 
@@ -350,7 +354,7 @@ func _refresh_hero_area() -> void:
 	_hero_attack_label.text = attack_name
 	_hero_attack_label.visible = attack_name != ""
 	if attack_name != "":
-		_hero_attack_label.add_theme_color_override("font_color", hero.get("attack_color", Color("20e6bd")))
+		_hero_attack_label.add_theme_color_override("font_color", hero.get("attack_color", UiTheme.ACCENT))
 	_refresh_equipment_slots()
 	_refresh_basic_stats()
 	_refresh_inventory()
@@ -371,7 +375,7 @@ func _build_selection_state() -> Control:
 	title.text = "SELECCIONAR HÉROE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color("20e6bd"))
+	title.add_theme_color_override("font_color", UiTheme.ACCENT)
 	col.add_child(title)
 
 	_carousel_area = Control.new()
@@ -416,6 +420,7 @@ func _build_selection_state() -> Control:
 	_select_button = Button.new()
 	_select_button.text = "SELECCIONAR"
 	_select_button.custom_minimum_size = Vector2(140, 52)
+	UiTheme.apply_primary(_select_button)
 	_select_button.pressed.connect(_on_select_pressed)
 	buttons_row.add_child(_select_button)
 	_back_button = Button.new()
@@ -512,7 +517,7 @@ func _update_indicators() -> void:
 	for i in _characters.size():
 		var dot := ColorRect.new()
 		dot.custom_minimum_size = Vector2(7, 7)
-		dot.color = Color("20e6bd") if i == _focused_index else Color("4a3f5c")
+		dot.color = UiTheme.ACCENT if i == _focused_index else Color("4a3f5c")
 		_carousel_indicators.add_child(dot)
 
 func _update_selection_info() -> void:

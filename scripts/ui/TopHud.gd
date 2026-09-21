@@ -1,8 +1,11 @@
 class_name TopHud
 extends PanelContainer
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 signal profile_pressed
 signal notifications_pressed
+signal settings_pressed
 
 var _level_label: Label
 var _xp_bar: ProgressBar
@@ -17,6 +20,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	custom_minimum_size.y = 160.0
 	add_theme_stylebox_override("panel", _panel_style())
+	theme = UiTheme.make_theme()
 	# AUD-12: NavigationFooter already insets itself off the bottom gesture
 	# area (_safe_area_bottom_inset there) — TopHud sat flush at y=0 with no
 	# equivalent, so a phone's camera cutout/status bar could clip the level
@@ -65,7 +69,7 @@ func _build(safe_top: float = 0.0) -> void:
 	margin.add_theme_constant_override("margin_left", 10)
 	margin.add_theme_constant_override("margin_right", 10)
 	margin.add_theme_constant_override("margin_top", 8 + int(safe_top))
-	margin.add_theme_constant_override("margin_bottom", 8)
+	margin.add_theme_constant_override("margin_bottom", 4)
 	add_child(margin)
 
 	var column := VBoxContainer.new()
@@ -89,13 +93,13 @@ func _build(safe_top: float = 0.0) -> void:
 	var energy_title := Label.new()
 	energy_title.text = "ENERGÍA"
 	energy_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	energy_title.add_theme_color_override("font_color", Color("9b8eaa"))
+	energy_title.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	energy_stack.add_child(energy_title)
 	_energy_bar = ProgressBar.new()
 	_energy_bar.show_percentage = false
 	_energy_bar.custom_minimum_size.y = 16
-	_energy_bar.add_theme_stylebox_override("background", _bar_style(Color("100b18")))
-	_energy_bar.add_theme_stylebox_override("fill", _bar_style(Color("20e6bd")))
+	_energy_bar.add_theme_stylebox_override("background", _bar_style(Color("0a0712")))
+	_energy_bar.add_theme_stylebox_override("fill", _bar_style(UiTheme.ACCENT))
 	energy_stack.add_child(_energy_bar)
 	_energy_label = Label.new()
 	_energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -103,7 +107,7 @@ func _build(safe_top: float = 0.0) -> void:
 	_energy_timer_label = Label.new()
 	_energy_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_energy_timer_label.add_theme_font_size_override("font_size", 11)
-	_energy_timer_label.add_theme_color_override("font_color", Color("9b8eaa"))
+	_energy_timer_label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	energy_stack.add_child(_energy_timer_label)
 
 	_gold_label = _add_value_panel(row, "ORO", "0", 0.85)
@@ -111,18 +115,26 @@ func _build(safe_top: float = 0.0) -> void:
 
 	var notif_row := HBoxContainer.new()
 	notif_row.alignment = BoxContainer.ALIGNMENT_END
-	notif_row.add_theme_constant_override("separation", 0)
+	notif_row.add_theme_constant_override("separation", 8)
 	column.add_child(notif_row)
 
-	var no_padding := StyleBoxEmpty.new()
+	var settings_button := Button.new()
+	settings_button.text = "AJUSTES"
+	settings_button.add_theme_stylebox_override("normal", UiTheme.slot(false, 3))
+	settings_button.add_theme_stylebox_override("hover", UiTheme.slot(true, 3))
+	settings_button.add_theme_stylebox_override("pressed", UiTheme.slot(true, 3))
+	settings_button.custom_minimum_size = Vector2(0, 30)
+	settings_button.add_theme_font_size_override("font_size", 13)
+	settings_button.pressed.connect(func(): settings_pressed.emit())
+	notif_row.add_child(settings_button)
+
 	var notif_button := Button.new()
 	notif_button.text = "✉"
-	notif_button.flat = true
+	notif_button.add_theme_stylebox_override("normal", UiTheme.slot(false, 3))
+	notif_button.add_theme_stylebox_override("hover", UiTheme.slot(true, 3))
+	notif_button.add_theme_stylebox_override("pressed", UiTheme.slot(true, 3))
+	notif_button.custom_minimum_size = Vector2(56, 30)
 	notif_button.add_theme_font_size_override("font_size", 22)
-	notif_button.add_theme_stylebox_override("normal", no_padding)
-	notif_button.add_theme_stylebox_override("hover", no_padding)
-	notif_button.add_theme_stylebox_override("pressed", no_padding)
-	notif_button.add_theme_stylebox_override("focus", no_padding)
 	notif_button.pressed.connect(func(): notifications_pressed.emit())
 	notif_row.add_child(notif_button)
 
@@ -133,7 +145,7 @@ func _build(safe_top: float = 0.0) -> void:
 	_notification_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_notification_badge.add_theme_font_size_override("font_size", 12)
 	_notification_badge.add_theme_color_override("font_color", Color("120d1d"))
-	_notification_badge.add_theme_color_override("font_outline_color", Color("20e6bd"))
+	_notification_badge.add_theme_color_override("font_outline_color", UiTheme.ACCENT)
 	_notification_badge.add_theme_constant_override("outline_size", 6)
 	_notification_badge.visible = false
 	notif_button.add_child(_notification_badge)
@@ -152,8 +164,8 @@ func _build_profile_button(parent: Container) -> void:
 	button.text = ""
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.add_theme_stylebox_override("normal", _slot_style())
-	button.add_theme_stylebox_override("hover", _slot_style())
-	button.add_theme_stylebox_override("pressed", _slot_style())
+	button.add_theme_stylebox_override("hover", UiTheme.slot(true, 6))
+	button.add_theme_stylebox_override("pressed", UiTheme.slot(true, 6))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.pressed.connect(func(): profile_pressed.emit())
 	parent.add_child(button)
@@ -167,7 +179,7 @@ func _build_profile_button(parent: Container) -> void:
 	title.text = "NV."
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title.add_theme_color_override("font_color", Color("9b8eaa"))
+	title.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	stack.add_child(title)
 	_level_label = Label.new()
 	_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -178,8 +190,8 @@ func _build_profile_button(parent: Container) -> void:
 	_xp_bar.show_percentage = false
 	_xp_bar.custom_minimum_size.y = 5
 	_xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_xp_bar.add_theme_stylebox_override("background", _bar_style(Color("100b18")))
-	_xp_bar.add_theme_stylebox_override("fill", _bar_style(Color("c86bff")))
+	_xp_bar.add_theme_stylebox_override("background", _bar_style(Color("0a0712")))
+	_xp_bar.add_theme_stylebox_override("fill", _bar_style(UiTheme.PURPLE))
 	stack.add_child(_xp_bar)
 
 func _add_value_panel(parent: Container, title: String, initial: String, ratio: float) -> Label:
@@ -194,7 +206,7 @@ func _add_value_panel(parent: Container, title: String, initial: String, ratio: 
 	var title_label := Label.new()
 	title_label.text = title
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_color_override("font_color", Color("9b8eaa"))
+	title_label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	stack.add_child(title_label)
 	var value_label := Label.new()
 	value_label.text = initial
@@ -204,31 +216,16 @@ func _add_value_panel(parent: Container, title: String, initial: String, ratio: 
 	return value_label
 
 func _panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("120d1d")
-	style.border_color = Color("4e3a68")
-	style.set_border_width_all(4)
-	style.corner_radius_bottom_left = 12
-	style.corner_radius_bottom_right = 12
+	var style := UiTheme.panel(UiTheme.BORDER, UiTheme.CORNER, 4)
+	style.corner_radius_top_left = 0
+	style.corner_radius_top_right = 0
 	return style
 
 func _slot_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("21182d")
-	style.border_color = Color("5b4771")
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(8)
-	style.content_margin_left = 6
-	style.content_margin_right = 6
-	style.content_margin_top = 5
-	style.content_margin_bottom = 5
-	return style
+	return UiTheme.slot(false, 6)
 
 func _bar_style(color: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(5)
-	return style
+	return UiTheme.bar(color)
 
 func _compact_number(value: int) -> String:
 	if value >= 1_000_000:

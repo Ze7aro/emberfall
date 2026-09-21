@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name EquipmentSlot
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 ## One reusable slot: used both for the six equip-type slots around the hero
 ## and for each cell in the backpack grid — visually identical, so this one
 ## component serves both per the same "icon + rarity frame + level/bonus +
@@ -9,7 +11,7 @@ class_name EquipmentSlot
 signal pressed
 
 const RARITY_BORDERS := {"common": Color("9b8eaa"), "rare": Color("6be0ff"), "epic": Color("ffb84d")}
-const EMPTY_BORDER := Color("4a3f5c")
+const EMPTY_BORDER := Color("3a2b52")
 
 var icon_rect: TextureRect
 var bonus_label: Label
@@ -53,7 +55,7 @@ func _build() -> void:
 	upgrade_marker.text = "▲"
 	upgrade_marker.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	upgrade_marker.offset_left = -16; upgrade_marker.offset_top = 2
-	upgrade_marker.add_theme_color_override("font_color", Color("20e6bd"))
+	upgrade_marker.add_theme_color_override("font_color", UiTheme.ACCENT)
 	upgrade_marker.add_theme_font_size_override("font_size", 12)
 	upgrade_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	upgrade_marker.visible = false
@@ -81,10 +83,10 @@ func set_item(icon: Texture2D, rarity: String, bonus_text: String = "", equipped
 
 func _style(border: Color, equipped: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("302040") if equipped else Color("21182d")
+	style.bg_color = UiTheme.BG_SLOT_ACTIVE if equipped else UiTheme.BG_SLOT
 	style.border_color = border
 	style.set_border_width_all(4 if equipped else 3)
-	style.set_corner_radius_all(8)
+	style.set_corner_radius_all(UiTheme.CORNER)
 	return style
 
 func _on_gui_input(event: InputEvent) -> void:

@@ -1,5 +1,7 @@
 extends Control
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 const MAX_UPGRADE_LEVEL := 10
 
 ## Each branch grows straight down from its own root: same stat the old
@@ -7,7 +9,7 @@ const MAX_UPGRADE_LEVEL := 10
 const BRANCHES := [
 	{"key": "health", "name": "VITALIDAD", "shape": UpgradeNode.Shape.CIRCLE, "color": Color("e65a7a")},
 	{"key": "damage", "name": "PODER", "shape": UpgradeNode.Shape.DIAMOND, "color": Color("ff9f4a")},
-	{"key": "speed", "name": "MOVILIDAD", "shape": UpgradeNode.Shape.HEX, "color": Color("20e6bd")},
+	{"key": "speed", "name": "MOVILIDAD", "shape": UpgradeNode.Shape.HEX, "color": UiTheme.ACCENT},
 ]
 
 var _gold_label: Label
@@ -15,7 +17,8 @@ var _tree_row: HBoxContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new(); bg.color = Color("101a2b"); bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
+	theme = UiTheme.make_theme()
+	var bg := ColorRect.new(); bg.color = UiTheme.BG_DEEP; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
 
 	var root := VBoxContainer.new()
 	root.anchor_left = 0.5; root.anchor_right = 0.5; root.anchor_top = 0.5; root.anchor_bottom = 0.5
@@ -27,7 +30,7 @@ func _ready() -> void:
 	title.text = "HÉROE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color("20e6bd"))
+	title.add_theme_color_override("font_color", UiTheme.ACCENT)
 	root.add_child(title)
 
 	var tabs := TabContainer.new()
@@ -135,10 +138,10 @@ func _build_step_label(index: int, current_level: int, kind: String) -> Label:
 	label.add_theme_font_size_override("font_size", 11)
 	if index < current_level:
 		label.text = "✓"
-		label.add_theme_color_override("font_color", Color("20e6bd"))
+		label.add_theme_color_override("font_color", UiTheme.ACCENT)
 	elif index == current_level:
 		label.text = str(40 + current_level * 35)
-		label.add_theme_color_override("font_color", Color("d8c9ed"))
+		label.add_theme_color_override("font_color", UiTheme.TEXT)
 	else:
 		label.text = ""
 	return label

@@ -1,6 +1,8 @@
 extends Control
 class_name HeroCarouselCard
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 ## One card in the hero-selection carousel. Reused across positions (the
 ## carousel repositions/rescales existing cards rather than recreating them).
 
@@ -65,7 +67,7 @@ func _build() -> void:
 	condition_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	condition_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	condition_label.add_theme_font_size_override("font_size", 9)
-	condition_label.add_theme_color_override("font_color", Color("9b8eaa"))
+	condition_label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	condition_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(condition_label)
 
@@ -86,7 +88,7 @@ func _build() -> void:
 	focus_badge.text = "★"
 	focus_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	focus_badge.offset_left = 6; focus_badge.offset_top = 4
-	focus_badge.add_theme_color_override("font_color", Color("20e6bd"))
+	focus_badge.add_theme_color_override("font_color", UiTheme.ACCENT)
 	focus_badge.add_theme_font_size_override("font_size", 14)
 	focus_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	focus_badge.visible = false
@@ -110,12 +112,12 @@ func set_focus_state(is_center: bool) -> void:
 
 func _style(is_center: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("21182d")
-	style.border_color = Color("20e6bd") if is_center else Color("5b4771")
+	style.bg_color = UiTheme.BG_SLOT
+	style.border_color = UiTheme.ACCENT if is_center else UiTheme.BORDER_SOFT
 	style.set_border_width_all(4 if is_center else 2)
-	style.set_corner_radius_all(10)
+	style.set_corner_radius_all(UiTheme.CORNER)
 	if is_center:
-		style.shadow_color = Color("20e6bd", 0.35)
+		style.shadow_color = Color(UiTheme.ACCENT, 0.35)
 		style.shadow_size = 6
 	return style
 

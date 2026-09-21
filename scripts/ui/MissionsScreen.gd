@@ -1,20 +1,22 @@
 extends Control
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 ## PROMPT_MISIONES_EMBERFALL.md: Misiones diarias/semanales con progreso,
 ## recompensas individuales y una barra de progreso acumulado con hitos
 ## (cofres). Los hitos se escalan a la cantidad real de misiones por período
 ## (3 diarias, 4 semanales) en vez del ejemplo ilustrativo del prompt
 ## (1/3/5/7/10), que asume un catálogo más grande del que existe hoy.
 
-const BG := Color("120d1d")
-const PANEL := Color("1c1530")
-const STONE_BORDER := Color("5b4771")
-const TURQ := Color("20e6bd")
+const BG := UiTheme.BG_DEEP
+const PANEL := UiTheme.BG_PANEL
+const STONE_BORDER := UiTheme.BORDER_SOFT
+const TURQ := UiTheme.ACCENT
 const GOLD := Color("f4bd4e")
 const CLAIMED_BORDER := Color("3a3048")
 const CLAIMED_BG := Color("140f1e")
-const TEXT_MUTED := Color("9b8eaa")
-const TEXT_BRIGHT := Color("f1e8ff")
+const TEXT_MUTED := UiTheme.TEXT_MUTED
+const TEXT_BRIGHT := UiTheme.TEXT
 
 const ICON_BY_TYPE := {
 	"daily_kills": "res://assets/iconos main/03_espada.png",
@@ -36,6 +38,7 @@ var _mission_list: VBoxContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme = UiTheme.make_theme()
 	var bg := ColorRect.new(); bg.color = BG; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
 
 	# PROMPT_MISIONES_EMBERFALL.md: reserve top/bottom safe zones for the
@@ -305,7 +308,7 @@ func _stone_style(actionable: bool) -> StyleBoxFlat:
 	style.bg_color = PANEL
 	style.border_color = TURQ if actionable else STONE_BORDER
 	style.set_border_width_all(3)
-	style.set_corner_radius_all(6)
+	style.set_corner_radius_all(UiTheme.CORNER)
 	style.content_margin_left = 10
 	style.content_margin_right = 10
 	style.content_margin_top = 8
@@ -317,7 +320,7 @@ func _claimed_style() -> StyleBoxFlat:
 	style.bg_color = CLAIMED_BG
 	style.border_color = CLAIMED_BORDER
 	style.set_border_width_all(3)
-	style.set_corner_radius_all(6)
+	style.set_corner_radius_all(UiTheme.CORNER)
 	style.content_margin_left = 10
 	style.content_margin_right = 10
 	style.content_margin_top = 8
@@ -337,7 +340,7 @@ func _claim_button_style() -> StyleBoxFlat:
 	style.bg_color = TURQ
 	style.border_color = TURQ
 	style.set_border_width_all(2)
-	style.set_corner_radius_all(6)
+	style.set_corner_radius_all(UiTheme.CORNER)
 	return style
 
 func _tab_style(active: bool) -> StyleBoxFlat:
@@ -345,5 +348,5 @@ func _tab_style(active: bool) -> StyleBoxFlat:
 	style.bg_color = TURQ if active else PANEL
 	style.border_color = TURQ if active else STONE_BORDER
 	style.set_border_width_all(3)
-	style.set_corner_radius_all(6)
+	style.set_corner_radius_all(UiTheme.CORNER)
 	return style

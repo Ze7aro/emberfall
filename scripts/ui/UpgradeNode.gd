@@ -36,7 +36,7 @@ func _fill_color() -> Color:
 	match state:
 		STATE_PURCHASED: return accent_color
 		STATE_AVAILABLE: return accent_color.darkened(0.35)
-		_: return Color("241c30")
+		_: return Color("1a1326")
 
 func _outline_color() -> Color:
 	return accent_color if state != STATE_LOCKED else Color("4a3f5c")

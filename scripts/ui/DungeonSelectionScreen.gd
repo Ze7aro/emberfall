@@ -1,5 +1,7 @@
 extends Control
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 ## "modifier" is a real rule game_world.gd applies during the run (see its
 ## _dungeon_modifier()/_difficulty_multiplier()/_boss_time()), not flavor
 ## text — each dungeon plays differently, not just pays out differently.
@@ -42,7 +44,7 @@ func _ready() -> void:
 	locked_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	locked_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	locked_label.add_theme_font_size_override("font_size", 18)
-	locked_label.add_theme_color_override("font_color", Color("9b8eaa"))
+	locked_label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	locked_label.text = "MAZMORRAS BLOQUEADAS\nSupera la pantalla 10 para desbloquearlas."
 	_locked_box.add_child(locked_label)
 
