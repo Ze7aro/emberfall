@@ -1,0 +1,79 @@
+{
+  "root": "res://assets/ui/pixel_simple_v1/",
+  "filter": "nearest",
+  "theme": "pixel_theme.tres",
+  "palette": {
+    "background": "#101321",
+    "panel": "#141827",
+    "border": "#55446e",
+    "border_highlight": "#87739f",
+    "selected": "#42d8e8",
+    "text": "#ecedf4",
+    "text_muted": "#aaa3b8"
+  },
+  "top_hud": {
+    "frame": "frames/hud_frame.png",
+    "level": "hud/level.png",
+    "track": "bars/bar_track.png",
+    "experience_fill": "bars/fill_xp.png",
+    "energy_fill": "bars/fill_energy.png",
+    "energy": "icons/energy.png",
+    "coin": "icons/coin.png",
+    "gem": "icons/gem.png",
+    "add": "buttons/add.png",
+    "energy_maximum": 25
+  },
+  "navigation": {
+    "frame": "frames/footer_frame.png",
+    "selection": "frames/selection.png",
+    "selection_opacity": 0.5,
+    "shop": "navigation/shop.png",
+    "character": "navigation/character.png",
+    "home": "navigation/home.png",
+    "inventory": "navigation/inventory.png",
+    "dungeons": "navigation/dungeons.png"
+  },
+  "shop": {
+    "recarga_oro_gratis": "shop/gold_coins.png",
+    "recarga_oro_baja": "shop/gold_stack.png",
+    "recarga_oro_media": "shop/gold_pile.png",
+    "bolsa_oro_media": "shop/gold_bag.png",
+    "cofre_oro_medio": "shop/gold_chest.png",
+    "cofre_oro_grande": "shop/gold_chest.png",
+    "recarga_energia_gratuita": "icons/energy.png",
+    "recarga_energia_media": "shop/energy_bottle.png",
+    "recarga_energia_grande": "shop/energy_bottles.png",
+    "baul_comun": "shop/chest_common.png",
+    "baul_epico": "shop/chest_epic.png"
+  },
+  "equipment": {
+    "weapon": "equipment/weapon.png",
+    "armor": "equipment/armor.png",
+    "helmet": "equipment/helmet.png",
+    "amulet": "equipment/amulet.png",
+    "ring": "equipment/ring.png",
+    "boots": "equipment/boots.png"
+  },
+  "side_actions": {
+    "announcements": "icons/mail.png",
+    "missions": "icons/missions.png"
+  },
+  "other_controls": {
+    "notification": "icons/mail.png",
+    "settings": "icons/settings.png",
+    "refresh": "icons/refresh.png",
+    "lock": "icons/lock.png",
+    "claimed": "icons/check.png",
+    "arrow_right": "icons/arrow.png",
+    "arrow_left": {"file": "icons/arrow.png", "flip_h": true},
+    "close": "icons/close.png",
+    "play": "icons/play.png",
+    "pause": "icons/pause.png",
+    "autoplay": "icons/autoplay.png",
+    "cancel": "icons/cancel.png",
+    "confirm": "icons/confirm.png",
+    "health": "icons/heart.png",
+    "damage": "equipment/weapon.png",
+    "speed": "icons/speed.png"
+  }
+}

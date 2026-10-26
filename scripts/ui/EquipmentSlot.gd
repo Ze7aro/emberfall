@@ -67,7 +67,7 @@ func set_empty() -> void:
 	bonus_label.visible = false
 	empty_label.visible = true
 	upgrade_marker.visible = false
-	add_theme_stylebox_override("panel", _style(EMPTY_BORDER, false))
+	add_theme_stylebox_override("panel", UiTheme.kit("rarity_common", _style(EMPTY_BORDER, false), 6.0))
 
 ## `bonus_text` and `has_upgrade` are optional — pass "" / false to omit
 ## indicators the real data doesn't back (no fabricated levels/upgrades).
@@ -79,7 +79,7 @@ func set_item(icon: Texture2D, rarity: String, bonus_text: String = "", equipped
 	empty_label.visible = false
 	upgrade_marker.visible = has_upgrade
 	var border: Color = RARITY_BORDERS.get(rarity, EMPTY_BORDER)
-	add_theme_stylebox_override("panel", _style(border, equipped))
+	add_theme_stylebox_override("panel", UiTheme.kit("rarity_" + rarity, _style(border, equipped), 6.0))
 
 func _style(border: Color, equipped: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

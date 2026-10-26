@@ -1,0 +1,924 @@
+{
+	"assets": [
+		{
+			"file": "frames/panel.png",
+			"folder": "frames",
+			"height": 96,
+			"name": "panel",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE square empty UI panel. Thin dark stone border shaded in three violet tones, stepped corners, one tiny chipped edge per side at most. Fully opaque uniform navy interior. Border confined to outer 6 of 96 logical pixels. Straight repeatable edges for nine-slice. No gems.",
+			"size": [
+				96.0,
+				96.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-40c95b31-c55b-4008-afc3-076acb2437d7.png",
+			"status": "review_pending",
+			"width": 96
+		},
+		{
+			"file": "frames/hud_frame.png",
+			"folder": "frames",
+			"height": 64,
+			"name": "hud_frame",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE horizontal 5:1 EMPTY top HUD outer frame. Thin violet dark stone border with stepped corners, only a tiny cyan diamond at top center. Dark navy filled interior. No internal slots, numbers, bars, icons or large ornaments.",
+			"size": [
+				320.0,
+				64.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-cd95ce68-8679-4e70-8a88-74d89ee44358.png",
+			"status": "review_pending",
+			"width": 320
+		},
+		{
+			"file": "frames/footer_frame.png",
+			"folder": "frames",
+			"height": 64,
+			"name": "footer_frame",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE horizontal 5:1 footer frame with exactly FIVE EQUAL EMPTY compartments. Like reference footer but simplify stone to a few big blocks, thin violet edges, no tall protrusions. Tiny purple crystals only at left and right end. Fully opaque dark navy compartments. No icons or words.",
+			"size": [
+				320.0,
+				64.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-95e0e86b-4f80-4d6d-bac9-3c9d9f27b90c.png",
+			"status": "review_pending",
+			"width": 320
+		},
+		{
+			"file": "frames/slot.png",
+			"folder": "frames",
+			"height": 48,
+			"name": "slot",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE small square empty inventory slot. Plain dark navy filled center, narrow violet stone border with simple stepped corners, no ornament. Edges straight for nine-slice.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-fc37df06-31b7-45c1-b056-e5f945355420.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "frames/selection.png",
+			"folder": "frames",
+			"height": 48,
+			"name": "selection",
+			"prompt": "Edit ONLY the selection frame. Replace the entire elaborate frame with a VERY SIMPLE thin cyan pixel outline: a single square ring exactly 2 logical pixels thick on a 48x48 logical pixel canvas, two-step clipped corners, solid cyan #42d8e8 with one navy outline pixel on outside. Remove ALL stone blocks, ALL gems, ALL crystals, ALL purple decorations, ALL ornaments, shadows and glow. Completely transparent middle and outside. Keep just this plain bright cyan border, centered, isolated. True crisp low-resolution pixel art, nearest-neighbor enlarged. This is an unobtrusive UI selection overlay, not a decorative panel. No labels or extra objects.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-3141edb6-221c-41c0-927d-9e59fec9164e.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "hud/level.png",
+			"folder": "hud",
+			"height": 48,
+			"name": "level",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE empty circular level badge with pixel-stepped silhouette, thin violet stone ring and a small cyan diamond at top, dark navy opaque circular opening. Large clean center for live level number. No text.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-840dd591-723a-4f0a-9fe2-b39dc68f680d.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "buttons/button_primary.png",
+			"folder": "buttons",
+			"height": 32,
+			"name": "button_primary",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE blank horizontal 3:1 action button. Dark teal opaque center, crisp cyan two-pixel beveled border, pixel-stepped corners, subtly raised bottom edge. No text, symbols or gems. Nine-slice straight sides.",
+			"size": [
+				96.0,
+				32.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-9cdc0dbe-492b-4490-a7ee-f316558e5c0c.png",
+			"status": "review_pending",
+			"width": 96
+		},
+		{
+			"file": "buttons/button_secondary.png",
+			"folder": "buttons",
+			"height": 32,
+			"name": "button_secondary",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE blank horizontal 3:1 secondary button. Dark navy opaque center, muted violet two-pixel stone bevel border, pixel-stepped corners, subtly raised bottom edge. No text or gems. Nine-slice straight sides.",
+			"size": [
+				96.0,
+				32.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-9e58efdf-15dc-4ca8-a386-c8b95965332b.png",
+			"status": "review_pending",
+			"width": 96
+		},
+		{
+			"file": "bars/bar_track.png",
+			"folder": "bars",
+			"generation_method": "deterministic pixel drawing",
+			"height": 16,
+			"name": "bar_track",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE horizontal 6:1 EMPTY progress bar track, dark navy interior, two-pixel violet stone border, tiny stepped corners. No icons, gems or markings.",
+			"size": [
+				96.0,
+				16.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 96
+		},
+		{
+			"file": "bars/fill_xp.png",
+			"folder": "bars",
+			"generation_method": "deterministic pixel drawing",
+			"height": 12,
+			"name": "fill_xp",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE horizontal 8:1 full EXPERIENCE fill strip. Flat purple body with one light-purple pixel highlight line at top. Tiny stepped corners. No frame, ornaments, dark margins or text.",
+			"size": [
+				96.0,
+				12.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 96
+		},
+		{
+			"file": "bars/fill_energy.png",
+			"folder": "bars",
+			"generation_method": "deterministic pixel drawing",
+			"height": 12,
+			"name": "fill_energy",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE horizontal 8:1 full ENERGY fill strip. Flat turquoise body with one pale cyan pixel highlight line at top. Tiny stepped corners. No frame, ornaments, dark margins or text.",
+			"size": [
+				96.0,
+				12.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 96
+		},
+		{
+			"file": "bars/fill_health.png",
+			"folder": "bars",
+			"generation_method": "deterministic pixel drawing",
+			"height": 12,
+			"name": "fill_health",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE horizontal 8:1 full HEALTH fill strip. Flat muted coral-red body with one pale red pixel highlight line at top. Tiny stepped corners. No frame, ornaments, dark margins or text.",
+			"size": [
+				96.0,
+				12.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 96
+		},
+		{
+			"file": "buttons/add.png",
+			"folder": "buttons",
+			"height": 24,
+			"name": "add",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE square add button. Dark navy solid face, thin violet stone rim, tiny cyan corner highlight and large chunky cyan PLUS sign centered. Clear pixel staircase corners, no extra ornaments.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-39a450c5-08b6-4865-8aa1-ed9132c01c59.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/close.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "close",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/07_close.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/arrow.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "arrow",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/05_arrow.png",
+			"source_transform": "horizontal flip so icons/arrow.png points right",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/lock.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "lock",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/04_lock.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/check.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "check",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/08_check.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/mail.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "mail",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/02_mail.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/missions.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "missions",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/03_missions.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/energy.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 32,
+			"name": "energy",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/24_energy_bottle.png",
+			"status": "review_pending",
+			"width": 32
+		},
+		{
+			"file": "icons/coin.png",
+			"folder": "icons",
+			"generation_method": "deterministic pixel drawing; style harmonization",
+			"height": 32,
+			"name": "coin",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE round golden coin. Pixel stepped circle, dark brown outline, three golden tones, tiny diamond stamp in center. No text or crown.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "review_pending",
+			"width": 32
+		},
+		{
+			"file": "icons/gem.png",
+			"folder": "icons",
+			"generation_method": "deterministic pixel drawing; style harmonization",
+			"height": 32,
+			"name": "gem",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE magenta-purple rhombus gem with four large flat facets, dark violet outline. Clean pixel stepped diagonals. No sparkles or glow.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "review_pending",
+			"width": 32
+		},
+		{
+			"file": "shop/gold_pile.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "gold_pile",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/17_gold_pile.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/gold_bag.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "gold_bag",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/18_gold_bag.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/gold_chest.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "gold_chest",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/23_gold_chest_open.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/energy_bottle.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "energy_bottle",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/24_energy_bottle.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/chest_common.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "chest_common",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/19_chest_common.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/chest_epic.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "chest_epic",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/22_chest_epic.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "equipment/weapon.png",
+			"folder": "equipment",
+			"generation_method": "deterministic pixel drawing",
+			"height": 32,
+			"name": "weapon",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE short sword angled diagonally upward. Silver blade with one cyan edge pixel highlight, simple violet guard and brown grip. Chunky 32px readable silhouette, no runes.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 32
+		},
+		{
+			"file": "equipment/armor.png",
+			"folder": "equipment",
+			"generation_method": "deterministic pixel drawing",
+			"height": 32,
+			"name": "armor",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE simple breastplate armor. Gray-violet metal, short shoulder blocks, small cyan diamond centered on chest. Chunky low-detail silhouette, no spikes or engraving.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 32
+		},
+		{
+			"file": "equipment/ring.png",
+			"folder": "equipment",
+			"generation_method": "deterministic pixel drawing",
+			"height": 32,
+			"name": "ring",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE simple silver ring with one small violet diamond gemstone at top. Clean chunky pixel loop, no filigree.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 32
+		},
+		{
+			"file": "equipment/amulet.png",
+			"folder": "equipment",
+			"generation_method": "deterministic pixel drawing",
+			"height": 32,
+			"name": "amulet",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE simple round violet amulet with tiny cyan center stone and a short silver chain loop. Chunky pixel silhouette, no swirling effects.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 32
+		},
+		{
+			"file": "equipment/boots.png",
+			"folder": "equipment",
+			"generation_method": "deterministic pixel drawing",
+			"height": 32,
+			"name": "boots",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE pair of short brown boots with muted violet cuffs and simple dark outline. Chunky readable pixel silhouette, three tones per material.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 32
+		},
+		{
+			"file": "icons/heart.png",
+			"folder": "icons",
+			"generation_method": "deterministic pixel drawing; style harmonization",
+			"height": 24,
+			"name": "heart",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE small coral-red health heart, two red shades with one pale-red pixel highlight, dark outline, crisp stair-step contour. No plate.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/speed.png",
+			"folder": "icons",
+			"generation_method": "deterministic pixel drawing; style harmonization",
+			"height": 24,
+			"name": "speed",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE small winged brown boot icon for movement speed, with only two short cyan horizontal motion strokes behind it. Chunky pixel silhouette, no feathers or extra detail.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/target.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "target",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/31_target.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/play.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "play",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/29_play.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/pause.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "pause",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/30_pause.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "backgrounds/background.png",
+			"folder": "backgrounds",
+			"generation_method": "deterministic pixel drawing",
+			"height": 320,
+			"name": "background",
+			"prompt": "Use case: stylized-concept. Asset for Emberfall's UNIFIED SIMPLE PIXEL ART UI KIT. Reference image is STYLE ONLY: its dark stone violet framing and modest cyan/purple crystals, simplified further. Draw TRUE low-resolution 16-bit game pixel art, chunky visible square pixel clusters, low detail, max 3 shades per material, crisp stair-stepped edges, no smooth vector curves, no painterly texture, no antialiasing, no glossy gradients, no 3D render. Uniform dark navy outline #101321; navy interiors #141827; muted violet stone #55446e and #87739f; cyan #42d8e8 accent; restrained magenta gems; warm gold for coins only. One centered isolated complete asset, no montage or sheet. Actual transparent alpha outside the single asset, never painted checkerboard or solid background (except explicit background asset). No labels, words, numbers, watermarks. No skulls, horns, spiky ornaments, bloom, sparks, tiny grain or extravagant details. A SINGLE quiet seamless-looking vertical 3:5 opaque menu backdrop. Almost uniform very dark navy, extremely subtle large dark stone blocks ONLY along far edges, center 85 percent flat and empty. Two tiny muted purple pixel flecks at bottom corners. No characters, landscape, stars, text or lighting effects. This background asset is opaque.",
+			"size": [
+				192.0,
+				320.0
+			],
+			"source": "tools/generate_pixel_ui_assets.py",
+			"status": "accepted",
+			"width": 192
+		},
+		{
+			"file": "equipment/helmet.png",
+			"folder": "equipment",
+			"height": 32,
+			"name": "helmet",
+			"prompt": "Use case: stylized-concept. One SINGLE simple pixel art iron HELMET equipment icon for Emberfall, matching reference footer's dark navy outline and muted violet stone colors, one tiny cyan brow highlight. 32x32 logical pixel sprite with chunky square clusters, 3 shades per material, crisp stepped pixel edges, very low detail. Simple rounded helmet silhouette, short nose guard and dark eye slit. No horns, wings, plume, spikes, engraved patterns, smooth curves, gradients, grain, glow, text, or montage. Center isolated full icon with genuine transparent alpha background. Reference image: style only.",
+			"size": [
+				32.0,
+				32.0
+			],
+			"source": "C:\\Users\\jhm_l\\.codex\\generated_images\\01a0c60e-7651-7593-bf8d-3ef505ea6dde\\exec-12d01948-d9b6-4f8d-86d7-9c01a4b5cf6e.png",
+			"status": "review_pending",
+			"width": 32
+		},
+		{
+			"file": "navigation/shop.png",
+			"folder": "navigation",
+			"height": 48,
+			"name": "shop",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "res://assets/ui/footer/tienda_V2.png",
+			"status": "reused_existing",
+			"width": 48
+		},
+		{
+			"file": "navigation/character.png",
+			"folder": "navigation",
+			"height": 48,
+			"name": "character",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "res://assets/ui/footer/personajes_V2.png",
+			"status": "reused_existing",
+			"width": 48
+		},
+		{
+			"file": "navigation/home.png",
+			"folder": "navigation",
+			"height": 48,
+			"name": "home",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "res://assets/ui/footer/inicio_V2.png",
+			"status": "reused_existing",
+			"width": 48
+		},
+		{
+			"file": "navigation/inventory.png",
+			"folder": "navigation",
+			"height": 48,
+			"name": "inventory",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "res://assets/ui/footer/inventario_V2.png",
+			"status": "reused_existing",
+			"width": 48
+		},
+		{
+			"file": "navigation/dungeons.png",
+			"folder": "navigation",
+			"height": 48,
+			"name": "dungeons",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "res://assets/ui/footer/mazmorras_V2.png",
+			"status": "reused_existing",
+			"width": 48
+		},
+		{
+			"file": "icons/settings.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "settings",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/01_settings.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/refresh.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "refresh",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/06_refresh.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/home_alt.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "home_alt",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/09_home.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/character_alt.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "character_alt",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/10_character.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/inventory_alt.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "inventory_alt",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/11_inventory.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/dungeon_key.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "dungeon_key",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/12_dungeon_key.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/portal_purple.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "portal_purple",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/13_portal_purple.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/portal_cyan.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "portal_cyan",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/14_portal_cyan.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/gold_stack.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "gold_stack",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/15_gold_stack.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/gold_coins.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "gold_coins",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/16_gold_coins.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/chest_rare.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "chest_rare",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/20_chest_rare.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "shop/chest_locked.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "chest_locked",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/21_chest_locked.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/cancel.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "cancel",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/25_cancel.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/confirm.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "confirm",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/26_confirm.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "shop/energy_bottles.png",
+			"folder": "shop",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 48,
+			"name": "energy_bottles",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				48.0,
+				48.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/27_energy_bottles.png",
+			"status": "review_pending",
+			"width": 48
+		},
+		{
+			"file": "icons/close_alt.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "close_alt",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/28_close_alt.png",
+			"status": "review_pending",
+			"width": 24
+		},
+		{
+			"file": "icons/autoplay.png",
+			"folder": "icons",
+			"generation_method": "user-provided adapted icon; deterministic crop and nearest packaging",
+			"height": 24,
+			"name": "autoplay",
+			"prompt": "User-delivered Emberfall pixel-art icon, adapted to match the approved navigation style. Preserve its supplied silhouette, colors and transparent background during deterministic packaging.",
+			"size": [
+				24.0,
+				24.0
+			],
+			"source": "assets/ui/emberfall_icons_transparent_2026-09-24/icon_exports_2026-09-24/32_autoplay.png",
+			"status": "review_pending",
+			"width": 24
+		}
+	],
+	"bar_states": [
+		0,
+		25,
+		50,
+		75,
+		100
+	],
+	"filter": "nearest",
+	"scale": "integer multiples preferred"
+}

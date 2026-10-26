@@ -22,7 +22,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var alpha := 1.0 - _elapsed / lifetime
 	var font := ThemeDB.fallback_font
-	var font_size := 20 if is_crit else 14
-	var color := Color(1.0, 0.25, 0.25, alpha) if is_crit else Color(0.92, 0.92, 0.96, alpha)
+	var font_size := 18 if is_crit else 13
+	var color := Color(1.0, 0.72, 0.26, alpha) if is_crit else Color(0.94, 0.97, 0.93, alpha)
 	var text := str(amount) + ("!" if is_crit else "")
 	draw_string(font, Vector2(-14, 0), text, HORIZONTAL_ALIGNMENT_CENTER, 28, font_size, color)

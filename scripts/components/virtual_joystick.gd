@@ -50,6 +50,8 @@ func _set_direction(value: Vector2) -> void:
 func _draw() -> void:
 	if not active:
 		return
-	draw_circle(touch_origin, radius, Color(0.02, 0.03, 0.10, 0.55))
-	draw_arc(touch_origin, radius, 0, TAU, 48, Color(0.2, 0.95, 0.85, 0.55), 2)
-	draw_circle(touch_origin + direction * radius, 28, Color(1.0, 0.47, 0.12, 0.8))
+	# Two translucent discs are enough feedback for a thumb without obscuring
+	# enemies or projectiles underneath it.
+	draw_circle(touch_origin, radius, Color(0.03, 0.08, 0.10, 0.38))
+	draw_arc(touch_origin, radius, 0, TAU, 32, Color(0.72, 0.86, 0.66, 0.38), 1.5)
+	draw_circle(touch_origin + direction * radius, 23, Color(0.47, 0.78, 0.31, 0.78))

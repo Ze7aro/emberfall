@@ -72,5 +72,5 @@ func _physics_process(delta: float) -> void:
 func _draw() -> void:
 	if _use_sprite:
 		return
-	draw_circle(Vector2.ZERO, 9, color)
-	draw_circle(Vector2.ZERO, 4, Color.WHITE)
+	draw_circle(Vector2.ZERO, 7, color)
+	draw_circle(Vector2.ZERO, 2.5, Color.WHITE)

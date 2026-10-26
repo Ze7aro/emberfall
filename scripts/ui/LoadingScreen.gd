@@ -59,6 +59,9 @@ func _build() -> void:
 	bg.color = UiTheme.BG_DEEP
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	var art := UiTheme.background("bg_carga.png", 0.35)
+	if art != null:
+		add_child(art)
 
 	var box := VBoxContainer.new()
 	box.anchor_left = 0.5; box.anchor_right = 0.5; box.anchor_top = 0.5; box.anchor_bottom = 0.5
@@ -67,18 +70,30 @@ func _build() -> void:
 	box.add_theme_constant_override("separation", 12)
 	add_child(box)
 
-	var title := Label.new()
-	title.text = "EMBERFALL"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 40)
-	title.add_theme_color_override("font_color", UiTheme.PURPLE)
-	box.add_child(title)
+	var logo_path := "res://assets/ui/kit/UI_KIT_05_individual/logo_emberfall.png"
+	if ResourceLoader.exists(logo_path):
+		var logo := TextureRect.new()
+		logo.texture = load(logo_path) as Texture2D
+		logo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		logo.custom_minimum_size = Vector2(0, 130)
+		box.add_child(logo)
+	else:
+		var title := Label.new()
+		title.text = "EMBERFALL"
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		title.add_theme_font_size_override("font_size", 40)
+		title.add_theme_color_override("font_color", UiTheme.PURPLE)
+		box.add_child(title)
 
 	var tagline := Label.new()
 	tagline.text = "SOMBRAS HOY. LEYENDAS MAÑANA."
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline.add_theme_font_size_override("font_size", 12)
-	tagline.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	tagline.add_theme_color_override("font_color", UiTheme.TEXT)
+	tagline.add_theme_color_override("font_outline_color", Color("0a0612"))
+	tagline.add_theme_constant_override("outline_size", 6)
 	box.add_child(tagline)
 
 	var loading := Label.new()
@@ -91,6 +106,7 @@ func _build() -> void:
 	_bar.show_percentage = false
 	_bar.max_value = 100.0
 	_bar.custom_minimum_size = Vector2(0, 18)
+	UiTheme.style_bar(_bar, 34.0)
 	box.add_child(_bar)
 
 	_percent = Label.new()

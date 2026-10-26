@@ -19,15 +19,18 @@ const TEXT_MUTED := UiTheme.TEXT_MUTED
 const TEXT_BRIGHT := UiTheme.TEXT
 
 const ICON_BY_TYPE := {
-	"daily_kills": "res://assets/iconos main/03_espada.png",
-	"weekly_kills": "res://assets/iconos main/03_espada.png",
-	"daily_gold": "res://assets/iconos main/07_objetivo.png",
-	"weekly_gold": "res://assets/iconos main/07_objetivo.png",
-	"daily_runs": "res://assets/iconos main/08_mazmorras.png",
-	"weekly_runs": "res://assets/iconos main/08_mazmorras.png",
-	"weekly_chests": "res://assets/iconos main/02_cofre.png",
+	"daily_kills": "res://assets/ui/pixel_simple_v1/equipment/weapon.png",
+	"weekly_kills": "res://assets/ui/pixel_simple_v1/equipment/weapon.png",
+	"daily_gold": "res://assets/ui/pixel_simple_v1/icons/target.png",
+	"weekly_gold": "res://assets/ui/pixel_simple_v1/icons/target.png",
+	"daily_runs": "res://assets/ui/pixel_simple_v1/navigation/dungeons.png",
+	"weekly_runs": "res://assets/ui/pixel_simple_v1/navigation/dungeons.png",
+	"weekly_chests": "res://assets/ui/pixel_simple_v1/shop/chest_epic.png",
 }
 
+signal closed
+
+var modal_mode := false
 var _tab_buttons: Array[Button] = []
 var _period_root: Control
 var _current_tab := "daily" # "daily" | "weekly"
@@ -39,37 +42,54 @@ var _mission_list: VBoxContainer
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.make_theme()
-	var bg := ColorRect.new(); bg.color = BG; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
+	var root: VBoxContainer
+	if modal_mode:
+		var panel := PanelContainer.new()
+		panel.anchor_left = 0.04
+		panel.anchor_right = 0.96
+		panel.anchor_top = 0.12
+		panel.anchor_bottom = 0.88
+		panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(UiTheme.BORDER, 6, 4)))
+		add_child(panel)
+		var margin := MarginContainer.new()
+		for side in ["left", "right", "top", "bottom"]:
+			margin.add_theme_constant_override("margin_" + side, 12)
+		panel.add_child(margin)
+		root = VBoxContainer.new()
+		root.add_theme_constant_override("separation", 8)
+		margin.add_child(root)
+	else:
+		var bg := ColorRect.new(); bg.color = BG; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
+		var art := UiTheme.background("bg_misiones.png", 0.62)
+		if art != null:
+			add_child(art)
+		# Full-screen route keeps clear of the persistent HUD and footer.
+		root = VBoxContainer.new()
+		root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		root.offset_top = UiTheme.CONTENT_TOP
+		root.offset_bottom = -128
+		root.offset_left = 14
+		root.offset_right = -14
+		root.add_theme_constant_override("separation", 10)
+		add_child(root)
+	_build_content(root)
+	GameState.missions_changed.connect(_refresh)
+	_select_tab("daily")
 
-	# PROMPT_MISIONES_EMBERFALL.md: reserve top/bottom safe zones for the
-	# persistent TopHud/NavigationFooter — this screen never draws them.
-	var root := VBoxContainer.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.offset_top = 165
-	root.offset_bottom = -128
-	root.offset_left = 14
-	root.offset_right = -14
-	root.add_theme_constant_override("separation", 10)
-	add_child(root)
+func _build_content(root: VBoxContainer) -> void:
 
 	var header := HBoxContainer.new()
 	root.add_child(header)
-	var title := Label.new()
-	title.text = "MISIONES"
+	var title := UiTheme.header("MISIONES", "PEQUEÑAS ACCIONES, GRANDES LEYENDAS", 34 if not modal_mode else 24, "misiones_header.png")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", TURQ)
 	header.add_child(title)
-	var close := Button.new()
-	close.text = "✕"
-	close.custom_minimum_size = Vector2(48, 48)
-	close.add_theme_stylebox_override("normal", _stone_style(false))
-	close.pressed.connect(func():
-		var main_layout := _find_main_layout()
-		if main_layout:
-			main_layout.navigate_to(&"home")
-	)
-	header.add_child(close)
+	if modal_mode:
+		var close := Button.new()
+		close.text = "×"
+		close.custom_minimum_size = Vector2(42, 42)
+		close.add_theme_font_size_override("font_size", 26)
+		close.pressed.connect(func(): closed.emit())
+		header.add_child(close)
 
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
@@ -80,12 +100,14 @@ func _ready() -> void:
 	_tab_buttons = [daily_tab, weekly_tab]
 
 	_timer_label = Label.new()
-	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_timer_label.add_theme_font_size_override("font_size", 13)
+	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_timer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_timer_label.custom_minimum_size = Vector2(96, 0)
+	_timer_label.add_theme_font_size_override("font_size", 10)
 	_timer_label.add_theme_color_override("font_color", TEXT_MUTED)
-	root.add_child(_timer_label)
+	tabs.add_child(_timer_label)
 
-	_build_milestone_panel(root)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -96,8 +118,7 @@ func _ready() -> void:
 	_mission_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_mission_list)
 
-	GameState.missions_changed.connect(_refresh)
-	_select_tab("daily")
+	_build_milestone_panel(root)
 
 func _find_main_layout() -> Node:
 	var node := get_parent()
@@ -109,19 +130,19 @@ func _find_main_layout() -> Node:
 
 func _process(_delta: float) -> void:
 	var seconds := GameState.seconds_until_daily_reset() if _current_tab == "daily" else GameState.seconds_until_weekly_reset()
-	_timer_label.text = "Reinicio: %s" % _format_seconds(seconds)
+	_timer_label.text = "Se reinician en: %s" % _format_seconds(seconds)
 
 func _format_seconds(total: int) -> String:
 	var hours := total / 3600
 	var minutes := (total % 3600) / 60
 	if hours >= 24:
-		return "Reinicio en %dd %02dh" % [hours / 24, hours % 24]
+		return "%dd %02dh" % [hours / 24, hours % 24]
 	return "%d h %02d min" % [hours, minutes]
 
 func _build_tab_button(text_value: String, tab_id: String) -> Button:
 	var button := Button.new()
 	button.text = text_value
-	button.custom_minimum_size = Vector2(0, 52)
+	button.custom_minimum_size = Vector2(0, 54)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_size_override("font_size", 16)
 	button.pressed.connect(_select_tab.bind(tab_id))
@@ -131,10 +152,10 @@ func _select_tab(tab_id: String) -> void:
 	_current_tab = tab_id
 	for i in _tab_buttons.size():
 		var is_active := (i == 0 and tab_id == "daily") or (i == 1 and tab_id == "weekly")
-		_tab_buttons[i].add_theme_stylebox_override("normal", _tab_style(is_active))
-		_tab_buttons[i].add_theme_stylebox_override("hover", _tab_style(is_active))
-		_tab_buttons[i].add_theme_stylebox_override("pressed", _tab_style(is_active))
-		_tab_buttons[i].add_theme_color_override("font_color", Color("120d1d") if is_active else TEXT_BRIGHT)
+		if is_active:
+			UiTheme.apply_primary(_tab_buttons[i], 16.0)
+		else:
+			UiTheme.apply_secondary(_tab_buttons[i], 16.0)
 	_refresh()
 
 func _build_milestone_panel(parent: Control) -> void:
@@ -146,9 +167,9 @@ func _build_milestone_panel(parent: Control) -> void:
 	panel.add_child(box)
 
 	_milestone_title = Label.new()
-	_milestone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_milestone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_milestone_title.add_theme_font_size_override("font_size", 14)
-	_milestone_title.add_theme_color_override("font_color", GOLD)
+	_milestone_title.add_theme_color_override("font_color", UiTheme.PURPLE)
 	box.add_child(_milestone_title)
 
 	_milestone_row = HBoxContainer.new()
@@ -163,7 +184,7 @@ func _refresh_milestones() -> void:
 	for child in _milestone_row.get_children():
 		child.queue_free()
 	var is_daily := _current_tab == "daily"
-	_milestone_title.text = "PROGRESO DIARIO" if is_daily else "PROGRESO SEMANAL"
+	_milestone_title.text = "RECOMPENSA POR ACTIVIDAD DIARIA" if is_daily else "RECOMPENSA POR ACTIVIDAD SEMANAL"
 	var milestones: Array = GameState.DAILY_MILESTONES if is_daily else GameState.WEEKLY_MILESTONES
 	var claimed_count := GameState.daily_missions_claimed_count() if is_daily else GameState.weekly_missions_claimed_count()
 	for milestone in milestones:
@@ -227,7 +248,7 @@ func _build_mission_card(mission: Dictionary) -> Control:
 	var icon_frame := PanelContainer.new()
 	icon_frame.custom_minimum_size = Vector2(56, 56)
 	icon_frame.add_theme_stylebox_override("panel", _icon_frame_style())
-	var icon_path: String = ICON_BY_TYPE.get(str(mission.get("type", "")), "res://assets/iconos main/07_objetivo.png")
+	var icon_path: String = ICON_BY_TYPE.get(str(mission.get("type", "")), "res://assets/ui/pixel_simple_v1/icons/target.png")
 	var icon := TextureRect.new()
 	icon.texture = load(icon_path)
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -303,7 +324,12 @@ func _build_mission_card(mission: Dictionary) -> Control:
 ## "Marco grueso de piedra oscura" — chunky border, low corner radius (not
 ## the softly-rounded panels used elsewhere), a turquoise border when
 ## something here is actionable.
-func _stone_style(actionable: bool) -> StyleBoxFlat:
+func _stone_style(actionable: bool) -> StyleBox:
+	if not actionable:
+		return UiTheme.kit("panel_card", _stone_flat(false))
+	return _stone_flat(true)
+
+func _stone_flat(actionable: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = PANEL
 	style.border_color = TURQ if actionable else STONE_BORDER

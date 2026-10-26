@@ -53,7 +53,7 @@ func _build() -> void:
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sprite.custom_minimum_size = Vector2(0, 96)
+	sprite.custom_minimum_size = Vector2(0, 84 if UiTheme.kit_available("hero_card") else 96)
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(sprite)
 
@@ -72,7 +72,7 @@ func _build() -> void:
 	box.add_child(condition_label)
 
 	lock_icon = TextureRect.new()
-	lock_icon.texture = load("res://assets/iconos main/06_candado.png")
+	lock_icon.texture = load("res://assets/ui/pixel_simple_v1/icons/lock.png")
 	lock_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	lock_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	lock_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -110,7 +110,16 @@ func set_focus_state(is_center: bool) -> void:
 	focus_badge.visible = is_center
 	frame_panel.add_theme_stylebox_override("panel", _style(is_center))
 
-func _style(is_center: bool) -> StyleBoxFlat:
+func _style(is_center: bool) -> StyleBox:
+	var textured := UiTheme.kit("hero_card_focus" if is_center else "hero_card", _flat_style(is_center))
+	if textured is StyleBoxTexture:
+		textured.content_margin_left = 10.0
+		textured.content_margin_right = 10.0
+		textured.content_margin_top = 30.0
+		textured.content_margin_bottom = 12.0
+	return textured
+
+func _flat_style(is_center: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = UiTheme.BG_SLOT
 	style.border_color = UiTheme.ACCENT if is_center else UiTheme.BORDER_SOFT

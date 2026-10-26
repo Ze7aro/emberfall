@@ -16,7 +16,13 @@ var _map_selection: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var backdrop := UiTheme.background("bg_mazmorras.png", 0.4)
+	if backdrop != null:
+		add_child(backdrop)
+		move_child(backdrop, 0)
 	_map_selection = $MapSelection
+	_map_selection.set_header("MAZMORRAS", "EXPLORA LA OSCURIDAD. OBTÉN GRANDES RECOMPENSAS.", "mazmorras_header.png")
+	_map_selection.start_label = "ENTRAR"
 	_map_selection.unlock_check = func(data: Dictionary) -> bool:
 		return GameState.is_dungeon_unlocked(int(data.get("index", 1)))
 	_map_selection.set_maps(DUNGEONS)
@@ -33,7 +39,7 @@ func _ready() -> void:
 	add_child(_locked_box)
 
 	var lock_icon := TextureRect.new()
-	lock_icon.texture = load("res://assets/iconos main/06_candado.png")
+	lock_icon.texture = load("res://assets/ui/pixel_simple_v1/icons/lock.png")
 	lock_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	lock_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	lock_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -44,7 +50,9 @@ func _ready() -> void:
 	locked_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	locked_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	locked_label.add_theme_font_size_override("font_size", 18)
-	locked_label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	locked_label.add_theme_color_override("font_color", UiTheme.TEXT)
+	locked_label.add_theme_color_override("font_outline_color", Color("0a0612"))
+	locked_label.add_theme_constant_override("outline_size", 8)
 	locked_label.text = "MAZMORRAS BLOQUEADAS\nSupera la pantalla 10 para desbloquearlas."
 	_locked_box.add_child(locked_label)
 

@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cfh6m6l60xcbp"
+
+[deps]
+
+files=["res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.column.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.filename.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.source.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.source.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.cell.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.cell.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.visible.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.direct.translation"]
+
+source_file="res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.csv"
+dest_files=["res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.column.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.filename.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.source.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.source.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.cell.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.cell.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.visible.translation", "res://assets/ui/reference_icon_sheets/bof6_miscellaneous/index.direct.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

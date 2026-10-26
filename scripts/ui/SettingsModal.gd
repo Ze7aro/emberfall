@@ -7,9 +7,9 @@ signal closed
 func _ready() -> void:
 	theme = UiTheme.make_theme()
 	anchor_left = 0.5; anchor_right = 0.5; anchor_top = 0.5; anchor_bottom = 0.5
-	offset_left = -150; offset_right = 150; offset_top = -130; offset_bottom = 130
-	custom_minimum_size = Vector2(300, 260)
-	add_theme_stylebox_override("panel", UiTheme.panel(UiTheme.BORDER, 6, 4))
+	offset_left = -150; offset_right = 150; offset_top = -150; offset_bottom = 150
+	custom_minimum_size = Vector2(300, 300)
+	add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(UiTheme.BORDER, 6, 4)))
 	_build()
 
 func _build() -> void:
@@ -24,12 +24,8 @@ func _build() -> void:
 	box.add_theme_constant_override("separation", 14)
 	margin.add_child(box)
 
-	var title := Label.new()
-	title.text = "CONFIGURACIÓN"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", UiTheme.ACCENT)
-	box.add_child(title)
+	box.add_child(UiTheme.header("CONFIGURACIÓN", "AJUSTA TU EXPERIENCIA", 26))
+	box.add_child(UiTheme.section_title("AUDIO"))
 
 	var music := CheckButton.new()
 	music.text = "MÚSICA"
@@ -49,6 +45,7 @@ func _build() -> void:
 
 	var close := Button.new()
 	close.text = "CERRAR"
+	close.icon = load("res://assets/ui/pixel_simple_v1/icons/close.png") as Texture2D
 	close.custom_minimum_size = Vector2(0, 48)
 	close.pressed.connect(func(): closed.emit())
 	box.add_child(close)

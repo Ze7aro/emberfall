@@ -1,0 +1,13 @@
+Add-Type -AssemblyName System.Drawing
+$root='assets\ui\kit';$out=Join-Path $root 'top_hud_kit';New-Item -ItemType Directory -Force -Path $out|Out-Null
+function New-Bmp($w,$h){[System.Drawing.Bitmap]::new($w,$h,[System.Drawing.Imaging.PixelFormat]::Format32bppArgb)}
+function Save($b,$n){$b.Save((Join-Path $out $n),[System.Drawing.Imaging.ImageFormat]::Png);$b.Dispose()}
+function Load($n){[System.Drawing.Bitmap]::new((Join-Path $root $n))}
+$frame=Load 'top_hud_frame.png';$frame.Save((Join-Path $out 'top_hud_frame.png'),[System.Drawing.Imaging.ImageFormat]::Png);$frame.Dispose()
+$font=[System.Drawing.Font]::new('Arial',22,[System.Drawing.FontStyle]::Bold);$white=[System.Drawing.Brushes]::White
+$b=New-Bmp 128 128;$g=[System.Drawing.Graphics]::FromImage($b);$g.SmoothingMode='AntiAlias';$g.DrawImage((Load 'icon_xp_small.png'),15,15,98,98);$g.DrawString('2',$font,$white,[System.Drawing.RectangleF]::new(0,42,128,45),[System.Drawing.StringFormat]::new());$g.Dispose();Save $b 'top_hud_level_badge.png'
+$btn=New-Bmp 74 74;$g=[System.Drawing.Graphics]::FromImage($btn);$g.SmoothingMode='AntiAlias';$g.FillPath([System.Drawing.Brushes]::DarkSlateBlue,[System.Drawing.Drawing2D.GraphicsPath]::new());$g.FillRectangle([System.Drawing.Brushes]::DarkCyan,7,7,60,60);$g.DrawString('+',[System.Drawing.Font]::new('Arial',42,[System.Drawing.FontStyle]::Bold),$white,13,8);$g.Dispose();Save $btn 'top_hud_plus_button.png'
+$colors=@(@('energy_cyan',[System.Drawing.Color]::FromArgb(35,220,230)),@('coin_gold',[System.Drawing.Color]::FromArgb(245,170,25)),@('gem_magenta',[System.Drawing.Color]::FromArgb(205,55,240)),@('xp_blue',[System.Drawing.Color]::FromArgb(35,130,245)))
+foreach($c in $colors){$b=New-Bmp 300 64;$g=[System.Drawing.Graphics]::FromImage($b);$g.FillRectangle([System.Drawing.Brushes]::MidnightBlue,4,4,292,56);$g.FillRectangle([System.Drawing.SolidBrush]::new($c[1]),10,10,280,44);$g.FillRectangle([System.Drawing.Brushes]::MidnightBlue,14,14,272,36);$g.DrawRectangle([System.Drawing.Pens]::DarkViolet,4,4,292,56);$g.Dispose();Save $b ('top_hud_'+$c[0]+'_bar.png')}
+for($n=0;$n -le 4;$n++){ $b=New-Bmp 300 64;$g=[System.Drawing.Graphics]::FromImage($b);$g.FillRectangle([System.Drawing.Brushes]::MidnightBlue,4,4,292,56);$g.FillRectangle([System.Drawing.Brushes]::DarkCyan,10,10,280,44);if($n -lt 4){$g.FillRectangle([System.Drawing.Brushes]::MidnightBlue,(10+[int](280*(($n)/4))),10,(280-[int](280*($n/4))),44)}$g.DrawRectangle([System.Drawing.Pens]::DarkViolet,4,4,292,56);$g.Dispose();Save $b ('top_hud_energy_'+($n*6)+'_of_25.png')}
+$zip=Join-Path $root 'top_hud_kit.zip';if(Test-Path $zip){Remove-Item $zip -Force};Compress-Archive -Path "$out\*.png" -DestinationPath $zip -CompressionLevel Optimal;Write-Output "Created $out and $zip"

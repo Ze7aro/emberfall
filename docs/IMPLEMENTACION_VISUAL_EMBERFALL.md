@@ -106,3 +106,85 @@ Enfoque: restilizar sobre `UiTheme` sin tocar lógica ni estructura. Cada pantal
 - Pendiente manual (requiere jugar y guardar): JUGAR → combate real y REINTENTAR; congelación de temporizadores en pausa; equipar/desequipar; compra de héroes; interruptores de audio; prueba en un móvil (safe-areas, tamaño táctil).
 - Notas para el diseño (fuera de alcance): el footer no tiene etiquetas de texto; la tienda muestra textos de arte provisionales (COINS/BAG/CHEST) que ya existían.
 - Problemas previos sin corregir: 2–4 objetos filtrados al salir en headless.
+
+## Etapa 8 — Layouts acercados a las referencias (solo nodos y estilos)
+Criterios: sin imágenes recortadas, sin sistemas ni datos nuevos, footer de 5 opciones, HUD de 2 filas (160 px).
+- Componentes nuevos en `UiTheme`: `header(título, subtítulo)` y `section_title(texto, nota)`.
+- Footer: etiquetas de texto bajo cada icono (Tienda, Misiones, Inicio, Progreso, Mazmorras) con color de estado activo/inactivo.
+- Inicio (`01_inicio`): título EMBERFALL + lema, panel de datos del mapa con "Costo de energía" (`GameState.ENERGY_COST`), botón COMENZAR AVENTURA. Sin Temporada, Eventos ni atajos.
+- Mazmorras (`05_mazmorras`): cabecera MAZMORRAS + lema, panel de recompensas/energía/modificador, botón ENTRAR. Siguen siendo 3 mazmorras en carrusel.
+- Tienda (`02_tienda`): cabecera, secciones con línea y nota, etiqueta GRATIS en ofertas gratuitas. Precios y cantidades reales.
+- Misiones (`04_misiones`): cabecera, pestañas con el temporizador de reinicio a la derecha, panel "Recompensa por actividad" al pie. Solo oro y gemas.
+- Progreso (`03_mejoras`, `15_seleccion…`): cabecera PROGRESO que ocupa el área entre HUD y footer; ramas con "NV. n/10"; en Personajes: cabecera EQUIPAMIENTO, héroe en marco, panel ATQ/VIDA y MOCHILA enmarcada.
+- Perfil (`06_perfil`): cabecera, "x / y" de experiencia y fichas de Oro, Joyas y Récord (datos reales). Sin clan, ID, logros ni rango.
+- Configuración (`11_configuracion_simple`): cabecera + sección AUDIO (solo música y efectos).
+- Poderes (`13_poderes`): cabecera ELIGE UN PODER / TU LEYENDA EVOLUCIONA; cada opción en su tarjeta con descripción.
+- Pausa (`14_pausa`): título EN PAUSA + lema; REANUDAR y SALIR.
+- Victoria/Derrota (`08`, `09`): frase de cabecera, panel con datos reales, botones VOLVER A INICIO y REINTENTAR (con coste de energía) lado a lado.
+- No aplicado a propósito: HUD en una sola fila con avatar/nombre/botones "+", footer de 7 botones, 4 ramas y panel de detalle de mejoras, logros/rango/marcos, sliders y idioma, XP/llaves en misiones, "Siguiente mazmorra".
+- Verificación: capturas reales a 390×844 de todas las pantallas y modales; footer, modales del HUD y notificaciones re-probados por script. Pendiente manual: partida real, pausa/temporizadores, equipar, audio, móvil.
+
+### Ajustes posteriores (Etapa 8)
+- Tienda y Misiones: se quitaron los botones de cerrar (✕); se navega con el footer.
+- Mochila: la cuadrícula de 4 columnas queda centrada dentro de su marco.
+- Footer/HUD en escritorio: `_safe_area_bottom_inset` (footer) y `_safe_area_top_inset` (HUD) calculaban la diferencia pantalla vs área útil, que en Windows es la barra de tareas y no un inset real. Ahora devuelven 0 fuera de móvil (`OS.has_feature("mobile")`); en móvil siguen igual. Verificado con captura: footer 116 px y el marco de la mochila se ve completo.
+
+## Etapa 9 — Preparación del kit gráfico (híbrido)
+- Directorios creados (con `.gitkeep`): `assets/ui/kit/{panels,buttons,progress,slots}`, `assets/ui/icons`, `assets/ui/headers`, `assets/ui/backgrounds`. No se movió ni eliminó ningún recurso.
+- `UiTheme`: nueva tabla `KIT` y `UiTheme.kit(id, fallback)` (StyleBoxTexture de nueve cortes si el archivo existe, si no el estilo plano). `make_theme()` y `apply_primary()` la usan; los estilos explícitos por pantalla siguen planos hasta la segunda pasada.
+- Inventario de recursos: `docs/RECURSOS_UI_PENDIENTES.md`.
+- Validación: proyecto abre sin errores; footer de 5 opciones y modales de Perfil/Configuración intactos (prueba por script); con placeholders temporales (ya eliminados) el tema devolvió StyleBoxTexture para panel y botón primario y cayó al estilo plano donde faltaba el arte, en una pantalla de prueba con capturas.
+
+## Etapa 10 — Integración del UI_KIT_01
+Ver la sección "Entrega UI_KIT_01" de `docs/RECURSOS_UI_PENDIENTES.md`. Integrado: paneles (tema, modales, tarjetas de tienda/misiones, mochila), ranura vacía de equipo, iconos de HUD/tienda/equipamiento y badge de notificación del footer. Bloqueado por arte con texto/contenido dibujado: botones, barras, marcos de héroe, ranuras con objeto. Validado con capturas a 390×844; footer de 5 opciones, HUD de 160 px y guardado sin cambios.
+
+## Etapa 11 — Integración de UI_KIT_03, cabeceras y fondos
+- `UiTheme`: botones secundarios (tema) y primarios (`apply_primary`) con `UI_KIT_03` (nueve cortes 28/20); `apply_secondary`, `apply_primary_flat` (para botones < 44 px, donde el arte se deforma); `style_bar` (barras del kit solo si miden ≥ 30 px: Carga y experiencia del Perfil; relleno recortado del interior de `barra_progreso_relleno`); `header(..., banner)` con cabecera ilustrada y título encima; `background(archivo, velo)` con fondo ilustrado y velo oscuro.
+- Cabeceras: Inicio, Mazmorras, Tienda, Misiones, Progreso (`mejoras_header`) y Perfil.
+- Fondos: Inicio, Mazmorras, Tienda, Misiones, Progreso, Victoria, Derrota y Carga.
+- Pestañas de Misiones con botones del kit (activa primaria, inactiva secundaria).
+- Sin cambios funcionales. Probado: 5 rutas del footer, modales del HUD y notificaciones, HUD 160 px, footer 116 px, guardado idéntico; capturas de todas las pantallas, poderes, pausa, victoria y derrota.
+- No integrado (el arte no encaja o trae elementos dibujados): `marco_top_hud_*` (cresta de calavera central y un rótulo "MARCO DEL TOP HUD" dibujado en la esquina), `marco_footer` (cinco arcos y calavera dibujados para un ancho de 905 px), `marco_heroe`, `marco_panel_*` (forma de arco), ranuras de UI_KIT_03 (164×146, más grandes que las ranuras de 64 px; se mantiene UI_KIT_01), pestañas del TabContainer (el arte se deforma; se mantiene el estilo plano), botones de tienda pequeños y opciones de poder (estilo plano). Pendiente: fondo de Héroes/Pausa/Perfil, `UI_KIT_04` (hojas sin recortar).
+
+## Etapa 12 — Integración de UI_KIT_HIGH_PRIORITY y UI_KIT_05
+- Top HUD (`TopHud.gd`, `_build_kit`): `top_hud_frame` como fondo y cuatro placas del kit (`hud_resource_xp/energy/coin/gem`, con el icono dibujado en el arte) con los valores a la derecha: nivel y XP (la placa sigue abriendo Perfil), energía con barra fina y cuenta atrás, oro y joyas. Botones de ajustes y correo (`icono_correo`) debajo. Mismas señales y setters; si falta el arte se usa la versión plana anterior. Altura 160 px.
+- Footer (`NavigationFooter.gd`): `footer_frame` (cinco arcos) como fondo y `footer_btn_selected` como resalte de la opción activa; 5 opciones, orden, rutas e indicador de misiones sin cambios. Altura 120 px (antes 116; las pantallas reservan ≥ 120).
+- Ranuras de equipo: bordes de rareza `rareza_comun/raro/epico` (UI_KIT_05). Tarjetas del carrusel de héroes: `tarjeta_heroe_normal/seleccionada`.
+- Carga: logo `logo_emberfall` en lugar del texto.
+- Los archivos `top_hud_frame`, `footer_frame` y `footer_btn*` traen dibujado el nombre del archivo debajo del arte; `UiTheme.clean_texture` lo borra en tiempo de ejecución (sin tocar el archivo).
+- Probado: 5 rutas del footer, modales del HUD, notificaciones, HUD 160 px, guardado idéntico; capturas de Progreso (equipamiento y selección de héroe), Misiones, Tienda, Configuración y Carga.
+- No usado: `fondo_vertical_*` de UI_KIT_05 (112×325, con marco dibujado y menor resolución que los fondos anteriores), `fondo_horizontal_*`, `cabecera_pausa*` (fondo opaco / versión de vista previa), `cabecera_configuracion` (probada; con el título encima se ve recargada en el modal), `barra_fina_*`, `marco_heroe_*`, `hud_btn_*`, `hud_slot_*`, iconos `icon_*` del kit prioritario y `ranura_*` de UI_KIT_05.
+
+## Etapa 13 — UI_KIT_04 (solo lo necesario)
+- Revisadas las 98 piezas (adornos, banderas, divisores, efectos, indicadores, iconos de estado, listas/switches, marcadores, selectores, tags, ventanas, punteros). Importadas en Godot.
+- Usadas: `lista_switch_on/off` como interruptor de los `CheckButton` (Configuración: música y efectos) y `flechas_navegacion_izq/der` en las flechas del selector de mapas (Inicio y Mazmorras). Recortadas al contenido y escaladas en tiempo de ejecución (`UiTheme.scaled_texture`).
+- No usadas (el juego no tiene la funcionalidad o ya está cubierta): iconos de estado (veneno, fuego, hielo…; no hay UI de estados), tags de rareza, etiquetas, banderas, punteros, efectos, ventanas y marcadores, divisores y adornos (posibles usos decorativos futuros).
+
+## Etapa 14 — HUD compacto, botón de inicio y acceso lateral a Misiones
+- Top HUD (`TopHud.gd`, reescrito): una sola fila de 68 px como en la referencia: nivel/XP (abre Perfil), energía, oro, joyas, correo y engranaje. Los "+" de energía, oro y joyas emiten `shop_pressed`, que `MainLayout` conecta a `navigate_to(&"shop")` (sin lógica de compra nueva). Se quitó la barra de energía y el texto "PRÓXIMA:"; la cuenta atrás sigue visible. Constantes `UiTheme.HUD_HEIGHT` (68) y `UiTheme.CONTENT_TOP` (76) usadas por Tienda, Misiones, Progreso e Inicio/Mazmorras.
+- Inicio: se quitó la línea de recompensas; el botón COMENZAR AVENTURA es ancho, con subtítulo "Explora, lucha, progresa" y chevron (`MapSelection.start_subtitle`, `show_rewards`). Mazmorras conserva sus recompensas y el botón ENTRAR.
+- Acceso flotante a Misiones a la izquierda de Inicio (`HomeScreen._build_missions_side`), con el indicador de "algo por reclamar". El footer sigue con sus 5 opciones. No se agregaron "Recompensas" ni "Eventos" (no existen).
+- Probado: capturas de Inicio, Tienda, Misiones, Progreso; rutas del footer y modales; guardado sin cambios.
+
+## Etapa 15 — Arte de Tienda (UI_KIT_05) y limpieza de Inicio
+- Inicio: se quitó el panel "Costo de energía" (el panel completo se oculta cuando no hay recompensas ni modificador; Mazmorras lo conserva).
+- Tienda (`ShopScreen.gd`): iconos por posición de oferta: monedas (`recarga_oro_gratis`, `recarga_oro_baja`, `bolsa_oro_media`, `cofre_oro_bajo/medio/grande`), energía (`recarga_energia_gratuita/media/grande`; solo hay 3 ofertas) y baúles (`baul_comun`, `baul_epico`). Precios, cantidades y lógica sin cambios. Quedan sin usar `marco_heroe_*`, `ranura_bloqueada/deshabilitada`, `rareza_poco_comun/raro` extra y `cabecera_pausa*`.
+
+## Etapa 16 — Cantidades y costos de la Tienda según `02_tienda.png` (cambio de economía autorizado por el usuario)
+- Monedas: 100 (gratis), 500, 1200, 2500 (antes 3000), 6500 (antes 6000), 14000 (antes 12000).
+- Energía: +20 (gratis), +60 (antes 100), +120 (antes 250). La energía se limita a `MAX_ENERGY` (50).
+- Baúles (gemas): Común 150 (antes 100), Épico 400 (antes 300).
+- No cambiados: los costos en gemas de monedas y energía (50/120/250/500/1000 y 80/180). El boceto los muestra en USD (0,99 … 74,99, con 3,99 repetido); el juego no tiene compras con dinero real, así que no hay equivalente.
+
+## Etapa 17 — Ofertas con USD y anuncio (solo interfaz)
+- `GameState`: las ofertas con clave `"usd"` (monedas 500/1200/2500/6500/14000, energía +60/+120) tienen `cost` -1 y `buy_coin_offer`/`buy_energy_offer` las rechazan (no se pueden comprar con gemas). `"ad_first"` marca 500 monedas y +60 energía.
+- `ShopScreen`: esas ofertas muestran `USD x,xx`; las marcadas `ad_first` muestran `VER ANUNCIO` hasta que exista la clave `ad_<tipo>_<índice>` en `claimed_free_offers`. Al tocarlas solo aparece "Próximamente": no se entrega nada. Punto de conexión: `ShopScreen._show_store_soon()`.
+- Pendiente: integrar un SDK de pagos y de anuncios recompensados, y marcar `ad_*` al completar el anuncio. Precios USD del boceto (6500 repite 3,99).
+- Probado: textos de botones, pulsar cada uno no cambia oro/gemas/energía, compra directa rechazada, guardado idéntico.
+
+## Etapa 18 — Revisión del resto de referencias
+Comparadas 01, 03, 04, 05, 08, 09, 13, 14 y 15 con las pantallas actuales.
+- Selección de poderes (`13_poderes`): tarjetas lado a lado con icono, nombre, nivel y descripción (icono desde `assets/cuadros_habilidades_emberfall`; se omite si no existe); toda la tarjeta es el botón. Rerolls reales (`CAMBIAR OPCIONES`), sin coste en gemas.
+- Árbol de mejoras (`03_mejoras`): iconos en los nodos (corazón, daño, movimiento). Se mantienen las 3 ramas × 10 niveles, sin panel de detalle ni "puntos destacados".
+- Victoria/Derrota (`08`, `09`): tarjeta con el marco del kit (tinte rojizo en derrota).
+- Sin aplicar a propósito (no existen en el juego): temporada, noticias, recompensas/eventos, XP y llaves en misiones, panel de actividad con 5 baúles, categorías de mejoras y de tienda, mazmorras con estrellas y enemigos, "Continuar/Configuración/Reiniciar" en la pausa, desglose de recompensas por partida, HUD de combate del boceto.

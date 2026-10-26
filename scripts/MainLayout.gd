@@ -24,16 +24,23 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# Shared dark backdrop: screens without their own background (Inicio,
 	# Mazmorras) would otherwise show the engine's default gray.
-	var backdrop := ColorRect.new(); backdrop.name = "Backdrop"; backdrop.color = UiTheme.BG_DEEP; backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE; backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(backdrop)
+	var backdrop := TextureRect.new(); backdrop.name = "Backdrop"; backdrop.texture = load("res://assets/ui/pixel_simple_v1/backgrounds/background.png"); backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; backdrop.stretch_mode = TextureRect.STRETCH_SCALE; backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE; backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(backdrop)
 	content_host = Control.new(); content_host.name = "ContentHost"; content_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(content_host)
 
 	hud_layer = CanvasLayer.new(); hud_layer.name = "HudLayer"; hud_layer.layer = 10; add_child(hud_layer)
 
-	top_hud = preload("res://scenes/ui/TopHud.tscn").instantiate() as TopHud; top_hud.name = "TopHud"; top_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE); top_hud.offset_bottom = 160; hud_layer.add_child(top_hud)
+	top_hud = preload("res://scenes/ui/TopHud.tscn").instantiate() as TopHud; top_hud.name = "TopHud"; top_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE); top_hud.offset_bottom = UiTheme.HUD_HEIGHT; hud_layer.add_child(top_hud)
 	_wire_top_hud()
 
 	navigation_footer = preload("res://scenes/ui/NavigationFooter.tscn").instantiate(); navigation_footer.name = "NavigationFooter"; navigation_footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); navigation_footer.offset_top = -112
-	navigation_footer.icons = [load("res://assets/iconos main/09_tienda.png"), load("res://assets/iconos main/04_misiones.png"), load("res://assets/iconos main/05_inicio.png"), load("res://assets/iconos main/01_equipamiento.png"), load("res://assets/iconos main/08_mazmorras.png")]
+	# Five footer destinations; missions open from the home shortcut.
+	navigation_footer.icons = [
+		load("res://assets/ui/pixel_simple_v1/navigation/shop.png"),
+		load("res://assets/ui/pixel_simple_v1/navigation/character.png"),
+		load("res://assets/ui/pixel_simple_v1/navigation/home.png"),
+		load("res://assets/ui/pixel_simple_v1/navigation/inventory.png"),
+		load("res://assets/ui/pixel_simple_v1/navigation/dungeons.png"),
+	]
 	hud_layer.add_child(navigation_footer)
 	navigation_footer.navigation_requested.connect(func(_index: int, route_id: StringName): navigate_to(route_id))
 
@@ -79,7 +86,6 @@ func _wire_top_hud() -> void:
 	top_hud.set_energy_countdown(GameState.seconds_until_next_energy())
 	top_hud.set_gold(GameState.gold)
 	top_hud.set_gems(GameState.gems)
-	top_hud.set_notifications(GameState.unread_notification_count())
 
 	GameState.level_changed.connect(top_hud.set_level)
 	GameState.experience_changed.connect(top_hud.set_experience)
@@ -87,14 +93,10 @@ func _wire_top_hud() -> void:
 	GameState.energy_countdown_changed.connect(top_hud.set_energy_countdown)
 	GameState.gold_changed.connect(top_hud.set_gold)
 	GameState.gems_changed.connect(top_hud.set_gems)
-	GameState.notifications_changed.connect(top_hud.set_notifications)
 
+	top_hud.shop_pressed.connect(func(): navigate_to(&"shop"))
 	top_hud.profile_pressed.connect(func(): open_modal(&"profile"))
 	top_hud.settings_pressed.connect(func(): open_modal(&"settings"))
-	top_hud.notifications_pressed.connect(func():
-		open_modal(&"notifications")
-		GameState.mark_notifications_read()
-	)
 
 func navigate_to(route_id: StringName) -> void:
 	if route_id == current_route and is_instance_valid(current_screen): return
@@ -110,17 +112,24 @@ func get_current_route() -> StringName: return current_route
 func _screen_for(route_id: StringName) -> Node:
 	match route_id:
 		&"home": return preload("res://scenes/screens/HomeScreen.tscn").instantiate()
+		&"character": return _character_equipment_screen(&"character")
+		&"inventory": return _character_equipment_screen(&"inventory")
 		&"missions": return preload("res://scenes/screens/MissionsScreen.tscn").instantiate()
 		&"dungeons": return preload("res://scenes/screens/DungeonSelectionScreen.tscn").instantiate()
 		&"upgrades": return preload("res://scenes/screens/PermanentUpgradesScreen.tscn").instantiate()
 		&"shop": return preload("res://scenes/screens/ShopScreen.tscn").instantiate()
 		_: return _placeholder_screen(route_id)
 
+func _character_equipment_screen(section: StringName) -> Control:
+	var screen := preload("res://scenes/ui/CharacterEquipmentScreen.tscn").instantiate() as Control
+	screen.set("initial_section", str(section))
+	return screen
+
 func _placeholder_screen(route_id: StringName) -> Control:
 	var screen := Control.new()
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new(); bg.color = Color("101a2b"); bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
-	var label := Label.new(); label.text = str(route_id).to_upper(); label.set_anchors_and_offsets_preset(Control.PRESET_CENTER); label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; label.add_theme_font_size_override("font_size", 28); label.add_theme_color_override("font_color", Color("20e6bd")); screen.add_child(label)
+	var bg := TextureRect.new(); bg.texture = load("res://assets/ui/pixel_simple_v1/backgrounds/background.png"); bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; bg.stretch_mode = TextureRect.STRETCH_SCALE; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
+	var label := Label.new(); label.text = str(route_id).to_upper(); label.set_anchors_and_offsets_preset(Control.PRESET_CENTER); label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; label.add_theme_font_size_override("font_size", 28); label.add_theme_color_override("font_color", UiTheme.ACCENT); screen.add_child(label)
 	return screen
 
 func open_modal(modal_id: StringName, payload: Variant = null) -> void:
@@ -130,6 +139,11 @@ func open_modal(modal_id: StringName, payload: Variant = null) -> void:
 	if content:
 		modal_host.add_child(content)
 		if content.has_signal("closed"): content.closed.connect(close_active_modal)
+		if content.has_signal("settings_requested"):
+			content.settings_requested.connect(func():
+				close_active_modal()
+				open_modal(&"settings")
+			)
 	active_modal = blocker
 	_active_modal_content = content
 	modal_opened.emit(modal_id)
@@ -139,7 +153,13 @@ func _modal_for(modal_id: StringName) -> Control:
 		&"profile": return preload("res://scenes/ui/ProfileModal.tscn").instantiate()
 		&"settings": return preload("res://scenes/ui/SettingsModal.tscn").instantiate()
 		&"notifications": return preload("res://scenes/ui/NotificationsModal.tscn").instantiate()
+		&"missions": return _missions_modal()
 		_: return null
+
+func _missions_modal() -> Control:
+	var screen := preload("res://scenes/screens/MissionsScreen.tscn").instantiate()
+	screen.set("modal_mode", true)
+	return screen
 
 func close_active_modal() -> void:
 	if is_instance_valid(_active_modal_content): _active_modal_content.queue_free(); _active_modal_content = null
@@ -213,11 +233,15 @@ func _result_screen(victory: bool) -> Control:
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	screen.theme = UiTheme.make_theme()
 	var bg := ColorRect.new(); bg.color = UiTheme.BG_DEEP; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
+	var art := UiTheme.background("bg_victoria.png" if victory else "bg_derrota.png", 0.5)
+	if art != null:
+		screen.add_child(art)
 	var card := PanelContainer.new()
 	card.anchor_left = 0.5; card.anchor_right = 0.5; card.anchor_top = 0.5; card.anchor_bottom = 0.5
-	card.offset_left = -165; card.offset_right = 165; card.offset_top = -190; card.offset_bottom = 190
+	card.offset_left = -175; card.offset_right = 175; card.offset_top = -200; card.offset_bottom = 200
 	var accent: Color = UiTheme.ACCENT if victory else UiTheme.DANGER
-	card.add_theme_stylebox_override("panel", UiTheme.panel(accent, UiTheme.CORNER, 4))
+	card.add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(accent, UiTheme.CORNER, 4)))
+	card.self_modulate = Color.WHITE if victory else Color(1.0, 0.75, 0.75)
 	screen.add_child(card)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -232,6 +256,12 @@ func _result_screen(victory: bool) -> Control:
 	title.add_theme_font_size_override("font_size", 36)
 	title.add_theme_color_override("font_color", accent)
 	box.add_child(title)
+	var quote := Label.new()
+	quote.text = "“Un paso más en tu leyenda.”" if victory else "AÚN QUEDAN BATALLAS POR LIBRAR"
+	quote.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	quote.add_theme_font_size_override("font_size", 13)
+	quote.add_theme_color_override("font_color", UiTheme.PURPLE)
+	box.add_child(quote)
 	var stage_name := str(GameState.last_stage_context.get("name", ""))
 	if stage_name != "":
 		var stage := Label.new()
@@ -245,13 +275,18 @@ func _result_screen(victory: bool) -> Control:
 	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	box.add_child(info)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 10)
+	box.add_child(buttons)
 	var retry := Button.new()
-	retry.text = "REINTENTAR  ·  %d ENERGÍA" % GameState.ENERGY_COST
+	retry.text = "REINTENTAR\n%d ENERGÍA" % GameState.ENERGY_COST
+	retry.icon = load("res://assets/ui/pixel_simple_v1/icons/refresh.png") as Texture2D
+	retry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UiTheme.apply_primary(retry)
 	retry.custom_minimum_size = Vector2(0, 52)
 	retry.disabled = not GameState.can_start()
 	retry.pressed.connect(func(): start_run(GameState.last_stage_context))
-	box.add_child(retry)
+	buttons.add_child(retry)
 	# Energy can regenerate while the player is looking at this screen, so
 	# keep the button's enabled state live instead of a one-time snapshot.
 	var update_retry := func(_energy: int):
@@ -260,8 +295,10 @@ func _result_screen(victory: bool) -> Control:
 	GameState.energy_changed.connect(update_retry)
 	screen.tree_exiting.connect(func(): GameState.energy_changed.disconnect(update_retry))
 	var home := Button.new()
-	home.text = "VOLVER A INICIO"
+	home.text = "VOLVER\nA INICIO"
 	home.custom_minimum_size = Vector2(0, 52)
+	home.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	home.pressed.connect(func(): navigate_to(&"home"))
-	box.add_child(home)
+	buttons.add_child(home)
+	buttons.move_child(home, 0)
 	return screen

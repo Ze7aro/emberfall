@@ -71,9 +71,9 @@ var _fire_aura: EmberfallPersistentAura
 ## de Magma/Trono, the finale) reads ember red. Swap this for real art later
 ## without touching anything else — it's just one ColorRect.
 const BIOME_TINTS := {
-	1: Color("140f24"),
-	2: Color("0b1f22"),
-	3: Color("240f0f"),
+	1: Color("17232a"),
+	2: Color("18302d"),
+	3: Color("34231d"),
 }
 
 func _build_biome_background() -> void:
@@ -782,8 +782,16 @@ func _on_projectile_removed(projectile: EmberfallProjectile) -> void:
 	projectiles.erase(projectile)
 
 func _draw() -> void:
-	draw_rect(Rect2(-900, -900, 1800, 1800), Color("101a2b"))
-	for x in range(-800, 801, 80):
-		draw_line(Vector2(x, -800), Vector2(x, 800), Color(0.12, 0.30, 0.34, 0.14), 1.0)
-	for y in range(-800, 801, 80):
-		draw_line(Vector2(-800, y), Vector2(800, y), Color(0.12, 0.30, 0.34, 0.14), 1.0)
+	# A quiet arena makes projectiles and enemy silhouettes readable on a phone.
+	var chapter := int(GameState.current_stage_context.get("chapter", 1))
+	var ground: Color = BIOME_TINTS.get(chapter, BIOME_TINTS[1])
+	draw_rect(Rect2(-900, -900, 1800, 1800), ground)
+	# Barely-visible patches prevent the arena from feeling like a flat editor
+	# canvas while keeping the gameplay silhouette-first.
+	var shadow := ground.darkened(0.38)
+	shadow.a = 0.16
+	draw_set_transform(Vector2(-320, -190), 0.0, Vector2(1.8, 0.7))
+	draw_circle(Vector2.ZERO, 180.0, shadow)
+	draw_set_transform(Vector2(310, 240), 0.0, Vector2(1.4, 0.55))
+	draw_circle(Vector2.ZERO, 210.0, shadow)
+	draw_set_transform(Vector2.ZERO)

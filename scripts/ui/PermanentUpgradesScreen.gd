@@ -12,6 +12,12 @@ const BRANCHES := [
 	{"key": "speed", "name": "MOVILIDAD", "shape": UpgradeNode.Shape.HEX, "color": UiTheme.ACCENT},
 ]
 
+const BRANCH_ICONS := {
+	"health": "res://assets/ui/pixel_simple_v1/icons/heart.png",
+	"damage": "res://assets/ui/pixel_simple_v1/equipment/weapon.png",
+	"speed": "res://assets/ui/pixel_simple_v1/icons/speed.png",
+}
+
 var _gold_label: Label
 var _tree_row: HBoxContainer
 
@@ -19,37 +25,24 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.make_theme()
 	var bg := ColorRect.new(); bg.color = UiTheme.BG_DEEP; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
+	var art := UiTheme.background("bg_mejoras.png", 0.6)
+	if art != null:
+		add_child(art)
 
 	var root := VBoxContainer.new()
-	root.anchor_left = 0.5; root.anchor_right = 0.5; root.anchor_top = 0.5; root.anchor_bottom = 0.5
-	root.offset_left = -180; root.offset_right = 180; root.offset_top = -240; root.offset_bottom = 240
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = 15; root.offset_right = -15; root.offset_top = UiTheme.CONTENT_TOP; root.offset_bottom = -124
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)
 
-	var title := Label.new()
-	title.text = "HÉROE"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", UiTheme.ACCENT)
-	root.add_child(title)
+	root.add_child(UiTheme.header("PROGRESO", "CRECE. EVOLUCIONA. SOBREVIVE.", 30, "mejoras_header.png"))
 
-	var tabs := TabContainer.new()
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(tabs)
-
-	tabs.add_child(_build_characters_tab())
-	tabs.add_child(_build_permanent_tab())
+	var upgrades := _build_permanent_tab()
+	upgrades.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(upgrades)
 
 	GameState.gold_changed.connect(func(_v): _refresh_permanent())
 	_refresh_permanent()
-
-func _build_characters_tab() -> Control:
-	var tab := VBoxContainer.new()
-	tab.name = "PERSONAJES"
-	var screen := preload("res://scenes/ui/CharacterEquipmentScreen.tscn").instantiate()
-	screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tab.add_child(screen)
-	return tab
 
 func _build_permanent_tab() -> Control:
 	var tab := VBoxContainer.new()
@@ -91,7 +84,7 @@ func _build_branch_lane(branch: Dictionary) -> Control:
 	lane.custom_minimum_size.x = 92
 
 	var title := Label.new()
-	title.text = str(branch.get("name", ""))
+	title.text = "%s\nNV. %d/%d" % [str(branch.get("name", "")), GameState.get_upgrade_level(str(branch.get("key", ""))), MAX_UPGRADE_LEVEL]
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 13)
 	title.add_theme_color_override("font_color", branch.get("color", Color.WHITE))
@@ -108,6 +101,9 @@ func _build_branch_lane(branch: Dictionary) -> Control:
 		var node := UpgradeNode.new()
 		node.shape = branch.get("shape", UpgradeNode.Shape.CIRCLE)
 		node.accent_color = color
+		var icon_path: String = BRANCH_ICONS.get(kind, "")
+		if icon_path != "" and ResourceLoader.exists(icon_path):
+			node.icon_texture = load(icon_path) as Texture2D
 		node.is_milestone = i == MAX_UPGRADE_LEVEL - 1
 		if i < level:
 			node.set_state(UpgradeNode.STATE_PURCHASED)
@@ -145,4 +141,3 @@ func _build_step_label(index: int, current_level: int, kind: String) -> Label:
 	else:
 		label.text = ""
 	return label
-

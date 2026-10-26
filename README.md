@@ -7,7 +7,7 @@ Roguelike de supervivencia 2D vertical para Godot 4.7, pensado primero para Andr
 1. Abrir `EmberfallGodot/project.godot` en Godot 4.7.
 2. Ejecutar el proyecto (escena raíz `MainLayout`).
 3. En escritorio: mover con las flechas del teclado. En móvil: joystick dinámico, aparece donde el jugador toca la pantalla.
-4. Desde el menú principal: `JUGAR` inicia una partida (consume energía). El pie de navegación lleva a Tienda, Misiones, Progreso (personajes/equipo y árbol de mejoras) y Mazmorras.
+4. Desde el menú principal: `JUGAR` inicia una partida (consume energía). El pie de navegación lleva a Inicio, Tienda, Personaje, Inventario y Mazmorras; Misiones se abre desde el acceso lateral de Inicio.
 
 ## Arquitectura
 

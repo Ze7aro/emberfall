@@ -15,6 +15,8 @@ signal inventory_item_pressed(item_id: String)
 signal equip_item_requested(item_id: String)
 signal selection_cancelled
 
+@export_enum("inventory", "character") var initial_section: String = "inventory"
+
 const ARC_RADIUS_X := 150.0
 const ARC_RADIUS_Y := 46.0
 const TRANSITION_TIME := 0.3
@@ -59,19 +61,31 @@ func _ready() -> void:
 	_build_carousel_cards()
 
 	_refresh_hero_area()
+	if initial_section == "character":
+		_show_character_section_immediately()
 
 	GameState.gold_changed.connect(func(_v): _refresh_basic_stats(); _refresh_inventory())
 	GameState.gems_changed.connect(func(_v): _refresh_inventory())
 	GameState.inventory_changed.connect(func(): _refresh_equipment_slots(); _refresh_inventory())
 	GameState.progress_changed.connect(_refresh_cards)
 
+func _show_character_section_immediately() -> void:
+	_mode = "HERO_SELECTION"
+	_focused_index = _index_of_id(GameState.selected_character_id)
+	_update_selection_info()
+	_equipment_state.visible = false
+	_selection_state.visible = true
+	_selection_state.modulate.a = 1.0
+	_layout_carousel(false)
+
 ## -- Data loading --
 
 func _load_type_icons() -> void:
-	var weapon_icon := load("res://assets/iconos main/03_espada.png")
-	var generic_icon := load("res://assets/iconos main/01_equipamiento.png")
 	for t in GameState.EQUIPMENT_TYPES:
-		_type_icons[t] = weapon_icon if t == "weapon" else generic_icon
+		var path := "res://assets/ui/pixel_simple_v1/equipment/%s.png" % str(t)
+		if not ResourceLoader.exists(path):
+			path = "res://assets/ui/pixel_simple_v1/equipment/armor.png"
+		_type_icons[t] = load(path) as Texture2D
 
 func _icon_for_type(t: String) -> Texture2D:
 	return _type_icons.get(t)
@@ -112,11 +126,14 @@ func _build_equipment_state() -> Control:
 
 	var scroll := ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_top = UiTheme.CONTENT_TOP
+	scroll.offset_bottom = -124
 	state.add_child(scroll)
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_theme_constant_override("separation", 12)
 	scroll.add_child(col)
+	col.add_child(UiTheme.header("EQUIPAMIENTO", "", 20))
 
 	# Each column sits inside a plain (non-Container) wrapper so its own
 	# `position` is free for the Tween to animate — a direct child of
@@ -135,7 +152,14 @@ func _build_equipment_state() -> Control:
 	left_wrap.add_child(_left_slots)
 	_bind_child_size(left_wrap, _left_slots)
 
-	hero_row.add_child(_build_hero_preview())
+	var hero_wrap := Control.new()
+	hero_wrap.custom_minimum_size = Vector2(150, 262)
+	hero_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hero_preview := _build_hero_preview()
+	hero_preview.position = Vector2(0, 45) # 18px lower within the equipment row.
+	hero_preview.size = Vector2(150, 190)
+	hero_wrap.add_child(hero_preview)
+	hero_row.add_child(hero_wrap)
 
 	var right_wrap := Control.new()
 	right_wrap.custom_minimum_size = Vector2(SLOT_COLUMN_WIDTH, 244)
@@ -155,22 +179,35 @@ func _build_equipment_state() -> Control:
 	_change_hero_button.custom_minimum_size = Vector2(0, 52)
 	_change_hero_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	UiTheme.apply_primary(_change_hero_button)
+	_change_hero_button.custom_minimum_size = Vector2(230, 52)
 	_change_hero_button.pressed.connect(_on_change_hero_pressed)
 	col.add_child(_change_hero_button)
 
 	_basic_stats = HBoxContainer.new()
 	_basic_stats.alignment = BoxContainer.ALIGNMENT_CENTER
 	_basic_stats.add_theme_constant_override("separation", 24)
-	col.add_child(_basic_stats)
+	var stats_panel := PanelContainer.new()
+	stats_panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_default", UiTheme.slot(false, 8)))
+	stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	stats_panel.add_child(_basic_stats)
+	col.add_child(stats_panel)
 
 	var inventory_wrap := Control.new()
-	inventory_wrap.custom_minimum_size = Vector2(0, 260)
+	inventory_wrap.custom_minimum_size = Vector2(0, 270)
 	inventory_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inventory_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(inventory_wrap)
+	var inventory_frame := Panel.new()
+	inventory_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inventory_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inventory_frame.add_theme_stylebox_override("panel", UiTheme.kit("panel_main", UiTheme.panel(UiTheme.BORDER, UiTheme.CORNER, 4)))
+	inventory_wrap.add_child(inventory_frame)
 	_inventory_panel = _build_inventory_panel()
 	inventory_wrap.add_child(_inventory_panel)
-	_bind_child_size(inventory_wrap, _inventory_panel)
+	# Inset so the mochila content sits inside its frame.
+	_inventory_panel.position = Vector2(10, 8)
+	_inventory_panel.size = inventory_wrap.size - Vector2(20, 16)
+	inventory_wrap.resized.connect(func(): _inventory_panel.size = inventory_wrap.size - Vector2(20, 16))
 	return state
 
 const SLOT_COLUMN_WIDTH := 70.0
@@ -206,6 +243,11 @@ func _build_hero_preview() -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(150, 190)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hero_frame := Panel.new()
+	hero_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hero_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hero_frame.add_theme_stylebox_override("panel", UiTheme.kit("hero_card", UiTheme.slot(false, 0), 0.0))
+	holder.add_child(hero_frame)
 	var rune := RuneBackdrop.new()
 	rune.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	holder.add_child(rune)
@@ -238,8 +280,12 @@ func _build_inventory_panel() -> Control:
 	_inventory_grid.columns = 4
 	_inventory_grid.add_theme_constant_override("h_separation", 8)
 	_inventory_grid.add_theme_constant_override("v_separation", 8)
-	_inventory_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_inventory_grid)
+	_inventory_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# Centered horizontally so the 4 columns sit in the middle of the frame.
+	var grid_center := CenterContainer.new()
+	grid_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(grid_center)
+	grid_center.add_child(_inventory_grid)
 	return panel
 
 func _on_equipment_slot_pressed(equipment_type: String) -> void:
@@ -303,12 +349,14 @@ func _refresh_basic_stats() -> void:
 	var hp_modifier := int(hero.get("hp_modifier", 0))
 	var attack := int(round((20 + (GameState.permanent_damage + GameState.get_equipped_bonus("damage")) * 2) * damage_modifier))
 	if attack > 0:
-		var sword_icon := TextureRect.new()
-		sword_icon.texture = _icon_for_type("weapon")
-		sword_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		sword_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		sword_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		sword_icon.custom_minimum_size = Vector2(18, 18)
+		var sword_icon := UiTheme.icon_rect("icono_ataque.png", 22)
+		if sword_icon.texture == null:
+			sword_icon = TextureRect.new()
+			sword_icon.texture = _icon_for_type("weapon")
+			sword_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			sword_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			sword_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			sword_icon.custom_minimum_size = Vector2(18, 18)
 		_basic_stats.add_child(_stat_icon_row(sword_icon, "ATQ", str(attack)))
 		_basic_stats.add_child(_stat_divider())
 
@@ -368,6 +416,8 @@ func _build_selection_state() -> Control:
 
 	var col := VBoxContainer.new()
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.offset_top = UiTheme.CONTENT_TOP
+	col.offset_bottom = -124
 	col.add_theme_constant_override("separation", 10)
 	state.add_child(col)
 
@@ -387,17 +437,17 @@ func _build_selection_state() -> Control:
 	col.add_child(_carousel_area)
 
 	var prev_btn := Button.new()
-	prev_btn.text = "‹"
+	prev_btn.text = ""
+	prev_btn.icon = UiTheme.icon("arrow_left.png")
 	prev_btn.custom_minimum_size = Vector2(48, 60)
-	prev_btn.add_theme_font_size_override("font_size", 30)
 	prev_btn.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 	prev_btn.position += Vector2(4, -30)
 	prev_btn.pressed.connect(_on_prev_pressed)
 	_carousel_area.add_child(prev_btn)
 	var next_btn := Button.new()
-	next_btn.text = "›"
+	next_btn.text = ""
+	next_btn.icon = UiTheme.icon("arrow.png")
 	next_btn.custom_minimum_size = Vector2(48, 60)
-	next_btn.add_theme_font_size_override("font_size", 30)
 	next_btn.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	next_btn.position += Vector2(-52, -30)
 	next_btn.pressed.connect(_on_next_pressed)

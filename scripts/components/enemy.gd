@@ -28,6 +28,7 @@ var burn_timer := 0.0
 var burn_tick_clock := 0.0
 var burn_damage := 0
 var freeze_timer := 0.0
+var hit_flash := 0.0
 
 # Shooter (tirador): holds a preferred distance and fires at the player
 # instead of closing in for contact damage.
@@ -97,6 +98,7 @@ func apply_freeze(duration: float) -> void:
 func _physics_process(delta: float) -> void:
 	if dead or not is_instance_valid(target) or GameState.screen != "playing":
 		return
+	hit_flash = maxf(0.0, hit_flash - delta * 7.0)
 	_tick_status(delta)
 	if dead:
 		return
@@ -204,6 +206,7 @@ func damage(amount: int) -> bool:
 	if dead:
 		return false
 	hp -= amount
+	hit_flash = 0.7
 	if hp <= 0:
 		dead = true
 		queue_free()
@@ -217,10 +220,10 @@ static var _shared_texture: Texture2D
 ## size per type is enough to read as a different threat at a glance.
 const ARCHETYPE_TINTS := {
 	Archetype.CHASER: Color(1.0, 1.0, 1.0),
-	Archetype.FAST: Color(0.55, 1.0, 1.0),
-	Archetype.TANK: Color(0.75, 0.75, 0.85),
-	Archetype.SHOOTER: Color(0.85, 0.55, 1.0),
-	Archetype.CHARGER: Color(1.3, 0.55, 0.35),
+	Archetype.FAST: Color(0.72, 0.92, 0.58),
+	Archetype.TANK: Color(0.86, 0.79, 0.54),
+	Archetype.SHOOTER: Color(0.62, 0.78, 0.92),
+	Archetype.CHARGER: Color(1.25, 0.48, 0.34),
 }
 const ARCHETYPE_SIZES := {
 	Archetype.CHASER: 60.0,
@@ -241,15 +244,14 @@ func _draw() -> void:
 		_shared_texture = load("res://assets/characters/enemy.png") as Texture2D
 	if _shared_texture:
 		var tint: Color = _boss_tint() if is_boss else ARCHETYPE_TINTS.get(archetype, Color.WHITE)
+		tint = tint.lerp(Color.WHITE, hit_flash)
 		draw_texture_rect(_shared_texture, Rect2(-size / 2, -size / 2, size, size), false, tint)
 	var bar_width := 50.0 if not is_boss else 90.0
-	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width, 5), Color(0.05, 0.05, 0.1, 0.8))
-	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 5), Color(0.95, 0.25, 0.35) if not is_boss else Color(1.0, 0.65, 0.1))
+	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width, 4), Color(0.04, 0.08, 0.10, 0.85))
+	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 4), Color(0.91, 0.30, 0.29) if not is_boss else Color(0.95, 0.68, 0.25))
 	if poison_timer > 0.0:
 		draw_circle(Vector2.ZERO, size / 2 + 5, Color(0.3, 0.9, 0.3, 0.3))
 	if burn_timer > 0.0:
 		draw_circle(Vector2.ZERO, size / 2 + 5, Color(1.0, 0.5, 0.1, 0.3))
 	if freeze_timer > 0.0:
 		draw_circle(Vector2.ZERO, size / 2 + 5, Color(0.4, 0.8, 1.0, 0.3))
-	# TEMPORAL: círculo de depuración con el alcance de contacto del enemigo.
-	draw_arc(Vector2.ZERO, CONTACT_RANGE, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.3), 2.0)

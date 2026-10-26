@@ -18,7 +18,7 @@ signal music_enabled_changed(value: bool)
 signal effects_enabled_changed(value: bool)
 
 const SAVE_PATH := "user://emberfall_save.json"
-const MAX_ENERGY := 50
+const MAX_ENERGY := 25
 const ENERGY_COST := 5
 const ENERGY_INTERVAL := 300.0
 const STAGE_COUNT := 10
@@ -458,22 +458,26 @@ func mark_tutorial_completed() -> void:
 ## caller passed it — a UI bug (or a hand-edited call) could buy any amount
 ## for any price. These are now the single source of truth; ShopScreen reads
 ## them for display and buys by index, never by raw amount/cost.
+## "usd" marks a real-money offer: there is no payment SDK yet, so those
+## offers cannot be bought with gems (cost -1) and buy_*_offer() refuses them.
+## "ad_first" additionally offers the first purchase through a rewarded ad.
+## Both are display-only until a store/ads integration is connected.
 const COIN_OFFERS := [
-	{"amount": 100, "cost": 0, "art": "COINS"},
-	{"amount": 500, "cost": 50, "art": "BAG"},
-	{"amount": 1200, "cost": 120, "art": "BAG"},
-	{"amount": 3000, "cost": 250, "art": "BAG"},
-	{"amount": 6000, "cost": 500, "art": "CHEST"},
-	{"amount": 12000, "cost": 1000, "art": "CHEST"},
+	{"id": "recarga_oro_gratis", "amount": 100, "cost": 0, "art": "COINS"},
+	{"id": "recarga_oro_baja", "amount": 500, "cost": -1, "usd": "0,99", "ad_first": true, "art": "STACK"},
+	{"id": "recarga_oro_media", "amount": 1200, "cost": -1, "usd": "1,99", "art": "PILE"},
+	{"id": "bolsa_oro_media", "amount": 2500, "cost": -1, "usd": "3,99", "art": "BAG"},
+	{"id": "cofre_oro_medio", "amount": 6500, "cost": -1, "usd": "3,99", "art": "CHEST"},
+	{"id": "cofre_oro_grande", "amount": 14000, "cost": -1, "usd": "74,99", "art": "CHEST"},
 ]
 const ENERGY_OFFERS := [
-	{"amount": 20, "cost": 0, "art": "ENERGY"},
-	{"amount": 100, "cost": 80, "art": "ENERGY"},
-	{"amount": 250, "cost": 180, "art": "ENERGY"},
+	{"id": "recarga_energia_gratuita", "amount": 20, "cost": 0, "art": "ENERGY"},
+	{"id": "recarga_energia_media", "amount": 60, "cost": -1, "usd": "0,99", "ad_first": true, "art": "BOTTLE"},
+	{"id": "recarga_energia_grande", "amount": 120, "cost": -1, "usd": "1,99", "art": "BOTTLES"},
 ]
 const CHEST_TIERS := [
-	{"title": "BAÚL COMÚN", "cost": 100, "rarities": ["NORMAL", "POCO COMÚN", "RARO"], "art": "COMMON"},
-	{"title": "BAÚL ÉPICO", "cost": 300, "rarities": ["RARO", "ÉPICO"], "art": "EPIC"},
+	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["NORMAL", "POCO COMÚN", "RARO"], "art": "COMMON"},
+	{"id": "baul_epico", "title": "BAÚL ÉPICO", "cost": 400, "rarities": ["RARO", "ÉPICO"], "art": "EPIC"},
 ]
 ## One-time "GRATIS" (cost 0) offers — without this they had no claimed-once
 ## guard, so the free-coins/free-energy buttons could be tapped indefinitely
@@ -493,6 +497,8 @@ func buy_coin_offer(index: int) -> bool:
 	if index < 0 or index >= COIN_OFFERS.size():
 		return false
 	var offer: Dictionary = COIN_OFFERS[index]
+	if offer.has("usd"):
+		return false
 	var cost := int(offer.cost)
 	var key := "coin_%d" % index
 	if cost == 0:
@@ -519,6 +525,8 @@ func buy_energy_offer(index: int) -> bool:
 		SfxPlayer.play("economy/purchase_failed.wav", false)
 		return false
 	var offer: Dictionary = ENERGY_OFFERS[index]
+	if offer.has("usd"):
+		return false
 	var cost := int(offer.cost)
 	var key := "energy_%d" % index
 	if cost == 0:

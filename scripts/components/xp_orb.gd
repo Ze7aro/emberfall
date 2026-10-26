@@ -23,8 +23,8 @@ func tick(player: Node2D, pickup_radius: float, delta: float) -> void:
 
 func _draw() -> void:
 	if is_gold:
-		draw_circle(Vector2.ZERO, 9, Color(0.85, 0.65, 0.15))
-		draw_circle(Vector2.ZERO, 4, Color(1.0, 0.9, 0.4))
+		draw_circle(Vector2.ZERO, 7, Color(0.90, 0.68, 0.20))
+		draw_circle(Vector2.ZERO, 3, Color(1.0, 0.91, 0.52))
 	else:
-		draw_circle(Vector2.ZERO, 9, Color(0.55, 0.25, 0.95))
-		draw_circle(Vector2.ZERO, 4, Color(0.85, 0.65, 1.0))
+		draw_circle(Vector2.ZERO, 7, Color(0.39, 0.72, 0.92))
+		draw_circle(Vector2.ZERO, 3, Color(0.74, 0.90, 1.0))

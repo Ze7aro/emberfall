@@ -1,5 +1,7 @@
 extends PanelContainer
 
+const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+
 signal closed
 
 var _list: VBoxContainer
@@ -8,7 +10,7 @@ func _ready() -> void:
 	anchor_left = 0.5; anchor_right = 0.5; anchor_top = 0.5; anchor_bottom = 0.5
 	offset_left = -160; offset_right = 160; offset_top = -190; offset_bottom = 190
 	custom_minimum_size = Vector2(320, 380)
-	add_theme_stylebox_override("panel", _panel_style())
+	add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", _panel_style()))
 	_build()
 	_refresh()
 	GameState.notifications_changed.connect(func(_unread): _refresh())
@@ -43,6 +45,7 @@ func _build() -> void:
 
 	var close := Button.new()
 	close.text = "CERRAR"
+	close.icon = load("res://assets/ui/pixel_simple_v1/icons/close.png") as Texture2D
 	close.custom_minimum_size = Vector2(0, 48)
 	close.pressed.connect(func(): closed.emit())
 	box.add_child(close)

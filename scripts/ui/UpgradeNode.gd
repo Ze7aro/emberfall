@@ -9,6 +9,8 @@ signal pressed
 
 enum Shape { CIRCLE, DIAMOND, HEX }
 
+const LOCK_TEXTURE := preload("res://assets/ui/pixel_simple_v1/icons/lock.png")
+
 const STATE_LOCKED := "locked"
 const STATE_AVAILABLE := "available"
 const STATE_PURCHASED := "purchased"
@@ -16,7 +18,8 @@ const STATE_PURCHASED := "purchased"
 var shape: int = Shape.CIRCLE
 var state: String = STATE_LOCKED
 var is_milestone: bool = false
-var accent_color: Color = Color("20e6bd")
+var accent_color: Color = Color("42d8e8")
+var icon_texture: Texture2D
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(88, 88) if is_milestone else Vector2(60, 60)
@@ -65,7 +68,9 @@ func _draw() -> void:
 				hex_pts.append(center + Vector2(cos(angle), sin(angle)) * radius)
 			draw_colored_polygon(hex_pts, fill)
 			draw_polyline(Array(hex_pts) + [hex_pts[0]], outline, width)
+	if icon_texture != null and state != STATE_LOCKED:
+		var icon_size := radius * 1.25
+		draw_texture_rect(icon_texture, Rect2(center - Vector2(icon_size, icon_size) / 2.0, Vector2(icon_size, icon_size)), false)
 	if state == STATE_LOCKED:
-		var lock_size := radius * 0.7
-		draw_rect(Rect2(center.x - lock_size / 2, center.y - lock_size * 0.1, lock_size, lock_size * 0.6), Color("6a5f7a"), false, 2.0)
-		draw_arc(center + Vector2(0, -lock_size * 0.15), lock_size * 0.32, PI, TAU, 16, Color("6a5f7a"), 2.0)
+		var lock_size := radius * 0.9
+		draw_texture_rect(LOCK_TEXTURE, Rect2(center - Vector2(lock_size, lock_size) / 2.0, Vector2(lock_size, lock_size)), false, Color("aaa3b8"))

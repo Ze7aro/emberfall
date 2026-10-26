@@ -75,6 +75,7 @@ func setup(owner: Node) -> void:
 	world = owner
 	_tutorial_active = not GameState.tutorial_completed
 	var top := VBoxContainer.new()
+	top.theme = UiTheme.make_theme()
 	top.position = Vector2(16, 16)
 	top.size = Vector2(358, 88)
 	add_child(top)
@@ -83,6 +84,7 @@ func setup(owner: Node) -> void:
 	top.add_child(level_label)
 	xp_bar = ProgressBar.new()
 	xp_bar.custom_minimum_size = Vector2(0, 14)
+	UiTheme.style_bar(xp_bar, 14.0, "fill_xp.png")
 	top.add_child(xp_bar)
 	hearts = HeartsRow.new()
 	hearts.heart_size = 16.0
@@ -106,6 +108,7 @@ func setup(owner: Node) -> void:
 	boss_bar.offset_left = -140; boss_bar.offset_right = 140
 	boss_bar.position.y = 48
 	boss_bar.custom_minimum_size = Vector2(280, 14)
+	UiTheme.style_bar(boss_bar, 14.0, "fill_health.png")
 	boss_bar.visible = false
 	add_child(boss_bar)
 	var joystick: Control = load("res://scripts/components/virtual_joystick.gd").new()
@@ -114,11 +117,12 @@ func setup(owner: Node) -> void:
 	add_child(joystick)
 
 	pause_button = Button.new()
-	pause_button.text = "⏸"
+	pause_button.text = ""
 	pause_button.anchor_left = 1.0; pause_button.anchor_right = 1.0
-	pause_button.offset_left = -56; pause_button.offset_right = -16
-	pause_button.offset_top = 16; pause_button.offset_bottom = 60
-	pause_button.add_theme_font_size_override("font_size", 20)
+	pause_button.offset_left = -64; pause_button.offset_right = -16
+	pause_button.offset_top = 16; pause_button.offset_bottom = 64
+	pause_button.icon = UiTheme.icon("pause.png")
+	pause_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pause_button.theme = UiTheme.make_theme()
 	pause_button.pressed.connect(_toggle_pause)
 	add_child(pause_button)
@@ -195,19 +199,14 @@ func _add_blocker_for(target: Control) -> void:
 func show_level_up() -> void:
 	panel = PanelContainer.new()
 	panel.theme = UiTheme.make_theme()
-	panel.add_theme_stylebox_override("panel", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4))
+	panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4)))
 	_add_blocker_for(panel)
 	panel.position = Vector2(20, 190)
 	panel.size = Vector2(350, 370)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	panel.add_child(box)
-	var title := Label.new()
-	title.text = "¡SUBIR DE NIVEL!"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 23)
-	title.add_theme_color_override("font_color", UiTheme.PURPLE)
-	box.add_child(title)
+	box.add_child(UiTheme.header("ELIGE UN PODER", "TU LEYENDA EVOLUCIONA", 24))
 	var category := Label.new()
 	category.text = "PASIVAS" if world.current_options_are_boosts else "ACTIVAS"
 	category.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -222,34 +221,99 @@ func show_level_up() -> void:
 		hint.add_theme_font_size_override("font_size", 11)
 		hint.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		box.add_child(hint)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 260)
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(scroll)
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 6)
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
+	# Cards side by side, as in the design reference.
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(row)
 	for power in world.current_level_up_options:
-		var button := Button.new()
-		var level: int = world.ability_level(power)
-		button.text = "%s  (NV. %d/%d)" % [str(POWER_NAMES.get(power, power)), level, world.MAX_ABILITY_LEVEL]
-		button.custom_minimum_size = Vector2(0, 40)
-		UiTheme.apply_primary(button)
-		button.pressed.connect(_choose.bind(power))
-		list.add_child(button)
-		var desc := Label.new()
-		desc.text = str(POWER_DESCRIPTIONS.get(power, ""))
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.add_theme_font_size_override("font_size", 12)
-		desc.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
-		list.add_child(desc)
+		row.add_child(_build_power_card(power))
 	var reroll := Button.new()
 	reroll.text = "CAMBIAR OPCIONES  (%d)" % world.rerolls
 	reroll.disabled = world.rerolls <= 0
 	reroll.pressed.connect(_reroll)
 	box.add_child(reroll)
 	add_child(panel)
+	panel.pivot_offset = panel.size * 0.5
+	panel.scale = Vector2(0.96, 0.96)
+	panel.modulate.a = 0.0
+	var appear := panel.create_tween().set_parallel(true)
+	appear.tween_property(panel, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	appear.tween_property(panel, "modulate:a", 1.0, 0.10)
+
+const POWER_ICONS := {
+	"directed": "res://assets/cuadros_habilidades_emberfall/proyectiles.png",
+	"orbital": "res://assets/cuadros_habilidades_emberfall/area.png",
+	"area": "res://assets/cuadros_habilidades_emberfall/area.png",
+	"chain": "res://assets/cuadros_habilidades_emberfall/rebote_De_proyextiles.png",
+	"fire": "res://assets/cuadros_habilidades_emberfall/daño_de_fuego.png",
+	"piercing": "res://assets/cuadros_habilidades_emberfall/penetracion.png",
+	"magnetism": "res://assets/cuadros_habilidades_emberfall/area_recoleccion_experiencia.png",
+	"boost_damage": "res://assets/cuadros_habilidades_emberfall/daño.png",
+	"boost_health": "res://assets/cuadros_habilidades_emberfall/corazon_extra.png",
+	"boost_speed": "res://assets/cuadros_habilidades_emberfall/velocidad_de_movimiento.png",
+	"boost_regen": "res://assets/cuadros_habilidades_emberfall/corazon_extra_II.png",
+	"poison_chance": "res://assets/cuadros_habilidades_emberfall/daño_de_veneno.png",
+	"burn_chance": "res://assets/cuadros_habilidades_emberfall/daño_de_fuego.png",
+	"extra_projectile": "res://assets/cuadros_habilidades_emberfall/proyectiles.png",
+	"crit_chance": "res://assets/cuadros_habilidades_emberfall/probabilidad_de_critico.png",
+	"crit_damage": "res://assets/cuadros_habilidades_emberfall/daño_critico.png",
+	"attack_speed": "res://assets/cuadros_habilidades_emberfall/velocidad_de_ataque.png",
+	"cooldown_reduction": "res://assets/cuadros_habilidades_emberfall/cooldown.png",
+	"ability_duration": "res://assets/cuadros_habilidades_emberfall/duracion.png",
+}
+
+func _build_power_card(power: String) -> Control:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.custom_minimum_size = Vector2(0, 230)
+	card.add_theme_stylebox_override("panel", UiTheme.kit("panel_card", UiTheme.slot(true, 6), 6.0))
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 4)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(stack)
+	var icon_path: String = POWER_ICONS.get(power, "")
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		var icon := TextureRect.new()
+		icon.texture = load(icon_path) as Texture2D
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(0, 56)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(icon)
+	var name_label := Label.new()
+	name_label.text = str(POWER_NAMES.get(power, power))
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.add_theme_font_size_override("font_size", 11)
+	name_label.add_theme_color_override("font_color", UiTheme.ACCENT)
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(name_label)
+	var level_label := Label.new()
+	level_label.text = "NV. %d/%d" % [world.ability_level(power), world.MAX_ABILITY_LEVEL]
+	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level_label.add_theme_font_size_override("font_size", 11)
+	level_label.add_theme_color_override("font_color", UiTheme.PURPLE)
+	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(level_label)
+	var desc := Label.new()
+	desc.text = str(POWER_DESCRIPTIONS.get(power, ""))
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	desc.add_theme_font_size_override("font_size", 10)
+	desc.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(desc)
+	# The whole card is the button; selection logic is unchanged.
+	var pick := Button.new()
+	pick.flat = true
+	pick.focus_mode = Control.FOCUS_NONE
+	pick.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pick.pressed.connect(_choose.bind(power))
+	card.add_child(pick)
+	return card
 
 func _choose(power: String) -> void:
 	world.choose_power(power)
@@ -273,7 +337,7 @@ func _reroll() -> void:
 func show_pause_panel() -> void:
 	pause_panel = PanelContainer.new()
 	pause_panel.theme = UiTheme.make_theme()
-	pause_panel.add_theme_stylebox_override("panel", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4))
+	pause_panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4)))
 	_add_blocker_for(pause_panel)
 	pause_panel.anchor_left = 0.5; pause_panel.anchor_right = 0.5
 	pause_panel.anchor_top = 0.5; pause_panel.anchor_bottom = 0.5
@@ -304,12 +368,14 @@ func _build_pause_content() -> void:
 		box.add_child(warning)
 		var confirm := Button.new()
 		confirm.text = "SÍ, SALIR"
+		confirm.icon = UiTheme.icon("confirm.png")
 		confirm.custom_minimum_size = Vector2(0, 52)
 		confirm.add_theme_color_override("font_color", UiTheme.DANGER)
 		confirm.pressed.connect(_exit_run)
 		box.add_child(confirm)
 		var cancel := Button.new()
 		cancel.text = "CANCELAR"
+		cancel.icon = UiTheme.icon("cancel.png")
 		cancel.custom_minimum_size = Vector2(0, 52)
 		cancel.pressed.connect(func():
 			_confirm_exit = false
@@ -317,7 +383,14 @@ func _build_pause_content() -> void:
 		)
 		box.add_child(cancel)
 	else:
-		title.text = "PAUSA"
+		title.text = "EN PAUSA"
+		var pause_sub := Label.new()
+		pause_sub.text = "UN RESPIRO TAMBIÉN ES PARTE DE LA BATALLA"
+		pause_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pause_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		pause_sub.add_theme_font_size_override("font_size", 11)
+		pause_sub.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+		box.add_child(pause_sub)
 		var fusion_title := Label.new()
 		fusion_title.text = "FUSIONES"
 		fusion_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -336,6 +409,7 @@ func _build_pause_content() -> void:
 			fusion_list.add_child(_build_fusion_row(fusion_name))
 		var resume := Button.new()
 		resume.text = "REANUDAR"
+		resume.icon = UiTheme.icon("play.png")
 		resume.custom_minimum_size = Vector2(0, 52)
 		UiTheme.apply_primary(resume)
 		resume.pressed.connect(_toggle_pause)

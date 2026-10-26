@@ -197,19 +197,19 @@ func _draw() -> void:
 	if _state == "telegraph":
 		_draw_telegraph()
 	elif _state == "charge":
-		draw_circle(Vector2.ZERO, 16, Color(1.0, 0.35, 0.2, 0.85))
+		draw_circle(Vector2.ZERO, 13, Color(0.95, 0.40, 0.27, 0.78))
 
 func _draw_telegraph() -> void:
 	var progress := clampf(_telegraph_elapsed / TELEGRAPH_TIME, 0.0, 1.0)
-	var alpha := 0.3 + progress * 0.5
+	var alpha := 0.25 + progress * 0.45
 	match _current_pattern:
 		Pattern.CHARGE:
 			var dir := global_position.direction_to(_telegraph_target)
-			draw_line(Vector2.ZERO, dir * 220.0, Color(1.0, 0.3, 0.2, alpha), 6.0)
-			draw_circle(dir * 220.0, 10.0, Color(1.0, 0.3, 0.2, alpha))
+			draw_line(Vector2.ZERO, dir * 220.0, Color(0.95, 0.40, 0.27, alpha), 4.0)
+			draw_circle(dir * 220.0, 8.0, Color(0.95, 0.40, 0.27, alpha))
 		Pattern.SLAM:
 			draw_circle(Vector2.ZERO, SLAM_RADIUS, Color(1.0, 0.5, 0.1, 0.12 + progress * 0.15))
-			draw_arc(Vector2.ZERO, SLAM_RADIUS, 0.0, TAU, 48, Color(1.0, 0.5, 0.1, alpha), 4.0)
+			draw_arc(Vector2.ZERO, SLAM_RADIUS, 0.0, TAU, 36, Color(0.95, 0.63, 0.22, alpha), 3.0)
 		Pattern.BARRAGE:
 			if not is_instance_valid(target):
 				return
@@ -217,4 +217,4 @@ func _draw_telegraph() -> void:
 			for i in BARRAGE_COUNT:
 				var spread_deg := -BARRAGE_SPREAD_DEG / 2.0 + i * (BARRAGE_SPREAD_DEG / (BARRAGE_COUNT - 1))
 				var dir := base_dir.rotated(deg_to_rad(spread_deg))
-				draw_line(Vector2.ZERO, dir * 170.0, Color(0.8, 0.3, 0.9, alpha), 3.0)
+				draw_line(Vector2.ZERO, dir * 170.0, Color(0.95, 0.63, 0.22, alpha), 2.0)

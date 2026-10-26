@@ -17,6 +17,8 @@ var _regen_accum := 0.0
 var _sprite: AnimatedSprite2D
 var _facing_right := true
 var _attack_anim_time := 0.0
+var _camera: Camera2D
+var _hit_shake_time := 0.0
 
 ## Continuous aim direction, not just the 2-way body-sprite facing: updated
 ## whenever the player actually moves, and read as a fallback by anything
@@ -40,11 +42,11 @@ func setup(owner: Node) -> void:
 	speed *= 1.0 + (GameState.permanent_speed + GameState.get_equipped_bonus("speed")) * 0.05
 	if hero_data != null:
 		speed *= hero_data.move_speed_modifier
-	var camera := Camera2D.new()
-	camera.zoom = Vector2(1.0, 1.0)
-	camera.position_smoothing_enabled = true
-	camera.enabled = true
-	add_child(camera)
+	_camera = Camera2D.new()
+	_camera.zoom = Vector2(1.0, 1.0)
+	_camera.position_smoothing_enabled = true
+	_camera.enabled = true
+	add_child(_camera)
 
 	var folder := GameState.selected_character_sprite_folder if GameState.selected_character_sprite_folder != "" else DEFAULT_SPRITE_FOLDER
 	_sprite = AnimatedSprite2D.new()
@@ -71,6 +73,7 @@ func _physics_process(delta: float) -> void:
 	position.x = clampf(position.x, -760.0, 760.0)
 	position.y = clampf(position.y, -760.0, 760.0)
 	invulnerable = maxf(0.0, invulnerable - delta)
+	_update_hit_shake(delta)
 	_tick_regen(delta)
 	_update_animation(input, delta)
 	attack_clock += delta
@@ -118,13 +121,25 @@ func damage(amount: int) -> void:
 	if invulnerable > 0.0 or GameState.screen != "playing":
 		return
 	invulnerable = 1.2
+	_hit_shake_time = 0.10
 	hp = maxi(0, hp - amount)
 	SfxPlayer.play("combat/player_hit.wav")
 	if hp == 0:
 		died.emit()
 	queue_redraw()
 
+## A 3px, 0.1s nudge confirms that the hero was hit without the prolonged
+## camera shake that becomes tiring in a top-down mobile survival game.
+func _update_hit_shake(delta: float) -> void:
+	if not is_instance_valid(_camera):
+		return
+	_hit_shake_time = maxf(0.0, _hit_shake_time - delta)
+	if _hit_shake_time > 0.0:
+		_camera.offset = Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0))
+	else:
+		_camera.offset = Vector2.ZERO
+
 func _draw() -> void:
 	var heart_count := int(ceil(max_hp / 2.0))
 	var row_width := heart_count * 13.0 - 3.0
-	HeartsRow.draw_row(self, Vector2(-row_width / 2.0, -46), 10.0, 3.0, hp, max_hp, Color("e65a5a"), Color("4a3f5c"))
+	HeartsRow.draw_row(self, Vector2(-row_width / 2.0, -46), 10.0, 3.0, hp, max_hp, Color("e86958"), Color("29404a"))

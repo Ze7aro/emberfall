@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://ctfy04v7xfoif"
+
+[deps]
+
+files=["res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.column.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.filename.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.source.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.source.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.cell.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.cell.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.visible.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.direct.translation"]
+
+source_file="res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.csv"
+dest_files=["res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.column.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.filename.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.source.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.source.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.cell.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.cell.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.visible.translation", "res://assets/ui/reference_icon_sheets/ffxiii_status_icons/index.direct.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
