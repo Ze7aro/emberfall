@@ -90,6 +90,21 @@ func setup(owner: Node) -> void:
 	pause_button.pressed.connect(_toggle_pause)
 	add_child(pause_button)
 
+	# Testing aid, editor/debug builds only: brings the stage boss right away.
+	if OS.is_debug_build():
+		var boss_debug := Button.new()
+		boss_debug.text = "JEFE"
+		boss_debug.anchor_left = 1.0; boss_debug.anchor_right = 1.0
+		boss_debug.offset_left = -72; boss_debug.offset_right = -16
+		boss_debug.offset_top = 72; boss_debug.offset_bottom = 104
+		boss_debug.focus_mode = Control.FOCUS_NONE
+		boss_debug.add_theme_font_size_override("font_size", 11)
+		boss_debug.pressed.connect(func():
+			if is_instance_valid(world) and not world.boss_spawned:
+				world.spawn_boss()
+			boss_debug.visible = false)
+		add_child(boss_debug)
+
 	if _tutorial_active:
 		_build_tutorial_hint()
 
@@ -141,6 +156,8 @@ func _process(_delta: float) -> void:
 	boss_label.visible = boss_alive
 	boss_bar.visible = boss_alive
 	if boss_alive:
+		if world.boss is EmberfallBoss:
+			boss_label.text = (world.boss as EmberfallBoss).display_name.to_upper()
 		boss_bar.value = float(world.boss.hp) / float(world.boss.max_hp) * 100.0
 	_refresh_build_bar()
 	if GameState.screen == "level_up" and not panel:

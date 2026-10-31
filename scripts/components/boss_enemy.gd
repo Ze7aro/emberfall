@@ -1,80 +1,117 @@
 extends EmberfallEnemy
 class_name EmberfallBoss
 
-## First boss: cycles through 3 telegraphed attack patterns instead of just
-## chasing and touching like a regular enemy. Each pattern gives a clear
-## visual warning before it deals its damage, so losing to it reads as
-## "I didn't move" rather than "I couldn't have known" (ROADMAP BOSS-01).
+## One boss per campaign chapter, each with its own sprite and its own two
+## telegraphed patterns (art and pattern spec:
+## assets/Emberfall_Jefes_Simplificados/README.md). Every pattern shows a
+## clear warning first, so losing reads as "I didn't move" rather than
+## "I couldn't have known".
 ##
-## - Embestida (charge): commits to the player's position when the telegraph
-##   starts, then dashes there — dodging means moving off that spot in time.
-## - Golpe de Área (slam): a growing danger ring around the boss; stand
-##   outside it before it fills in.
-## - Ráfaga (barrage): a spread of slow projectiles the player can walk
-##   between.
+## - Coloso Rúnico (chapter 1): Embestida (line dash at the spot locked when
+##   the warning starts) and Golpe al Suelo (ring around itself).
+## - Guardián Hueco (chapter 2): Barrido (wide frontal arc) and Abanico Rúnico
+##   (3 rune bolts).
+## - Matriarca de Ceniza (chapter 3): Cono de Fuego (short frontal cone) and
+##   Zonas Rúnicas (3 circles on the map that explode after a delay).
 
-enum Pattern { CHARGE, SLAM, BARRAGE }
+enum Pattern { CHARGE, SLAM, SWEEP, RUNE_FAN, FIRE_CONE, ZONES }
 
-## STAGE-01: 3 campaign chapters share this one boss "reused with explicit
-## variants" (per the product contract) instead of 3 separately-coded bosses
-## — different stats, favored pattern, and tint per variant.
+## Kept under these names because game_world picks it per chapter.
+## STANDARD = Coloso, HEAVY = Guardián, AGGRESSIVE = Matriarca.
 enum Variant { STANDARD, HEAVY, AGGRESSIVE }
-const VARIANT_TINTS := {
-	Variant.STANDARD: Color(1.4, 0.7, 0.7),
-	Variant.HEAVY: Color(0.75, 0.85, 1.5),
-	Variant.AGGRESSIVE: Color(1.6, 0.55, 0.35),
+
+const ART_DIR := "res://assets/Emberfall_Jefes_Simplificados/"
+const VARIANT_INFO := {
+	Variant.STANDARD: {
+		"name": "Coloso Rúnico", "folder": "01_coloso_runico",
+		"patterns": [Pattern.CHARGE, Pattern.SLAM],
+		# Which way each attack pose faces in the art: -1 left, 0 symmetric, 1 right.
+		"facing": [-1, 0],
+	},
+	Variant.HEAVY: {
+		"name": "Guardián Hueco", "folder": "02_guardian_hueco",
+		"patterns": [Pattern.SWEEP, Pattern.RUNE_FAN],
+		"facing": [-1, 1],
+	},
+	Variant.AGGRESSIVE: {
+		"name": "Matriarca de Ceniza", "folder": "03_matriarca_ceniza",
+		"patterns": [Pattern.FIRE_CONE, Pattern.ZONES],
+		"facing": [1, 0],
+	},
 }
 
-const PATTERN_COOLDOWN := 4.5 # seconds spent chasing normally between attacks
+const SPRITE_SIZE := 150.0
+const PATTERN_COOLDOWN := 4.0 # seconds spent chasing between attacks
 const TELEGRAPH_TIME := 0.9
-const RECOVER_TIME := 0.5
-const CHARGE_SPEED := 420.0
+const RECOVER_TIME := 0.55
+const WARN_COLOR := Color(0.95, 0.40, 0.27)
+
+const CHARGE_SPEED := 430.0
 const CHARGE_DURATION := 0.6
-const CHARGE_DAMAGE_MULT := 2.0
+const CHARGE_DAMAGE := 3
 const SLAM_RADIUS := 130.0
-const SLAM_DAMAGE_MULT := 2.5
-const BARRAGE_COUNT := 5
-const BARRAGE_SPREAD_DEG := 80.0
-const BARRAGE_SPEED := 220.0
+const SLAM_DAMAGE := 3
+const SWEEP_RADIUS := 175.0
+const SWEEP_HALF_ANGLE := 1.134 # 65°
+const SWEEP_DAMAGE := 3
+const RUNE_COUNT := 3
+const RUNE_SPREAD := 0.524 # 30°
+const RUNE_SPEED := 240.0
+const RUNE_DAMAGE := 2
+const CONE_RADIUS := 200.0
+const CONE_HALF_ANGLE := 0.489 # 28°
+const CONE_DAMAGE := 3
+const ZONE_COUNT := 3
+const ZONE_RADIUS := 70.0
+const ZONE_DAMAGE := 2
 
 var variant: int = Variant.STANDARD
+var display_name := "Coloso Rúnico"
 var pattern_cooldown := PATTERN_COOLDOWN
-var _pattern_weights := {Pattern.CHARGE: 1.0, Pattern.SLAM: 1.0, Pattern.BARRAGE: 1.0}
 
+var _patterns: Array = [Pattern.CHARGE, Pattern.SLAM]
+var _facing: Array = [-1, 0]
+var _poses: Array[Texture2D] = []
 var _state := "chase" # chase, telegraph, charge, recover
 var _pattern_clock := 0.0
+var _pattern_index := 0 # 0 or 1 inside _patterns
 var _current_pattern: int = Pattern.CHARGE
 var _telegraph_elapsed := 0.0
-var _telegraph_target := Vector2.ZERO
-var _charge_direction := Vector2.RIGHT
+var _locked_direction := Vector2.RIGHT
+var _locked_target := Vector2.ZERO
 var _charge_elapsed := 0.0
 var _recover_elapsed := 0.0
+var _look_right := true
 
-## Called right after setup() (which only knows is_boss=true, not which of
-## the 3 campaign chapters this fight belongs to).
+## Called right after setup(), which only knows is_boss=true.
 func configure_variant(new_variant: int) -> void:
 	variant = new_variant
+	var info: Dictionary = VARIANT_INFO.get(variant, VARIANT_INFO[Variant.STANDARD])
+	display_name = str(info["name"])
+	_patterns = info["patterns"]
+	_facing = info["facing"]
+	var folder := ART_DIR + str(info["folder"]) + "/"
+	_poses.clear()
+	for file in ["idle.png", "attack_01.png", "attack_02.png"]:
+		_poses.append(load(folder + file) as Texture2D)
 	match variant:
-		Variant.HEAVY: # chapters 5-8: tankier, slower, favors the ground slam
+		Variant.HEAVY: # tankier and slower, but hits a wide area
 			hp = int(hp * 1.25)
 			max_hp = hp
 			move_speed *= 0.85
-			contact_damage += 1
-			pattern_cooldown = PATTERN_COOLDOWN * 1.15
-			_pattern_weights = {Pattern.CHARGE: 0.7, Pattern.SLAM: 1.6, Pattern.BARRAGE: 0.7}
-		Variant.AGGRESSIVE: # chapter 9-10 finale: faster, hits harder, favors charge/barrage
-			hp = int(hp * 0.9)
+			pattern_cooldown = PATTERN_COOLDOWN * 1.1
+		Variant.AGGRESSIVE: # finale: faster and attacks more often
+			hp = int(hp * 1.1)
 			max_hp = hp
 			move_speed *= 1.1
-			contact_damage += 1
 			pattern_cooldown = PATTERN_COOLDOWN * 0.8
-			_pattern_weights = {Pattern.CHARGE: 1.4, Pattern.SLAM: 0.6, Pattern.BARRAGE: 1.4}
 		_:
 			pass
 
 func _physics_process(delta: float) -> void:
 	if dead or not is_instance_valid(target) or GameState.screen != "playing":
 		return
+	hit_flash = maxf(0.0, hit_flash - delta * 7.0)
 	_tick_status(delta)
 	if dead:
 		return
@@ -90,31 +127,30 @@ func _process_chase(delta: float) -> void:
 	var speed_scale := 0.35 if freeze_timer > 0.0 else 1.0
 	velocity = direction * move_speed * speed_scale
 	move_and_slide()
+	_look_right = target.global_position.x >= global_position.x
 	_check_contact_damage(delta, contact_damage)
 	_pattern_clock += delta
 	if _pattern_clock >= pattern_cooldown:
 		_pattern_clock = 0.0
 		_begin_pattern()
 
+## Alternates the two patterns, with a 30% chance to repeat one so the
+## rhythm isn't fully predictable.
 func _begin_pattern() -> void:
-	_current_pattern = _pick_weighted_pattern()
+	if randf() > 0.3:
+		_pattern_index = 1 - _pattern_index
+	_current_pattern = int(_patterns[_pattern_index])
 	_state = "telegraph"
 	_telegraph_elapsed = 0.0
 	velocity = Vector2.ZERO
-	_telegraph_target = target.global_position
+	_locked_target = target.global_position
+	_locked_direction = global_position.direction_to(_locked_target)
+	if _locked_direction == Vector2.ZERO:
+		_locked_direction = Vector2.RIGHT
+	_look_right = _locked_direction.x >= 0.0
 	SfxPlayer.play("boss/boss_telegraph.wav", false)
-
-func _pick_weighted_pattern() -> int:
-	var total := 0.0
-	for w in _pattern_weights.values():
-		total += float(w)
-	var roll := randf() * total
-	var acc := 0.0
-	for pattern in _pattern_weights:
-		acc += float(_pattern_weights[pattern])
-		if roll < acc:
-			return pattern
-	return Pattern.CHARGE
+	if _current_pattern == Pattern.ZONES:
+		_spawn_zones() # the zones carry their own warning
 
 func _process_telegraph(delta: float) -> void:
 	velocity = Vector2.ZERO
@@ -127,22 +163,30 @@ func _process_telegraph(delta: float) -> void:
 func _execute_pattern() -> void:
 	match _current_pattern:
 		Pattern.CHARGE:
-			_charge_direction = global_position.direction_to(_telegraph_target)
-			if _charge_direction == Vector2.ZERO:
-				_charge_direction = Vector2.RIGHT
 			_charge_elapsed = 0.0
 			_state = "charge"
+			return
 		Pattern.SLAM:
-			_resolve_slam()
-			_enter_recover()
-		Pattern.BARRAGE:
-			_fire_barrage()
-			_enter_recover()
+			if global_position.distance_to(target.global_position) < SLAM_RADIUS:
+				target.damage(SLAM_DAMAGE)
+			_spawn_fx("explosion_area", global_position, SLAM_RADIUS)
+		Pattern.SWEEP:
+			if _in_sector(SWEEP_RADIUS, SWEEP_HALF_ANGLE):
+				target.damage(SWEEP_DAMAGE)
+		Pattern.RUNE_FAN:
+			_fire_runes()
+		Pattern.FIRE_CONE:
+			if _in_sector(CONE_RADIUS, CONE_HALF_ANGLE):
+				target.damage(CONE_DAMAGE)
+		Pattern.ZONES:
+			pass
+	SfxPlayer.play("boss/boss_impact.wav", false)
+	_enter_recover()
 
 func _process_charge(delta: float) -> void:
-	velocity = _charge_direction * CHARGE_SPEED
+	velocity = _locked_direction * CHARGE_SPEED
 	move_and_slide()
-	_check_contact_damage(delta, int(contact_damage * CHARGE_DAMAGE_MULT), true)
+	_check_contact_damage(delta, CHARGE_DAMAGE, true)
 	_charge_elapsed += delta
 	if _charge_elapsed >= CHARGE_DURATION:
 		_enter_recover()
@@ -167,54 +211,128 @@ func _check_contact_damage(delta: float, amount: int, is_attack_pattern: bool = 
 		if is_attack_pattern:
 			SfxPlayer.play("boss/boss_impact.wav", false)
 
-func _resolve_slam() -> void:
-	if global_position.distance_to(target.global_position) < SLAM_RADIUS:
-		target.damage(int(contact_damage * SLAM_DAMAGE_MULT))
-	SfxPlayer.play("boss/boss_impact.wav", false)
-	if is_instance_valid(game_ref) and game_ref.has_method("_spawn_ability_fx"):
-		game_ref._spawn_ability_fx("explosion_area", global_position, SLAM_RADIUS)
+## True when the player stands inside the cone locked at telegraph start.
+func _in_sector(radius: float, half_angle: float) -> bool:
+	var to_player := target.global_position - global_position
+	if to_player.length() > radius:
+		return false
+	return absf(_locked_direction.angle_to(to_player)) <= half_angle
 
-func _fire_barrage() -> void:
+func _fire_runes() -> void:
 	if not is_instance_valid(game_ref):
 		return
-	var base_dir := global_position.direction_to(target.global_position)
-	for i in BARRAGE_COUNT:
-		var spread_deg := -BARRAGE_SPREAD_DEG / 2.0 + i * (BARRAGE_SPREAD_DEG / (BARRAGE_COUNT - 1))
-		var dir := base_dir.rotated(deg_to_rad(spread_deg))
+	var aim := global_position.direction_to(target.global_position)
+	for i in RUNE_COUNT:
 		var proj := EmberfallBossProjectile.new()
 		proj.global_position = global_position
-		proj.direction = dir
-		proj.speed = BARRAGE_SPEED
-		proj.damage_amount = contact_damage * 3
+		proj.direction = aim.rotated(RUNE_SPREAD * (i - (RUNE_COUNT - 1) / 2.0))
+		proj.speed = RUNE_SPEED
+		proj.damage_amount = RUNE_DAMAGE
 		proj.target = target
+		proj.rune = true
 		game_ref.add_child(proj)
 
-func _boss_tint() -> Color:
-	return VARIANT_TINTS.get(variant, Color(1.4, 0.7, 0.7))
+## One zone on the player and two around them, so standing still is never safe.
+func _spawn_zones() -> void:
+	if not is_instance_valid(game_ref):
+		return
+	var start_angle := randf() * TAU
+	for i in ZONE_COUNT:
+		var zone := EmberfallBossZone.new()
+		var offset := Vector2.ZERO
+		if i > 0:
+			offset = Vector2.from_angle(start_angle + PI * (i - 1)) * randf_range(90.0, 130.0)
+		zone.global_position = _locked_target + offset
+		zone.radius = ZONE_RADIUS
+		zone.delay = TELEGRAPH_TIME + 0.4
+		zone.damage_amount = ZONE_DAMAGE
+		zone.target = target
+		game_ref.add_child(zone)
+
+func _spawn_fx(kind: String, at: Vector2, radius: float) -> void:
+	if is_instance_valid(game_ref) and game_ref.has_method("_spawn_ability_fx"):
+		game_ref._spawn_ability_fx(kind, at, radius)
+
+func _pose_index() -> int:
+	if _state == "chase":
+		return 0
+	return 1 + _pattern_index
 
 func _draw() -> void:
-	super._draw()
 	if _state == "telegraph":
 		_draw_telegraph()
-	elif _state == "charge":
-		draw_circle(Vector2.ZERO, 13, Color(0.95, 0.40, 0.27, 0.78))
+	elif _state == "recover":
+		_draw_aftermath()
+	var pose := _pose_index()
+	var texture: Texture2D = _poses[pose] if pose < _poses.size() else null
+	if texture:
+		var facing := 0 if pose == 0 else int(_facing[pose - 1])
+		var flip := (facing < 0 and _look_right) or (facing > 0 and not _look_right) or (facing == 0 and not _look_right and pose == 0)
+		var glow := 1.0 + hit_flash * 1.5
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0 if flip else 1.0, 1.0))
+		draw_texture_rect(texture, Rect2(-SPRITE_SIZE / 2.0, -SPRITE_SIZE * 0.6, SPRITE_SIZE, SPRITE_SIZE), false, Color(glow, glow, glow))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var bar_width := 110.0
+	var bar_y := -SPRITE_SIZE * 0.6 - 6.0
+	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width, 5), Color(0.04, 0.08, 0.10, 0.85))
+	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 5), Color(0.95, 0.68, 0.25))
+	var status_radius := SPRITE_SIZE * 0.35
+	if poison_timer > 0.0:
+		draw_arc(Vector2.ZERO, status_radius, 0.0, TAU, 24, Color(0.3, 0.9, 0.3, 0.5), 3.0)
+	if burn_timer > 0.0:
+		draw_arc(Vector2.ZERO, status_radius + 4.0, 0.0, TAU, 24, Color(1.0, 0.5, 0.1, 0.5), 3.0)
+	if freeze_timer > 0.0:
+		draw_arc(Vector2.ZERO, status_radius + 8.0, 0.0, TAU, 24, Color(0.4, 0.8, 1.0, 0.5), 3.0)
+	if shock_timer > 0.0:
+		draw_arc(Vector2.ZERO, status_radius + 12.0, 0.0, TAU, 12, Color(0.5, 0.96, 0.92, 0.7), 2.0)
 
 func _draw_telegraph() -> void:
 	var progress := clampf(_telegraph_elapsed / TELEGRAPH_TIME, 0.0, 1.0)
 	var alpha := 0.25 + progress * 0.45
 	match _current_pattern:
 		Pattern.CHARGE:
-			var dir := global_position.direction_to(_telegraph_target)
-			draw_line(Vector2.ZERO, dir * 220.0, Color(0.95, 0.40, 0.27, alpha), 4.0)
-			draw_circle(dir * 220.0, 8.0, Color(0.95, 0.40, 0.27, alpha))
+			var end := _locked_direction * CHARGE_SPEED * CHARGE_DURATION
+			draw_line(Vector2.ZERO, end, Color(WARN_COLOR, alpha * 0.5), 40.0)
+			draw_line(Vector2.ZERO, end * progress, Color(WARN_COLOR, alpha), 40.0)
 		Pattern.SLAM:
-			draw_circle(Vector2.ZERO, SLAM_RADIUS, Color(1.0, 0.5, 0.1, 0.12 + progress * 0.15))
-			draw_arc(Vector2.ZERO, SLAM_RADIUS, 0.0, TAU, 36, Color(0.95, 0.63, 0.22, alpha), 3.0)
-		Pattern.BARRAGE:
-			if not is_instance_valid(target):
-				return
-			var base_dir := global_position.direction_to(target.global_position)
-			for i in BARRAGE_COUNT:
-				var spread_deg := -BARRAGE_SPREAD_DEG / 2.0 + i * (BARRAGE_SPREAD_DEG / (BARRAGE_COUNT - 1))
-				var dir := base_dir.rotated(deg_to_rad(spread_deg))
-				draw_line(Vector2.ZERO, dir * 170.0, Color(0.95, 0.63, 0.22, alpha), 2.0)
+			draw_circle(Vector2.ZERO, SLAM_RADIUS, Color(1.0, 0.5, 0.1, 0.10))
+			draw_circle(Vector2.ZERO, SLAM_RADIUS * progress, Color(1.0, 0.5, 0.1, 0.18))
+			draw_arc(Vector2.ZERO, SLAM_RADIUS, 0.0, TAU, 40, Color(0.95, 0.63, 0.22, alpha), 3.0)
+		Pattern.SWEEP:
+			_draw_sector(SWEEP_RADIUS, SWEEP_HALF_ANGLE, Color(0.55, 0.3, 1.0, 0.10), Color(0.55, 0.3, 1.0, alpha))
+			_draw_sector(SWEEP_RADIUS * progress, SWEEP_HALF_ANGLE, Color(0.55, 0.3, 1.0, 0.16), Color(0, 0, 0, 0))
+		Pattern.RUNE_FAN:
+			var aim := global_position.direction_to(target.global_position)
+			for i in RUNE_COUNT:
+				var dir := aim.rotated(RUNE_SPREAD * (i - (RUNE_COUNT - 1) / 2.0))
+				draw_line(Vector2.ZERO, dir * 190.0, Color(0.55, 0.3, 1.0, alpha), 3.0)
+		Pattern.FIRE_CONE:
+			_draw_sector(CONE_RADIUS, CONE_HALF_ANGLE, Color(1.0, 0.5, 0.1, 0.10), Color(1.0, 0.55, 0.2, alpha))
+			_draw_sector(CONE_RADIUS * progress, CONE_HALF_ANGLE, Color(1.0, 0.5, 0.1, 0.18), Color(0, 0, 0, 0))
+		Pattern.ZONES:
+			pass
+
+## Short flash of the area that was just hit, so the player sees what landed.
+func _draw_aftermath() -> void:
+	var fade := 1.0 - clampf(_recover_elapsed / 0.3, 0.0, 1.0)
+	if fade <= 0.0:
+		return
+	match _current_pattern:
+		Pattern.SWEEP:
+			_draw_sector(SWEEP_RADIUS, SWEEP_HALF_ANGLE, Color(0.62, 0.45, 1.0, 0.45 * fade), Color(0.85, 0.75, 1.0, fade))
+		Pattern.FIRE_CONE:
+			_draw_sector(CONE_RADIUS, CONE_HALF_ANGLE, Color(1.0, 0.55, 0.15, 0.55 * fade), Color(1.0, 0.85, 0.4, fade))
+
+func _draw_sector(radius: float, half_angle: float, fill: Color, outline: Color) -> void:
+	if radius <= 1.0:
+		return
+	var base := _locked_direction.angle()
+	var points := PackedVector2Array([Vector2.ZERO])
+	var steps := 16
+	for i in steps + 1:
+		var a := base - half_angle + 2.0 * half_angle * float(i) / float(steps)
+		points.append(Vector2.from_angle(a) * radius)
+	draw_colored_polygon(points, fill)
+	if outline.a > 0.0:
+		points.append(Vector2.ZERO)
+		draw_polyline(points, outline, 2.5)

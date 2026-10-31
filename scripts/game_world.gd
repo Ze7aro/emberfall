@@ -138,6 +138,17 @@ func _physics_process(delta: float) -> void:
 	update_powers(delta)
 	queue_redraw()
 
+## Testing shortcut, only in editor/debug builds: B (or F9) brings the boss now.
+func _input(event: InputEvent) -> void:
+	if not OS.is_debug_build() or boss_spawned or GameState.screen != "playing":
+		return
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var key := (event as InputEventKey).physical_keycode
+	if key == KEY_B or key == KEY_F9:
+		print("[debug] jefe invocado con atajo")
+		spawn_boss()
+
 func spawn_boss() -> void:
 	boss_spawned = true
 	GameState.set_boss_encounter(true)
