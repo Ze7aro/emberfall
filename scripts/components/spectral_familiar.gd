@@ -42,6 +42,7 @@ func _fire(target: EmberfallEnemy) -> void:
 	bolt.speed = 420.0 * game_ref.proj_speed_multiplier()
 	bolt.damage = damage
 	bolt.lifetime = 0.9
+	bolt.source_id = "familiar"
 	game_ref.add_child(bolt)
 
 func _draw() -> void:

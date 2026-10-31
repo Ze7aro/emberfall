@@ -140,6 +140,10 @@ var claimed_weekly_missions: Array = []
 # (kept after the run ends so the result screen can offer "retry").
 var current_stage_context: Dictionary = {}
 var last_stage_context: Dictionary = {}
+## Filled when a run ends (game_world.end_run + finish_run) for the result
+## screen. Not saved: it only describes the run that just finished.
+var last_run_summary: Dictionary = {}
+var last_run_rewards: Dictionary = {}
 
 # AUD-11: whether any persisted field changed since the last save() without
 # being flushed yet — set by mid-run mutations like add_gold() so they don't
@@ -287,6 +291,7 @@ func finish_run(victory: bool, kills: int) -> void:
 	daily_kills += kills
 	weekly_kills += kills
 	var context := current_stage_context
+	last_run_rewards = {"gold": 0, "gems": 0, "xp": 0, "first_clear": false}
 	if victory:
 		var bonus_gold := int(context.get("gold_reward", 20 + kills / 2))
 		var bonus_gems := int(context.get("gems_reward", 0))
@@ -299,6 +304,9 @@ func finish_run(victory: bool, kills: int) -> void:
 			first_clears.append(clear_key)
 			bonus_gold += FIRST_CLEAR_BONUS_GOLD
 			bonus_gems += FIRST_CLEAR_BONUS_GEMS
+			last_run_rewards["first_clear"] = true
+		last_run_rewards["gold"] = bonus_gold
+		last_run_rewards["gems"] = bonus_gems
 		gold += bonus_gold
 		daily_gold += bonus_gold
 		weekly_gold += bonus_gold
@@ -308,7 +316,9 @@ func finish_run(victory: bool, kills: int) -> void:
 		gold_changed.emit(gold)
 		gems_changed.emit(gems)
 		_apply_stage_clear(context)
-	add_experience((30 + kills) if victory else (10 + kills / 2))
+	var xp_gain: int = (30 + kills) if victory else (10 + kills / 2)
+	last_run_rewards["xp"] = xp_gain
+	add_experience(xp_gain)
 	SfxPlayer.play("progression/victory.wav" if victory else "progression/player_defeat.wav", false)
 	change_screen("victory" if victory else "defeat")
 	run_finished.emit(victory)
@@ -610,6 +620,21 @@ func unlock_progress(id: String) -> Array:
 	if requirement.is_empty():
 		return [1, 1]
 	return [int(run_stats.get(str(requirement["stat"]), 0)), int(requirement["target"])]
+
+## The still-locked ability closest to unlocking, as {id, text, current,
+## target}; empty once everything is unlocked.
+func next_unlock_goal() -> Dictionary:
+	var best := {}
+	var best_ratio := -1.0
+	for id in AbilityCatalog.UNLOCKS:
+		if is_ability_unlocked(id):
+			continue
+		var progress := unlock_progress(id)
+		var ratio := float(progress[0]) / maxf(1.0, float(progress[1]))
+		if ratio > best_ratio:
+			best_ratio = ratio
+			best = {"id": id, "text": str(AbilityCatalog.UNLOCKS[id]["text"]), "current": int(progress[0]), "target": int(progress[1])}
+	return best
 
 ## Called by game_world when a run ends (any way). Adds the run to the
 ## lifetime stats and unlocks any ability whose goal was reached; returns

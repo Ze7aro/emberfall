@@ -222,20 +222,22 @@ func _tick_status(delta: float) -> void:
 		poison_tick_clock -= delta
 		if poison_tick_clock <= 0.0:
 			poison_tick_clock = 1.0
-			_status_damage(poison_damage, "status/poison_tick.wav")
+			_status_damage(poison_damage, "status/poison_tick.wav", "poison")
 	if burn_timer > 0.0:
 		burn_timer -= delta
 		burn_tick_clock -= delta
 		if burn_tick_clock <= 0.0:
 			burn_tick_clock = 1.0
-			_status_damage(burn_damage, "status/burn_tick.wav")
+			_status_damage(burn_damage, "status/burn_tick.wav", "burn")
 
 ## Damage from poison/burn ticks bypasses combat multipliers (crit, boost_damage)
 ## since it's a flat damage-over-time effect, but still grants kill rewards.
-func _status_damage(amount: int, sfx: String) -> void:
+func _status_damage(amount: int, sfx: String, source: String) -> void:
 	SfxPlayer.play(sfx)
 	if is_instance_valid(game_ref) and game_ref.has_method("spawn_damage_number"):
 		game_ref.spawn_damage_number(global_position, amount, false)
+	if is_instance_valid(game_ref) and game_ref.has_method("record_damage"):
+		game_ref.record_damage(source, mini(amount, hp))
 	if damage(amount) and is_instance_valid(game_ref) and game_ref.has_method("_on_enemy_killed"):
 		game_ref._on_enemy_killed(self)
 

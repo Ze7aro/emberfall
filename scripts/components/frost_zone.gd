@@ -53,7 +53,7 @@ func _physics_process(delta: float) -> void:
 func _apply_tick() -> void:
 	if not is_instance_valid(game_ref):
 		return
-	for enemy in game_ref.enemies.duplicate():
+	for enemy in game_ref.enemies:
 		if is_instance_valid(enemy) and not enemy.dead and global_position.distance_to(enemy.global_position) < radius:
-			game_ref._apply_damage(enemy, tick_damage)
+			game_ref._apply_damage(enemy, tick_damage, true, true, "blizzard")
 			enemy.apply_freeze(freeze_duration)

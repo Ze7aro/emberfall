@@ -232,6 +232,31 @@ Con el mismo marco que 6.1: **Armadura** (pecho de armadura), **Suerte** (trébo
 | Suerte | a four-leaf clover made of glowing rune leaves | emerald green + cyan |
 | Descartar | a playing card crossed out with a bold X | violet + red X |
 
+## 7. Exportar a Android
+
+El preset ya está en `export_presets.cfg`. Datos de la app:
+
+| Campo | Valor |
+|---|---|
+| Paquete | `com.ze7aro.emberfall` |
+| Versión | 0.9.0 (código 1) |
+| Arquitecturas | arm64 y armv7 |
+| Pantalla | Vertical, pantalla completa |
+| Salida | `build/android/Emberfall.apk` (ignorada por git) |
+
+Lo que hay que hacer una sola vez en el editor:
+
+1. **Plantillas de exportación:** Editor → Gestionar plantillas de exportación → Descargar e instalar.
+2. **JDK 17 y Android SDK:** instalar Android Studio (trae el SDK) y un JDK 17. Configurar las rutas en Editor → Configuración del editor → Exportar → Android (`Java SDK Path` y `Android SDK Path`).
+3. **Clave de depuración:** Godot la crea sola la primera vez. Alcanza para probar en tu teléfono.
+4. **Clave de publicación** (solo para subir a Google Play). Se genera con:
+   `keytool -genkeypair -v -keystore emberfall-release.keystore -alias emberfall -keyalg RSA -keysize 2048 -validity 10000`
+   Cargala en Proyecto → Exportar → Android → Keystore → Release. Guardala fuera del repositorio: `*.keystore` está en `.gitignore` y si la perdés no podés actualizar la app.
+
+Para probar: conectá el teléfono con depuración USB activada. Aparece el ícono de Android arriba a la derecha del editor (Despliegue con un clic). La alternativa es Proyecto → Exportar → Exportar proyecto y copiar el APK al teléfono.
+
+Ya resuelto en el código: el botón Atrás cierra ventanas, pausa la partida y vuelve a Inicio, y en Inicio sale del juego. La partida se pausa al perder el foco, el progreso se guarda al pasar a segundo plano y la barra superior y el menú respetan las áreas seguras.
+
 ## Fuentes de referencia
 - [Vampire Survivors: weapon evolution guide (Prima Games)](https://primagames.com/gaming/vampire-survivors-weapon-evolution-guide)
 - [Vampire Survivors: passive item guide (Prima Games)](https://primagames.com/gaming/vampire-survivors-passive-item-guide)

@@ -31,6 +31,8 @@ var bounces := 0
 var out_distance := 220.0
 var return_target: Node2D
 var visual_scale := 1.0
+## Ability id credited in the result screen's damage ranking.
+var source_id := ""
 
 var _age := 0.0
 var _travelled := 0.0
@@ -110,7 +112,7 @@ func _check_hits() -> void:
 		if _last_hit.has(key) and (rehit_interval <= 0.0 or _age - float(_last_hit[key]) < rehit_interval):
 			continue
 		_last_hit[key] = _age
-		game_ref._apply_damage(enemy, damage)
+		game_ref._apply_damage(enemy, damage, true, true, source_id)
 		_hits += 1
 		if pierce >= 0 and _hits > pierce:
 			queue_free()

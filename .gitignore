@@ -6,6 +6,15 @@
 *.exe
 *.dmg
 *.app
+*.apk
+*.aab
+*.idsig
+build/
+/android/
+
+# Signing keys never go in the repo
+*.keystore
+*.jks
 
 # OS/editor cruft
 .DS_Store

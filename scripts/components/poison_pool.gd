@@ -45,6 +45,6 @@ func _physics_process(delta: float) -> void:
 func _apply_tick() -> void:
 	if not is_instance_valid(game_ref):
 		return
-	for enemy in game_ref.enemies.duplicate():
+	for enemy in game_ref.enemies:
 		if is_instance_valid(enemy) and not enemy.dead and global_position.distance_to(enemy.global_position) < radius:
 			enemy.apply_poison(1.0, tick_damage)

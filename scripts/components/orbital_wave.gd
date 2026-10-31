@@ -96,6 +96,6 @@ func _check_hits(moon: EmberfallOrbitalMoon, moon_index: int) -> void:
 		if _orbit_time - last < HIT_COOLDOWN:
 			continue
 		enemy.set_meta(meta_key, _orbit_time)
-		game_ref._apply_damage(enemy, damage)
+		game_ref._apply_damage(enemy, damage, true, true, "orbital")
 		if knockback_force > 0.0 and is_instance_valid(enemy) and is_instance_valid(player_node):
 			enemy.knockback(player_node.global_position.direction_to(enemy.global_position) * knockback_force)

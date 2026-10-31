@@ -65,24 +65,37 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		if is_instance_valid(_active_game) and GameState.screen == "playing":
 			GameState.change_screen("paused")
+		# The OS may kill a backgrounded app without warning: flush progress.
+		if what == NOTIFICATION_APPLICATION_PAUSED:
+			GameState.save()
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		# Android back button (quit_on_go_back is off in project.godot).
+		if not _handle_back():
+			GameState.save()
+			get_tree().quit()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not event.is_action_pressed("ui_cancel"):
-		return
+	if event.is_action_pressed("ui_cancel") and _handle_back():
+		get_viewport().set_input_as_handled()
+
+## Back/Escape: close a modal, toggle pause in a run, or return to Inicio.
+## False when there is nothing left to go back to (Inicio with no modal).
+func _handle_back() -> bool:
 	if has_open_modal():
 		close_active_modal()
-		get_viewport().set_input_as_handled()
-	elif is_instance_valid(_active_game):
+		return true
+	if is_instance_valid(_active_game):
 		if GameState.screen == "playing":
 			SfxPlayer.play_ui("ui/pause.wav")
 			GameState.change_screen("paused")
 		elif GameState.screen == "paused":
 			SfxPlayer.play_ui("ui/resume.wav")
 			GameState.change_screen("playing")
-		get_viewport().set_input_as_handled()
-	elif current_route != &"home":
+		return true
+	if current_route != &"home":
 		navigate_to(&"home")
-		get_viewport().set_input_as_handled()
+		return true
+	return false
 
 func _wire_top_hud() -> void:
 	top_hud.set_level(GameState.level)
@@ -267,76 +280,8 @@ func _end_run(victory: bool) -> void:
 	if navigation_footer.has_method("select_by_id"): navigation_footer.select_by_id(&"home")
 
 func _result_screen(victory: bool) -> Control:
-	var screen := Control.new()
-	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	screen.theme = UiTheme.make_theme()
-	var bg := ColorRect.new(); bg.color = UiTheme.BG_DEEP; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
-	var art := UiTheme.background("bg_victoria.png" if victory else "bg_derrota.png", 0.5)
-	if art != null:
-		screen.add_child(art)
-	var card := PanelContainer.new()
-	card.anchor_left = 0.5; card.anchor_right = 0.5; card.anchor_top = 0.5; card.anchor_bottom = 0.5
-	card.offset_left = -175; card.offset_right = 175; card.offset_top = -200; card.offset_bottom = 200
-	var accent: Color = UiTheme.ACCENT if victory else UiTheme.DANGER
-	card.add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(accent, UiTheme.CORNER, 4)))
-	card.self_modulate = Color.WHITE if victory else Color(1.0, 0.75, 0.75)
-	screen.add_child(card)
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 18)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
-	margin.add_child(box)
-	var title := Label.new()
-	title.text = "VICTORIA" if victory else "CAÍSTE"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 36)
-	title.add_theme_color_override("font_color", accent)
-	box.add_child(title)
-	var quote := Label.new()
-	quote.text = "“Un paso más en tu leyenda.”" if victory else "AÚN QUEDAN BATALLAS POR LIBRAR"
-	quote.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	quote.add_theme_font_size_override("font_size", 13)
-	quote.add_theme_color_override("font_color", UiTheme.PURPLE)
-	box.add_child(quote)
-	var stage_name := str(GameState.last_stage_context.get("name", ""))
-	if stage_name != "":
-		var stage := Label.new()
-		stage.text = stage_name
-		stage.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		stage.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
-		box.add_child(stage)
-	var info := Label.new()
-	info.text = "Progreso guardado.\nOro: %d  ·  Récord: %d" % [GameState.gold, GameState.high_score]
-	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	box.add_child(info)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 10)
-	box.add_child(buttons)
-	var retry := Button.new()
-	retry.text = "REINTENTAR\n%d ENERGÍA" % GameState.ENERGY_COST
-	retry.icon = load("res://assets/ui/pixel_simple_v1/icons/refresh.png") as Texture2D
-	retry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	UiTheme.apply_primary(retry)
-	retry.custom_minimum_size = Vector2(0, 52)
-	retry.disabled = not GameState.can_start()
-	retry.pressed.connect(func(): start_run(GameState.last_stage_context))
-	buttons.add_child(retry)
-	# Energy can regenerate while the player is looking at this screen, so
-	# keep the button's enabled state live instead of a one-time snapshot.
-	var update_retry := func(_energy: int):
-		if is_instance_valid(retry):
-			retry.disabled = not GameState.can_start()
-	GameState.energy_changed.connect(update_retry)
-	screen.tree_exiting.connect(func(): GameState.energy_changed.disconnect(update_retry))
-	var home := Button.new()
-	home.text = "VOLVER\nA INICIO"
-	home.custom_minimum_size = Vector2(0, 52)
-	home.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	home.pressed.connect(func(): navigate_to(&"home"))
-	buttons.add_child(home)
-	buttons.move_child(home, 0)
+	var screen := RunResultScreen.new()
+	screen.setup(victory)
+	screen.retry_pressed.connect(func(): start_run(GameState.last_stage_context))
+	screen.home_pressed.connect(func(): navigate_to(&"home"))
 	return screen

@@ -25,10 +25,10 @@ func _land() -> void:
 	_landed = true
 	SfxPlayer.play("abilities/area_explosion.wav")
 	if is_instance_valid(game_ref):
-		for enemy in game_ref.enemies.duplicate():
+		for enemy in game_ref.enemies:
 			if is_instance_valid(enemy) and not enemy.dead and global_position.distance_to(enemy.global_position) < radius:
 				enemy.apply_burn(burn_duration, maxi(2, damage / 8))
-				game_ref._apply_damage(enemy, damage)
+				game_ref._apply_damage(enemy, damage, true, true, "meteor")
 		game_ref._spawn_ability_fx("explosion_area", global_position, radius)
 	queue_free()
 

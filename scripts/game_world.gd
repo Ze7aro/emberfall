@@ -141,6 +141,7 @@ func _ready() -> void:
 	rerolls = 2 + _up("reroll")
 	banishes = 2 + _up("banish")
 	_revives_left = _up("revival")
+	_gold_at_start = GameState.gold
 	_grant_starting_power()
 	for i in 4:
 		spawn_enemy()
@@ -211,7 +212,7 @@ func _physics_process(delta: float) -> void:
 		if elapsed > 60.0:
 			spawn_enemy()
 		spawn_interval = maxf(0.55, spawn_interval * 0.995)
-	for orb in orbs.duplicate():
+	for orb in orbs:
 		if is_instance_valid(orb):
 			orb.tick(player, pickup_radius(), delta)
 	for projectile in projectiles.duplicate():
@@ -245,6 +246,10 @@ func update_powers(delta: float) -> void:
 	for id in skills:
 		skill_timers[id] = float(skill_timers.get(id, 0.0)) + delta
 	var cd := cooldown_multiplier()
+	_update_powers_inner(delta, cd)
+	damage_source = "basic"
+
+func _update_powers_inner(delta: float, cd: float) -> void:
 	if skills.has("daggers"):
 		var interval := (0.3 if is_evolved("daggers") else 1.1) * attack_speed_multiplier()
 		if _due("daggers", interval):
@@ -308,10 +313,11 @@ func _fire_daggers(lvl: int) -> void:
 ## it's meant to be *constant* — so its tick rate stays fixed instead of
 ## scaling with Enfriamiento. Corona Solar also heals while it's burning.
 func _tick_fire_aura(lvl: int, _delta: float) -> void:
+	damage_source = "fire"
 	var radius := fire_aura_radius()
 	var tick_damage := int(round((4.0 + lvl * 3.0) * 0.5 * (1.5 if is_evolved("fire") else 1.0)))
 	var burned_any := false
-	for enemy in enemies.duplicate():
+	for enemy in enemies:
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
 			enemy.apply_burn(2.0 * duration_multiplier(), 2 + lvl)
 			_apply_damage(enemy, tick_damage)
@@ -329,6 +335,7 @@ func fire_aura_radius() -> float:
 ## between nearby enemies, not teleporting across the map. Every hit
 ## leaves the target electrocuted (next hit +25%).
 func _fire_chain(lvl: int) -> void:
+	damage_source = "chain"
 	SfxPlayer.play("abilities/chain_lightning.wav")
 	var remaining := enemies.duplicate()
 	var origin := player.global_position
@@ -417,8 +424,9 @@ func _trigger_slash(lvl: int) -> void:
 	var half_width := (65.0 + 9.0 * lvl) * area_multiplier()
 	var half_height := 24.0 * area_multiplier()
 	var hit_damage := 14 + 6 * lvl
+	damage_source = "slash"
 	SfxPlayer.play("combat/basic_melee.wav")
-	for enemy in enemies.duplicate():
+	for enemy in enemies:
 		if not is_instance_valid(enemy) or enemy.dead:
 			continue
 		var offset: Vector2 = enemy.global_position - player.global_position
@@ -437,7 +445,7 @@ func _trigger_slash(lvl: int) -> void:
 
 func _void_burst(at: Vector2, burst_damage: int) -> void:
 	var radius := 60.0 * area_multiplier()
-	for enemy in enemies.duplicate():
+	for enemy in enemies:
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(at) < radius:
 			_apply_damage(enemy, burst_damage, false, false)
 	_spawn_ability_fx("explosion_area", at, radius)
@@ -521,9 +529,9 @@ func try_block() -> bool:
 	# Bastión: the breaking shield pushes everything back with a nova.
 	if is_evolved("aegis"):
 		var radius := 110.0 * area_multiplier()
-		for enemy in enemies.duplicate():
+		for enemy in enemies:
 			if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
-				_apply_damage(enemy, 40 + 8 * skill_level("aegis"))
+				_apply_damage(enemy, 40 + 8 * skill_level("aegis"), true, true, "aegis")
 				if is_instance_valid(enemy):
 					enemy.knockback(player.global_position.direction_to(enemy.global_position) * 420.0)
 		_spawn_ability_fx("explosion_area", player.global_position, radius)
@@ -534,6 +542,7 @@ func _make_skill_projectile(style: int, id: String) -> EmberfallSkillProjectile:
 	projectile.game_ref = self
 	projectile.style = style
 	projectile.color = AbilityCatalog.color(id)
+	projectile.source_id = id
 	projectile.global_position = player.projectile_origin.global_position if is_instance_valid(player.projectile_origin) else player.global_position
 	return projectile
 
@@ -636,7 +645,7 @@ func _spawn_chain_fx(from: Vector2, to: Vector2) -> void:
 ## Applies damage to an enemy (rolling crit, consuming Electrocutado) and,
 ## if it dies, grants kills/loot consistently across every damage source.
 ## Returns true when this hit killed it.
-func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = true, can_crit: bool = true) -> bool:
+func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = true, can_crit: bool = true, source: String = "") -> bool:
 	_last_hit_crit = false
 	if not is_instance_valid(enemy) or enemy.dead:
 		return false
@@ -650,6 +659,7 @@ func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = 
 		_last_hit_crit = true
 		final_amount *= crit_multiplier()
 	var dealt := int(round(final_amount))
+	record_damage(source if source != "" else damage_source, mini(dealt, enemy.hp))
 	spawn_damage_number(enemy.global_position, dealt, _last_hit_crit)
 	SfxPlayer.play_enemy_hit()
 	if _last_hit_crit:
@@ -663,6 +673,16 @@ func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = 
 		_on_enemy_killed(enemy)
 		return true
 	return false
+
+## Damage per source for the result screen's ranking. `damage_source` is
+## the fallback for hits dealt synchronously inside an ability's trigger.
+var damage_by_source := {}
+var damage_source := "basic"
+var _gold_at_start := 0
+
+func record_damage(source: String, amount: int) -> void:
+	if amount > 0:
+		damage_by_source[source] = int(damage_by_source.get(source, 0)) + amount
 
 const HIT_PUSH := 150.0
 const HIT_STOP_COOLDOWN := 0.25
@@ -684,8 +704,17 @@ func _exit_tree() -> void:
 
 ## Public so enemy.gd can show numbers for its own poison/burn ticks too,
 ## keeping every damage source visually consistent.
+## Late-game swarms can produce hundreds of hits a second; past this many
+## numbers on screen only crits still spawn one.
+const DAMAGE_NUMBER_CAP := 45
+var _damage_numbers_alive := 0
+
 func spawn_damage_number(pos: Vector2, amount: int, is_crit: bool) -> void:
+	if _damage_numbers_alive >= DAMAGE_NUMBER_CAP and not is_crit:
+		return
+	_damage_numbers_alive += 1
 	var number := preload("res://scripts/components/damage_number.gd").new()
+	number.tree_exiting.connect(func(): _damage_numbers_alive -= 1)
 	number.position = pos + Vector2(randf_range(-10.0, 10.0), -10.0)
 	number.amount = amount
 	number.is_crit = is_crit
@@ -891,18 +920,18 @@ func _detonate_bomb(at: Vector2) -> void:
 	SfxPlayer.play("abilities/area_explosion.wav", false)
 	_spawn_ability_fx("explosion_area", at, 260.0)
 	var half := get_viewport_rect().size * 0.5
-	for enemy in enemies.duplicate():
+	for enemy in enemies:
 		if not is_instance_valid(enemy) or enemy.dead:
 			continue
 		var offset: Vector2 = enemy.global_position - player.global_position
 		if absf(offset.x) > half.x or absf(offset.y) > half.y:
 			continue
 		if enemy.is_boss:
-			_apply_damage(enemy, 120, false, false)
+			_apply_damage(enemy, 120, false, false, "bomb")
 		elif enemy.elite_tier > 0:
-			_apply_damage(enemy, 250, false, false)
+			_apply_damage(enemy, 250, false, false, "bomb")
 		else:
-			_apply_damage(enemy, enemy.hp, false, false)
+			_apply_damage(enemy, enemy.hp, false, false, "bomb")
 
 ## Debug-build testing aid, used by the HUD's debug buttons.
 func debug_action(action: String) -> void:
@@ -999,7 +1028,7 @@ func _shot_frame_names(hero_data: CharacterData) -> PackedStringArray:
 func _trigger_melee_aoe(hero_data: CharacterData, hit_damage: int) -> void:
 	SfxPlayer.play("combat/basic_melee.wav")
 	var radius := hero_data.attack_aoe_radius
-	for enemy in enemies.duplicate():
+	for enemy in enemies:
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
 			if not _apply_damage(enemy, hit_damage, false):
 				_apply_hero_guaranteed_status(enemy)
@@ -1011,12 +1040,12 @@ func _trigger_melee_aoe(hero_data: CharacterData, hit_damage: int) -> void:
 func _process(_delta: float) -> void:
 	if GameState.screen != "playing":
 		return
-	for projectile in projectiles.duplicate():
+	for projectile in projectiles:
 		if not is_instance_valid(projectile):
 			continue
 		var hit_enemies: Array = projectile.get_meta("hit_enemies", [])
 		var max_pierces: int = projectile.get_meta("max_pierces", 0)
-		for enemy in enemies.duplicate():
+		for enemy in enemies:
 			if is_instance_valid(enemy) and not enemy.dead and not hit_enemies.has(enemy) and projectile.global_position.distance_to(enemy.global_position) < 34.0:
 				hit_enemies.append(enemy)
 				projectile.set_meta("hit_enemies", hit_enemies)
@@ -1064,6 +1093,8 @@ func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 	else:
 		SfxPlayer.play("combat/enemy_death.wav")
 
+const ENEMY_TEXTURE := preload("res://assets/characters/enemy.png")
+
 ## Bosses draw their own art, so their death is a plain big ember burst.
 func _spawn_death_fx(enemy: EmberfallEnemy) -> void:
 	var fx := EmberfallDeathFx.new()
@@ -1074,24 +1105,43 @@ func _spawn_death_fx(enemy: EmberfallEnemy) -> void:
 	else:
 		fx.size = enemy.visual_size()
 		fx.tint = enemy.visual_tint()
-		fx.texture = load("res://assets/characters/enemy.png") as Texture2D
+		fx.texture = ENEMY_TEXTURE
 	add_child(fx)
 
+## Past this many orbs on the field, new drops merge into the nearest orb of
+## the same kind instead of adding nodes (keeps late game fast and readable).
+const ORB_CAP := 120
+
 func spawn_xp(at: Vector2, amount: int) -> void:
+	_spawn_orb(at, amount, false)
+
+func spawn_gold(at: Vector2, amount: int) -> void:
+	_spawn_orb(at, amount, true)
+
+func _spawn_orb(at: Vector2, amount: int, gold: bool) -> void:
+	if orbs.size() >= ORB_CAP and _merge_orb(at, amount, gold):
+		return
 	var orb := EmberfallXPOrb.new()
 	orb.position = at
-	orb.setup(amount, false)
+	orb.setup(amount, gold)
 	orb.tree_exiting.connect(_on_orb_removed.bind(orb))
 	add_child(orb)
 	orbs.append(orb)
 
-func spawn_gold(at: Vector2, amount: int) -> void:
-	var orb := EmberfallXPOrb.new()
-	orb.position = at
-	orb.setup(amount, true)
-	orb.tree_exiting.connect(_on_orb_removed.bind(orb))
-	add_child(orb)
-	orbs.append(orb)
+func _merge_orb(at: Vector2, amount: int, gold: bool) -> bool:
+	var best: EmberfallXPOrb
+	var best_distance := INF
+	for orb in orbs:
+		if not is_instance_valid(orb) or orb.collected or orb.is_gold != gold:
+			continue
+		var distance: float = orb.global_position.distance_squared_to(at)
+		if distance < best_distance:
+			best_distance = distance
+			best = orb
+	if best == null:
+		return false
+	best.absorb(amount)
+	return true
 
 # --- Passive stats --------------------------------------------------------------
 
@@ -1353,7 +1403,7 @@ func _revive() -> void:
 	announced.emit("¡Reviviste!", GOLD)
 	SfxPlayer.play("progression/fusion_unlocked.wav", false)
 	_spawn_ability_fx("explosion_area", player.global_position, 200.0)
-	for enemy in enemies.duplicate():
+	for enemy in enemies:
 		if not is_instance_valid(enemy) or enemy.dead:
 			continue
 		var offset: Vector2 = enemy.global_position - player.global_position
@@ -1371,6 +1421,14 @@ func end_run(victory: bool) -> void:
 		})
 		for id in newly:
 			announced.emit("¡Nueva habilidad: %s!" % AbilityCatalog.display_name(id), GOLD)
+		GameState.last_run_summary = {
+			"victory": victory, "kills": kills, "level": level, "time": int(elapsed),
+			"chests": _chests_opened, "evolutions": _evolutions_done,
+			"gold_collected": maxi(0, GameState.gold - _gold_at_start),
+			"damage": damage_by_source.duplicate(),
+			"skills": skills.duplicate(), "evolved": evolved.duplicate(),
+			"unlocked": newly,
+		}
 	GameState.finish_run(victory, kills)
 
 func _on_enemy_removed(enemy: EmberfallEnemy) -> void:
