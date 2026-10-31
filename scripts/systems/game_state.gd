@@ -85,6 +85,11 @@ var high_score := 0
 var permanent_damage := 0
 var permanent_health := 0
 var permanent_speed := 0
+## Every other permanent upgrade (UpgradeCatalog), id -> level.
+var permanent_upgrades: Dictionary = {}
+## Lifetime stats that unlock abilities (AbilityCatalog.UNLOCKS).
+var run_stats: Dictionary = {"lifetime_kills": 0, "bosses_defeated": 0, "best_level": 0, "chests_opened": 0, "evolutions_done": 0, "best_time": 0}
+var unlocked_abilities: Array[String] = []
 var music_enabled := true
 var effects_enabled := true
 var tutorial_completed := false
@@ -563,14 +568,12 @@ func open_chest_with_gems(tier_index: int) -> Dictionary:
 	equipment_inventory.append(item); inventory_changed.emit(); daily_chests += 1; weekly_chests += 1; missions_changed.emit(); save()
 	return item
 
-const UPGRADE_KINDS := ["damage", "health", "speed"]
-
 func buy_upgrade(kind: String) -> bool:
-	if kind not in UPGRADE_KINDS:
+	if not UpgradeCatalog.has(kind):
 		return false
 	var level_value := get_upgrade_level(kind)
-	var cost := 40 + level_value * 35
-	if level_value >= 10 or gold < cost:
+	var cost := UpgradeCatalog.cost(kind, level_value)
+	if level_value >= UpgradeCatalog.max_level(kind) or gold < cost:
 		SfxPlayer.play("economy/purchase_failed.wav", false)
 		return false
 	gold -= cost
@@ -585,13 +588,50 @@ func get_upgrade_level(kind: String) -> int:
 		"damage": return permanent_damage
 		"health": return permanent_health
 		"speed": return permanent_speed
-	return 0
+	return int(permanent_upgrades.get(kind, 0))
 
 func set_upgrade_level(kind: String, value: int) -> void:
 	match kind:
 		"damage": permanent_damage = clampi(value, 0, 10)
 		"health": permanent_health = clampi(value, 0, 10)
 		"speed": permanent_speed = clampi(value, 0, 10)
+		_:
+			if UpgradeCatalog.has(kind):
+				permanent_upgrades[kind] = clampi(value, 0, UpgradeCatalog.max_level(kind))
+
+## -- Ability unlocks --
+
+func is_ability_unlocked(id: String) -> bool:
+	return not AbilityCatalog.UNLOCKS.has(id) or id in unlocked_abilities
+
+## Progress toward an unlock as [current, target].
+func unlock_progress(id: String) -> Array:
+	var requirement: Dictionary = AbilityCatalog.UNLOCKS.get(id, {})
+	if requirement.is_empty():
+		return [1, 1]
+	return [int(run_stats.get(str(requirement["stat"]), 0)), int(requirement["target"])]
+
+## Called by game_world when a run ends (any way). Adds the run to the
+## lifetime stats and unlocks any ability whose goal was reached; returns
+## the newly unlocked ids.
+func record_run(stats: Dictionary) -> Array[String]:
+	run_stats["lifetime_kills"] = int(run_stats.get("lifetime_kills", 0)) + int(stats.get("kills", 0))
+	run_stats["bosses_defeated"] = int(run_stats.get("bosses_defeated", 0)) + (1 if stats.get("victory", false) else 0)
+	run_stats["chests_opened"] = int(run_stats.get("chests_opened", 0)) + int(stats.get("chests", 0))
+	run_stats["evolutions_done"] = int(run_stats.get("evolutions_done", 0)) + int(stats.get("evolutions", 0))
+	run_stats["best_level"] = maxi(int(run_stats.get("best_level", 0)), int(stats.get("level", 0)))
+	run_stats["best_time"] = maxi(int(run_stats.get("best_time", 0)), int(stats.get("time", 0)))
+	var unlocked: Array[String] = []
+	for id in AbilityCatalog.UNLOCKS:
+		if id in unlocked_abilities:
+			continue
+		var progress := unlock_progress(id)
+		if int(progress[0]) >= int(progress[1]):
+			unlocked_abilities.append(id)
+			unlocked.append(id)
+			add_notification("Habilidad desbloqueada: %s" % AbilityCatalog.display_name(id))
+	save()
+	return unlocked
 
 ## -- Equipment / chests --
 
@@ -840,6 +880,7 @@ func save() -> void:
 		"save_version": SAVE_FORMAT_VERSION,
 		"energy": energy, "energy_timestamp": energy_timestamp, "gold": gold, "high_score": high_score,
 		"damage": permanent_damage, "health": permanent_health, "speed": permanent_speed, "gems": gems,
+		"permanent_upgrades": permanent_upgrades, "run_stats": run_stats, "unlocked_abilities": unlocked_abilities,
 		"music": music_enabled, "effects": effects_enabled, "tutorial_completed": tutorial_completed,
 		"level": level, "experience": experience, "experience_to_next": experience_to_next,
 		"selected_character_id": str(selected_character_id), "selected_character_texture": selected_character_texture,
@@ -902,6 +943,22 @@ func load_save() -> void:
 	permanent_damage = clampi(_safe_int(data.get("damage"), 0), 0, 10)
 	permanent_health = clampi(_safe_int(data.get("health"), 0), 0, 10)
 	permanent_speed = clampi(_safe_int(data.get("speed"), 0), 0, 10)
+	permanent_upgrades = {}
+	var stored_upgrades = data.get("permanent_upgrades", {})
+	if stored_upgrades is Dictionary:
+		for key in stored_upgrades:
+			if UpgradeCatalog.has(str(key)) and str(key) not in UpgradeCatalog.LEGACY_IDS:
+				permanent_upgrades[str(key)] = clampi(_safe_int(stored_upgrades[key], 0), 0, UpgradeCatalog.max_level(str(key)))
+	var stored_stats = data.get("run_stats", {})
+	if stored_stats is Dictionary:
+		for key in run_stats.keys():
+			run_stats[key] = maxi(0, _safe_int(stored_stats.get(key), 0))
+	unlocked_abilities.clear()
+	var stored_unlocked = data.get("unlocked_abilities", [])
+	if stored_unlocked is Array:
+		for id in stored_unlocked:
+			if id is String and AbilityCatalog.UNLOCKS.has(id) and id not in unlocked_abilities:
+				unlocked_abilities.append(id)
 	music_enabled = _safe_bool(data.get("music"), true)
 	effects_enabled = _safe_bool(data.get("effects"), true)
 	tutorial_completed = _safe_bool(data.get("tutorial_completed"), false)

@@ -129,7 +129,7 @@ func damage(amount: int) -> void:
 	if game and game.try_block():
 		invulnerable = 0.6
 		return
-	invulnerable = 1.2
+	invulnerable = 1.2 + (game.invuln_bonus() if game else 0.0)
 	_hit_shake_time = 0.10
 	hp = maxi(0, hp - amount)
 	SfxPlayer.play("combat/player_hit.wav")

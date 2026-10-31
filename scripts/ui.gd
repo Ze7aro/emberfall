@@ -550,4 +550,4 @@ func _build_row(id: String) -> Control:
 func _exit_run() -> void:
 	if is_instance_valid(world):
 		GameState.change_screen("playing")
-		GameState.finish_run(false, world.kills)
+		world.end_run(false)

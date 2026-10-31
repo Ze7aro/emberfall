@@ -74,6 +74,11 @@ var orbs: Array[EmberfallXPOrb] = []
 var projectiles: Array[EmberfallProjectile] = []
 var pickups: Array[EmberfallPickup] = []
 var _next_elite_time := ELITE_INTERVAL_MIN
+## Run stats reported to GameState.record_run() (ability unlocks).
+var _chests_opened := 0
+var _evolutions_done := 0
+var _run_reported := false
+var _revives_left := 0
 var _events_fired: Array[int] = []
 var _attack_count := 0
 ## Owned actives and passives, id -> level (see AbilityCatalog). Insertion
@@ -133,6 +138,9 @@ func _ready() -> void:
 	player.died.connect(_on_player_died)
 	add_child(player)
 	_setup_lighting()
+	rerolls = 2 + _up("reroll")
+	banishes = 2 + _up("banish")
+	_revives_left = _up("revival")
 	_grant_starting_power()
 	for i in 4:
 		spawn_enemy()
@@ -635,6 +643,8 @@ func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = 
 	var final_amount := float(amount)
 	if apply_multiplier:
 		final_amount *= damage_multiplier()
+	if enemy.is_boss or enemy.elite_tier > 0:
+		final_amount *= boss_damage_multiplier()
 	final_amount *= enemy.consume_shock()
 	if can_crit and randf() < crit_chance():
 		_last_hit_crit = true
@@ -823,7 +833,7 @@ func spawn_pickup(at: Vector2, kind: int) -> void:
 	pickups.append(pickup)
 
 func _roll_small_drop(at: Vector2) -> void:
-	var roll := randf()
+	var roll := randf() / luck_multiplier()
 	if roll < DROP_POTION:
 		spawn_pickup(at, EmberfallPickup.Kind.POTION)
 	elif roll < DROP_POTION + DROP_MAGNET:
@@ -870,8 +880,9 @@ func _open_chest(epic: bool) -> void:
 		_apply_upgrade(pick)
 		gained.append("%s Nv.%d" % [AbilityCatalog.display_name(pick), ability_level(pick)])
 	_refresh_powers()
-	var gold := 30 if epic else 15
+	var gold := int(round((30 if epic else 15) * gold_multiplier()))
 	GameState.add_gold(gold)
+	_chests_opened += 1
 	var text := "Cofre: " + (", ".join(PackedStringArray(gained)) if not gained.is_empty() else "+%d de oro" % gold)
 	announced.emit(text, VIOLET if epic else GOLD)
 
@@ -1049,7 +1060,7 @@ func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 		_roll_small_drop(enemy.global_position)
 	if enemy == boss:
 		SfxPlayer.play("boss/boss_defeated.wav", false)
-		GameState.finish_run(true, kills)
+		end_run(true)
 	else:
 		SfxPlayer.play("combat/enemy_death.wav")
 
@@ -1087,11 +1098,31 @@ func spawn_gold(at: Vector2, amount: int) -> void:
 func passive_level(id: String) -> int:
 	return int(passives.get(id, 0))
 
+## Permanent upgrade level (UpgradeCatalog), bought between runs.
+func _up(id: String) -> int:
+	return GameState.get_upgrade_level(id)
+
 func pickup_radius() -> float:
-	return 80.0 + passive_level("magnet") * 35.0 + (60.0 if is_evolved("familiar") else 0.0)
+	return 80.0 + passive_level("magnet") * 35.0 + _up("magnet") * 20.0 + (60.0 if is_evolved("familiar") else 0.0)
 
 func damage_multiplier() -> float:
-	return 1.0 + passive_level("might") * 0.10
+	return 1.0 + passive_level("might") * 0.10 + _up("damage") * 0.03
+
+func boss_damage_multiplier() -> float:
+	return 1.0 + _up("boss_damage") * 0.10
+
+func xp_multiplier() -> float:
+	return 1.0 + _up("growth") * 0.04
+
+func gold_multiplier() -> float:
+	return 1.0 + _up("greed") * 0.10
+
+func luck_multiplier() -> float:
+	return 1.0 + _up("luck") * 0.25
+
+## Extra seconds of invulnerability after taking a hit (player.gd).
+func invuln_bonus() -> float:
+	return _up("invuln") * 0.15
 
 ## Movement speed is no longer an in-run pick (it moved to permanent
 ## upgrades); kept so player.gd's movement code needs no special case.
@@ -1100,34 +1131,34 @@ func speed_multiplier() -> float:
 
 ## Half-hearts per second.
 func regen_per_second() -> float:
-	return passive_level("regen") * 0.1
+	return passive_level("regen") * 0.1 + _up("regen") * (1.0 / 30.0)
 
 func armor_block_chance() -> float:
-	return passive_level("armor") * 0.08
+	return passive_level("armor") * 0.08 + _up("armor") * 0.03
 
 func crit_chance() -> float:
-	return passive_level("crit") * 0.08
+	return passive_level("crit") * 0.08 + _up("crit") * 0.03
 
 func crit_multiplier() -> float:
 	return 1.5 + passive_level("crit") * 0.2
 
 func attack_speed_multiplier() -> float:
-	return maxf(0.5, 1.0 - passive_level("haste") * 0.08)
+	return maxf(0.5, 1.0 - passive_level("haste") * 0.08 - _up("haste") * 0.04)
 
 func cooldown_multiplier() -> float:
-	return maxf(0.4, 1.0 - passive_level("cooldown") * 0.08)
+	return maxf(0.4, 1.0 - passive_level("cooldown") * 0.08 - _up("cooldown") * 0.03)
 
 func area_multiplier() -> float:
-	return 1.0 + passive_level("area") * 0.10
+	return 1.0 + passive_level("area") * 0.10 + _up("area") * 0.05
 
 func duration_multiplier() -> float:
-	return 1.0 + passive_level("duration") * 0.15
+	return 1.0 + passive_level("duration") * 0.15 + _up("duration") * 0.08
 
 func amount_bonus() -> int:
-	return passive_level("amount")
+	return passive_level("amount") + _up("amount")
 
 func proj_speed_multiplier() -> float:
-	return 1.0 + passive_level("proj_speed") * 0.15
+	return 1.0 + passive_level("proj_speed") * 0.15 + _up("proj_speed") * 0.08
 
 # --- Level-up -------------------------------------------------------------------
 
@@ -1178,6 +1209,8 @@ func _upgrade_candidates(exclude: Array[String] = []) -> Dictionary:
 	var result := {}
 	for id in AbilityCatalog.ACTIVES:
 		if id in banished or id in exclude:
+			continue
+		if not skills.has(id) and not GameState.is_ability_unlocked(id):
 			continue
 		if skills.has(id):
 			if skill_level(id) < MAX_ABILITY_LEVEL:
@@ -1251,6 +1284,7 @@ func _apply_upgrade(id: String) -> void:
 
 func _apply_evolution(source: String) -> void:
 	evolved.append(source)
+	_evolutions_done += 1
 	announced.emit("¡Evolución: %s!" % AbilityCatalog.display_name(source, true), GOLD)
 	_spawn_ability_fx("explosion_area", player.global_position, 170.0)
 	SfxPlayer.play("progression/fusion_unlocked.wav", false)
@@ -1304,7 +1338,40 @@ func banish_option(option_id: String) -> bool:
 	return true
 
 func _on_player_died() -> void:
-	GameState.finish_run(false, kills)
+	if _revives_left > 0:
+		_revive()
+		return
+	end_run(false)
+
+## Revivir (permanent upgrade): back with half health, a short grace window
+## and a shockwave that clears some room.
+func _revive() -> void:
+	_revives_left -= 1
+	player.hp = maxi(1, player.max_hp / 2)
+	player.invulnerable = 2.5
+	player.queue_redraw()
+	announced.emit("¡Reviviste!", GOLD)
+	SfxPlayer.play("progression/fusion_unlocked.wav", false)
+	_spawn_ability_fx("explosion_area", player.global_position, 200.0)
+	for enemy in enemies.duplicate():
+		if not is_instance_valid(enemy) or enemy.dead:
+			continue
+		var offset: Vector2 = enemy.global_position - player.global_position
+		if offset.length() < 200.0:
+			enemy.knockback(offset.normalized() * 600.0)
+
+## Every way a run can end goes through here, so lifetime stats (and the
+## ability unlocks they drive) are recorded exactly once.
+func end_run(victory: bool) -> void:
+	if not _run_reported:
+		_run_reported = true
+		var newly := GameState.record_run({
+			"victory": victory, "kills": kills, "level": level, "time": int(elapsed),
+			"chests": _chests_opened, "evolutions": _evolutions_done,
+		})
+		for id in newly:
+			announced.emit("¡Nueva habilidad: %s!" % AbilityCatalog.display_name(id), GOLD)
+	GameState.finish_run(victory, kills)
 
 func _on_enemy_removed(enemy: EmberfallEnemy) -> void:
 	enemies.erase(enemy)
@@ -1312,9 +1379,9 @@ func _on_enemy_removed(enemy: EmberfallEnemy) -> void:
 func _on_orb_removed(orb: EmberfallXPOrb) -> void:
 	if orb.collected:
 		if orb.is_gold:
-			GameState.add_gold(orb.value)
+			GameState.add_gold(int(round(orb.value * gold_multiplier())))
 		else:
-			add_xp(orb.value)
+			add_xp(int(round(orb.value * xp_multiplier())))
 	orbs.erase(orb)
 
 func _on_projectile_removed(projectile: EmberfallProjectile) -> void:

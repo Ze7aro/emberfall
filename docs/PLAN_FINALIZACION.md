@@ -224,6 +224,14 @@ Evoluciones: reutilizar la tira de su activa con un recoloreado dorado/blanco y 
 
 Con el mismo marco que 6.1: **Armadura** (pecho de armadura), **Suerte** (trébol rúnico de 4 hojas), **Descartar** (carta tachada con una X). El resto ya existe en `cuadros_habilidades_emberfall/`.
 
+**Dónde van:** `assets/cuadros_habilidades_emberfall/armadura.png`, `suerte.png` y `descartar.png` (la pantalla de Progreso los toma solos; mientras falten muestra la inicial).
+
+| Icono | {SÍMBOLO} | {COLOR} |
+|---|---|---|
+| Armadura | a sturdy chestplate with a rune rivet in the center | steel grey + cyan |
+| Suerte | a four-leaf clover made of glowing rune leaves | emerald green + cyan |
+| Descartar | a playing card crossed out with a bold X | violet + red X |
+
 ## Fuentes de referencia
 - [Vampire Survivors: weapon evolution guide (Prima Games)](https://primagames.com/gaming/vampire-survivors-weapon-evolution-guide)
 - [Vampire Survivors: passive item guide (Prima Games)](https://primagames.com/gaming/vampire-survivors-passive-item-guide)

@@ -17,6 +17,18 @@ const EVOLUTION_PREFIX := "evo:"
 ## Generated icons go here as `<id>.png` (and `evo_<id>.png` for
 ## evolutions); until they exist the UI falls back to `fallback_icon`, then
 ## to a drawn placeholder.
+## Locked actives and what unlocks them (lifetime stats in GameState). The
+## other 6 are available from the start, and a hero's own starting active is
+## always available in their runs even while still locked.
+const UNLOCKS := {
+	"boomerang": {"stat": "lifetime_kills", "target": 1000, "text": "Eliminá 1000 enemigos en total"},
+	"slash": {"stat": "bosses_defeated", "target": 1, "text": "Derrotá a un jefe"},
+	"meteor": {"stat": "best_level", "target": 20, "text": "Llegá al nivel 20 en una partida"},
+	"shard": {"stat": "chests_opened", "target": 5, "text": "Abrí 5 cofres de élite"},
+	"familiar": {"stat": "evolutions_done", "target": 1, "text": "Evolucioná una habilidad"},
+	"aegis": {"stat": "best_time", "target": 600, "text": "Sobreviví 10 minutos en una partida"},
+}
+
 const ICON_DIR := "res://assets/habilidades_iconos"
 const LEGACY_ICON_DIR := "res://assets/cuadros_habilidades_emberfall"
 
