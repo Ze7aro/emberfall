@@ -25,4 +25,7 @@ extends Resource
 @export var damage_modifier := 1.0 # multiplies this hero's own basic-attack damage
 @export var attack_speed_modifier := 1.0 # multiplies the basic-attack interval; < 1.0 = fires faster
 @export var move_speed_modifier := 1.0 # multiplies movement speed
+## AbilityCatalog active id this hero starts every run with (level 1), so
+## each hero's build opens from their own identity. "" = default (Dagas).
+@export var starting_power := ""
 @export var guaranteed_status := "" # "", "burn", "freeze", or "poison" — applied on every basic-attack hit (not left to the random passive chances), ties the hero's element to their identity instead of luck

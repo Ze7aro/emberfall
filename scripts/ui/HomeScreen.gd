@@ -68,7 +68,15 @@ func _side_button(y: float, icon_path: String, caption_text: String, on_press: C
 	badge.position = Vector2(side.size.x - 14.0, -8.0)
 	side.add_child(badge)
 	badge.visible = has_news.call()
-	changed.connect(func(_a = null): badge.visible = has_news.call())
+	# The signal lives on an autoload, so disconnect when the badge goes away;
+	# otherwise the lambda keeps firing after leaving Home and hits a freed node.
+	var refresh := func(_a = null):
+		if is_instance_valid(badge):
+			badge.visible = has_news.call()
+	changed.connect(refresh)
+	badge.tree_exiting.connect(func():
+		if changed.is_connected(refresh):
+			changed.disconnect(refresh))
 	var button := Button.new()
 	button.flat = true
 	button.focus_mode = Control.FOCUS_NONE

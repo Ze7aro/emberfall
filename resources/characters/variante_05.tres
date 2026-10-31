@@ -17,3 +17,4 @@ attack_color = Color(0.5529, 0.7961, 0.349, 1)
 attack_sprite_folder = "sylven_flecha"
 hp_modifier = -2
 attack_speed_modifier = 0.85
+starting_power = "shard"

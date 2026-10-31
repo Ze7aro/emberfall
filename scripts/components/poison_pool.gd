@@ -11,6 +11,8 @@ var radius := 55.0
 var lifetime := 4.0
 var tick_damage := 3
 var game_ref: Node
+## Plaga Abisal: the pool slowly drifts toward the nearest enemy.
+var chase_speed := 0.0
 var _elapsed := 0.0
 var _tick_clock := 0.0
 
@@ -31,6 +33,10 @@ func _physics_process(delta: float) -> void:
 	if _elapsed >= lifetime:
 		queue_free()
 		return
+	if chase_speed > 0.0 and is_instance_valid(game_ref):
+		var prey: EmberfallEnemy = game_ref.nearest_from(game_ref.enemies, global_position, 400.0)
+		if prey:
+			global_position = global_position.move_toward(prey.global_position, chase_speed * delta)
 	_tick_clock -= delta
 	if _tick_clock <= 0.0:
 		_tick_clock = 0.5

@@ -5,6 +5,7 @@ signal died
 const BASE_MAX_HP := 6 # 3 hearts, 2 half-heart units each
 const DEFAULT_SPRITE_FOLDER := "variante_01_baculo (Vaelor)"
 const SPRITE_SCALE := 0.2 # 256px source frames down to ~50px on screen
+const BASE_ATTACK_INTERVAL := 1.1 # seconds; Celeridad and the hero's modifier scale it
 
 var hp := BASE_MAX_HP
 var max_hp := BASE_MAX_HP
@@ -77,8 +78,7 @@ func _physics_process(delta: float) -> void:
 	_tick_regen(delta)
 	_update_animation(input, delta)
 	attack_clock += delta
-	var directed_level: int = game.skills.get("directed", 1)
-	var base_interval := 1.2 - float(directed_level - 1) * 0.1
+	var base_interval := BASE_ATTACK_INTERVAL
 	var hero_data := GameState.get_character_data(GameState.selected_character_id)
 	var hero_attack_speed_mod := hero_data.attack_speed_modifier if hero_data != null else 1.0
 	var attack_interval := maxf(0.25, base_interval * game.attack_speed_multiplier() * hero_attack_speed_mod)
@@ -117,8 +117,17 @@ func _tick_regen(delta: float) -> void:
 		hp = mini(max_hp, hp + whole)
 		queue_redraw()
 
+func heal(amount: int) -> void:
+	hp = mini(max_hp, hp + amount)
+	queue_redraw()
+
 func damage(amount: int) -> void:
 	if invulnerable > 0.0 or GameState.screen != "playing":
+		return
+	# Armadura / Égida Rúnica: a blocked hit still grants a short grace
+	# window so one swarm can't strip every charge in the same instant.
+	if game and game.try_block():
+		invulnerable = 0.6
 		return
 	invulnerable = 1.2
 	_hit_shake_time = 0.10
@@ -143,3 +152,7 @@ func _draw() -> void:
 	var heart_count := int(ceil(max_hp / 2.0))
 	var row_width := heart_count * 13.0 - 3.0
 	HeartsRow.draw_row(self, Vector2(-row_width / 2.0, -46), 10.0, 3.0, hp, max_hp, Color("e86958"), Color("29404a"))
+	# Égida Rúnica: one ring per stored charge.
+	if game and game.aegis_charges > 0:
+		for i in game.aegis_charges:
+			draw_arc(Vector2(0, -4), 30.0 + i * 5.0, 0.0, TAU, 32, Color(0.31, 0.84, 1.0, 0.55), 2.0)

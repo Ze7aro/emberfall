@@ -17,3 +17,4 @@ attack_color = Color(0.698, 0.549, 0.349, 1)
 attack_sprite_folder = "kaelgor"
 attack_range_scale = 0.3
 attack_frame_names = PackedStringArray("ground_crack_00.png", "ground_crack_01.png")
+starting_power = "meteor"

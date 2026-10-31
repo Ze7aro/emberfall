@@ -2,55 +2,7 @@ extends CanvasLayer
 
 const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 
-const POWER_NAMES := {
-	"directed": "DISPARO DIRIGIDO",
-	"orbital": "ONDA ORBITAL",
-	"area": "EXPLOSIÓN DE ÁREA",
-	"chain": "CADENA ELÉCTRICA",
-	"fire": "FUEGO CONSTANTE",
-	"blizzard": "VENTISCA",
-	"poison_bomb": "BOMBA VENENOSA",
-	"piercing": "PERFORACIÓN",
-	"magnetism": "MAGNETISMO",
-	"boost_damage": "MÁS DAÑO",
-	"boost_health": "MÁS VIDA",
-	"boost_speed": "MÁS VELOCIDAD",
-	"boost_regen": "REGENERACIÓN",
-	"poison_chance": "VENENO",
-	"burn_chance": "QUEMADURA",
-	"freeze_chance": "CONGELAMIENTO",
-	"extra_projectile": "PROYECTIL EXTRA",
-	"crit_chance": "PROBABILIDAD DE CRÍTICO",
-	"crit_damage": "DAÑO CRÍTICO",
-	"attack_speed": "VELOCIDAD DE ATAQUE",
-	"cooldown_reduction": "REDUCCIÓN DE ENFRIAMIENTO",
-	"ability_duration": "DURACIÓN",
-}
-
-const POWER_DESCRIPTIONS := {
-	"directed": "Disparo automático: más daño y velocidad de ataque",
-	"orbital": "Ondas de energía alrededor tuyo cada pocos segundos",
-	"area": "Explosión que golpea a todo lo que esté cerca tuyo",
-	"chain": "Rayo que salta entre varios enemigos cercanos",
-	"fire": "Quema constantemente a los enemigos que tengas cerca",
-	"blizzard": "Lluvia de escarcha en un punto al azar cerca tuyo: daña y congela",
-	"poison_bomb": "Lanza una bomba cerca tuyo que deja un charco venenoso",
-	"piercing": "Tu disparo automático atraviesa más enemigos",
-	"magnetism": "Aumenta la distancia a la que recogés oro y experiencia",
-	"boost_damage": "Aumenta el daño de todos tus ataques",
-	"boost_health": "Aumenta tu vida máxima y te cura esa cantidad",
-	"boost_speed": "Aumenta tu velocidad de movimiento",
-	"boost_regen": "Regenerás vida automáticamente cada segundo",
-	"poison_chance": "Probabilidad de envenenar al golpear: daño por segundo",
-	"burn_chance": "Probabilidad de quemar al golpear: daño por segundo",
-	"freeze_chance": "Probabilidad de congelar al golpear: ralentiza al enemigo",
-	"extra_projectile": "Tu disparo automático lanza un proyectil adicional",
-	"crit_chance": "Aumenta la probabilidad de golpe crítico",
-	"crit_damage": "Aumenta el daño extra de tus golpes críticos",
-	"attack_speed": "Aumenta la velocidad de tu disparo automático",
-	"cooldown_reduction": "Reduce el tiempo de reutilización de tus habilidades activas",
-	"ability_duration": "Aumenta la duración de veneno, quemadura y congelamiento",
-}
+const GOLD := Color("e8b84a")
 
 var world: Node
 var xp_bar: ProgressBar
@@ -63,6 +15,12 @@ var panel: PanelContainer
 var pause_button: Button
 var pause_panel: PanelContainer
 var _confirm_exit := false
+## Owned abilities, always visible under the timer (actives row, passives
+## row). Rebuilt only when `_build_signature` changes, not every frame.
+var _build_bar: VBoxContainer
+var _build_signature := ""
+## "Descartar" arms this; the next card tapped is banished instead of picked.
+var _banish_mode := false
 
 ## First-run guidance (PLAY-01): a non-blocking hint that states the goal and
 ## the control scheme, gone as soon as the player actually moves, plus one
@@ -93,6 +51,11 @@ func setup(owner: Node) -> void:
 	timer_label.position = Vector2(16, 118)
 	timer_label.add_theme_font_size_override("font_size", 16)
 	add_child(timer_label)
+	_build_bar = VBoxContainer.new()
+	_build_bar.position = Vector2(16, 144)
+	_build_bar.add_theme_constant_override("separation", 3)
+	_build_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_build_bar)
 	boss_label = Label.new()
 	boss_label.position = Vector2(0, 20)
 	boss_label.anchor_left = 0.5; boss_label.anchor_right = 0.5
@@ -179,6 +142,7 @@ func _process(_delta: float) -> void:
 	boss_bar.visible = boss_alive
 	if boss_alive:
 		boss_bar.value = float(world.boss.hp) / float(world.boss.max_hp) * 100.0
+	_refresh_build_bar()
 	if GameState.screen == "level_up" and not panel:
 		show_level_up()
 	if GameState.screen != "level_up" and panel:
@@ -197,22 +161,26 @@ func _add_blocker_for(target: Control) -> void:
 	target.tree_exited.connect(blocker.queue_free)
 
 func show_level_up() -> void:
+	_banish_mode = false
 	panel = PanelContainer.new()
 	panel.theme = UiTheme.make_theme()
 	panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4)))
 	_add_blocker_for(panel)
-	panel.position = Vector2(20, 190)
-	panel.size = Vector2(350, 370)
+	# Centered on any screen size instead of a fixed 390×844 position.
+	panel.anchor_left = 0.5; panel.anchor_right = 0.5
+	panel.anchor_top = 0.5; panel.anchor_bottom = 0.5
+	panel.offset_left = -LEVEL_UP_SIZE.x / 2.0; panel.offset_right = LEVEL_UP_SIZE.x / 2.0
+	panel.offset_top = -LEVEL_UP_SIZE.y / 2.0; panel.offset_bottom = LEVEL_UP_SIZE.y / 2.0
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	panel.add_child(box)
 	box.add_child(UiTheme.header("ELIGE UN PODER", "TU LEYENDA EVOLUCIONA", 24))
-	var category := Label.new()
-	category.text = "PASIVAS" if world.current_options_are_boosts else "ACTIVAS"
-	category.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	category.add_theme_font_size_override("font_size", 14)
-	category.add_theme_color_override("font_color", UiTheme.ACCENT)
-	box.add_child(category)
+	var slots := Label.new()
+	slots.text = "ACTIVAS %d/%d  ·  PASIVAS %d/%d" % [world.skills.size(), AbilityCatalog.ACTIVE_SLOTS, world.passives.size(), AbilityCatalog.PASSIVE_SLOTS]
+	slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	slots.add_theme_font_size_override("font_size", 12)
+	slots.add_theme_color_override("font_color", UiTheme.ACCENT)
+	box.add_child(slots)
 	if _tutorial_active:
 		var hint := Label.new()
 		hint.text = "Elegí una para mejorar a tu personaje"
@@ -226,103 +194,187 @@ func show_level_up() -> void:
 	row.add_theme_constant_override("separation", 6)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(row)
-	for power in world.current_level_up_options:
-		row.add_child(_build_power_card(power))
-	var reroll := Button.new()
-	reroll.text = "CAMBIAR OPCIONES  (%d)" % world.rerolls
-	reroll.disabled = world.rerolls <= 0
-	reroll.pressed.connect(_reroll)
-	box.add_child(reroll)
+	for option in world.current_level_up_options:
+		row.add_child(_build_power_card(option))
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 6)
+	box.add_child(actions)
+	actions.add_child(_action_button("CAMBIAR (%d)" % world.rerolls, world.rerolls > 0, _reroll))
+	var banish := _action_button("DESCARTAR (%d)" % world.banishes, world.banishes > 0, _toggle_banish)
+	banish.toggle_mode = true
+	actions.add_child(banish)
+	actions.add_child(_action_button("SALTAR", true, _skip))
 	add_child(panel)
-	panel.pivot_offset = panel.size * 0.5
+	panel.pivot_offset = LEVEL_UP_SIZE * 0.5
 	panel.scale = Vector2(0.96, 0.96)
 	panel.modulate.a = 0.0
 	var appear := panel.create_tween().set_parallel(true)
 	appear.tween_property(panel, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	appear.tween_property(panel, "modulate:a", 1.0, 0.10)
 
-const POWER_ICONS := {
-	"directed": "res://assets/cuadros_habilidades_emberfall/proyectiles.png",
-	"orbital": "res://assets/cuadros_habilidades_emberfall/area.png",
-	"area": "res://assets/cuadros_habilidades_emberfall/area.png",
-	"chain": "res://assets/cuadros_habilidades_emberfall/rebote_De_proyextiles.png",
-	"fire": "res://assets/cuadros_habilidades_emberfall/daño_de_fuego.png",
-	"piercing": "res://assets/cuadros_habilidades_emberfall/penetracion.png",
-	"magnetism": "res://assets/cuadros_habilidades_emberfall/area_recoleccion_experiencia.png",
-	"boost_damage": "res://assets/cuadros_habilidades_emberfall/daño.png",
-	"boost_health": "res://assets/cuadros_habilidades_emberfall/corazon_extra.png",
-	"boost_speed": "res://assets/cuadros_habilidades_emberfall/velocidad_de_movimiento.png",
-	"boost_regen": "res://assets/cuadros_habilidades_emberfall/corazon_extra_II.png",
-	"poison_chance": "res://assets/cuadros_habilidades_emberfall/daño_de_veneno.png",
-	"burn_chance": "res://assets/cuadros_habilidades_emberfall/daño_de_fuego.png",
-	"extra_projectile": "res://assets/cuadros_habilidades_emberfall/proyectiles.png",
-	"crit_chance": "res://assets/cuadros_habilidades_emberfall/probabilidad_de_critico.png",
-	"crit_damage": "res://assets/cuadros_habilidades_emberfall/daño_critico.png",
-	"attack_speed": "res://assets/cuadros_habilidades_emberfall/velocidad_de_ataque.png",
-	"cooldown_reduction": "res://assets/cuadros_habilidades_emberfall/cooldown.png",
-	"ability_duration": "res://assets/cuadros_habilidades_emberfall/duracion.png",
-}
+const LEVEL_UP_SIZE := Vector2(350, 420)
 
-func _build_power_card(power: String) -> Control:
+func _action_button(text: String, enabled: bool, on_press: Callable) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.disabled = not enabled
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 11)
+	button.custom_minimum_size = Vector2(0, 44)
+	button.pressed.connect(on_press)
+	return button
+
+func _build_power_card(option: String) -> Control:
+	var is_evolution := AbilityCatalog.is_evolution(option)
+	var base_id := AbilityCatalog.evolution_source(option) if is_evolution else option
 	var card := PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.custom_minimum_size = Vector2(0, 230)
-	card.add_theme_stylebox_override("panel", UiTheme.kit("panel_card", UiTheme.slot(true, 6), 6.0))
+	var card_style := UiTheme.slot(true, 6)
+	if is_evolution:
+		card_style.border_color = GOLD
+		card_style.shadow_color = Color(GOLD, 0.45)
+		card_style.shadow_size = 10
+		card.add_theme_stylebox_override("panel", card_style)
+	else:
+		card.add_theme_stylebox_override("panel", UiTheme.kit("panel_card", card_style, 6.0))
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 4)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(stack)
-	var icon_path: String = POWER_ICONS.get(power, "")
-	if icon_path != "" and ResourceLoader.exists(icon_path):
-		var icon := TextureRect.new()
-		icon.texture = load(icon_path) as Texture2D
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.custom_minimum_size = Vector2(0, 56)
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		stack.add_child(icon)
-	var name_label := Label.new()
-	name_label.text = str(POWER_NAMES.get(power, power))
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_label.add_theme_font_size_override("font_size", 11)
-	name_label.add_theme_color_override("font_color", UiTheme.ACCENT)
-	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(name_label)
-	var level_label := Label.new()
-	level_label.text = "NV. %d/%d" % [world.ability_level(power), world.MAX_ABILITY_LEVEL]
-	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	level_label.add_theme_font_size_override("font_size", 11)
-	level_label.add_theme_color_override("font_color", UiTheme.PURPLE)
-	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(level_label)
-	var desc := Label.new()
-	desc.text = str(POWER_DESCRIPTIONS.get(power, ""))
-	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var current_level: int = 0 if is_evolution else world.ability_level(option)
+	var kind_text := "EVOLUCIÓN"
+	if not is_evolution:
+		kind_text = "ACTIVA" if AbilityCatalog.is_active(option) else "PASIVA"
+		if current_level == 0:
+			kind_text += " · NUEVA"
+	stack.add_child(_card_label(kind_text, 9, GOLD if is_evolution else UiTheme.TEXT_MUTED))
+	var icon := _ability_icon(base_id, is_evolution, 56.0)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	stack.add_child(icon)
+	stack.add_child(_card_label(AbilityCatalog.display_name(base_id, is_evolution), 11, GOLD if is_evolution else UiTheme.ACCENT))
+	if is_evolution:
+		var paired := str(AbilityCatalog.ACTIVES[base_id]["evolution"]["passive"])
+		stack.add_child(_card_label("%s + %s" % [AbilityCatalog.display_name(base_id), AbilityCatalog.display_name(paired)], 8, UiTheme.PURPLE))
+	else:
+		stack.add_child(_card_label("NV. %d → %d" % [current_level, current_level + 1], 11, UiTheme.PURPLE))
+	var desc := _card_label(AbilityCatalog.description(option), 10, UiTheme.TEXT_MUTED)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	desc.add_theme_font_size_override("font_size", 10)
-	desc.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
-	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(desc)
-	# The whole card is the button; selection logic is unchanged.
+	# Every active card names its evolution partner, so the player learns
+	# recipes while playing instead of needing a wiki.
+	if not is_evolution and AbilityCatalog.is_active(option):
+		var partner := str(AbilityCatalog.ACTIVES[option]["evolution"]["passive"])
+		stack.add_child(_card_label("Evoluciona con %s" % AbilityCatalog.display_name(partner), 8, Color(GOLD, 0.75)))
+	# The whole card is the button.
 	var pick := Button.new()
 	pick.flat = true
 	pick.focus_mode = Control.FOCUS_NONE
 	pick.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	pick.pressed.connect(_choose.bind(power))
+	pick.pressed.connect(_on_card_pressed.bind(option))
 	card.add_child(pick)
 	return card
 
-func _choose(power: String) -> void:
-	world.choose_power(power)
-	if _tutorial_active:
-		_tutorial_active = false
-		GameState.mark_tutorial_completed()
+func _card_label(text: String, font_size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+## Icon for an ability, or a drawn placeholder (colored tile with the
+## initial) until its generated art exists — see AbilityCatalog.icon().
+func _ability_icon(id: String, evolved: bool, size: float) -> Control:
+	var texture := AbilityCatalog.icon(id, evolved)
+	if texture != null:
+		var rect := TextureRect.new()
+		rect.texture = texture
+		rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rect.custom_minimum_size = Vector2(size, size)
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if evolved:
+			rect.modulate = Color(1.15, 1.05, 0.8)
+		return rect
+	var tile := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("1a1028")
+	style.border_color = GOLD if evolved else AbilityCatalog.color(id)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(int(size * 0.2))
+	tile.add_theme_stylebox_override("panel", style)
+	tile.custom_minimum_size = Vector2(size, size)
+	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var initial := _card_label(AbilityCatalog.display_name(id).left(1), int(size * 0.5), style.border_color)
+	initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tile.add_child(initial)
+	return tile
+
+func _on_card_pressed(option: String) -> void:
+	if _banish_mode:
+		if world.banish_option(option):
+			SfxPlayer.play_ui("ui/ui_select.wav")
+			_close_level_up_panel()
+		return
+	_choose(option)
+
+func _toggle_banish() -> void:
+	_banish_mode = not _banish_mode
+
+func _skip() -> void:
+	world.skip_level_up()
+	_close_level_up_panel()
+
+func _close_level_up_panel() -> void:
 	if is_instance_valid(panel):
 		panel.queue_free()
 		panel = null
+
+func _choose(option: String) -> void:
+	world.choose_power(option)
+	if _tutorial_active:
+		_tutorial_active = false
+		GameState.mark_tutorial_completed()
+	_close_level_up_panel()
+
+## Actives row + passives row; evolved actives get a gold border.
+func _refresh_build_bar() -> void:
+	var signature := "%s|%s|%s" % [world.skills, world.passives, world.evolved]
+	if signature == _build_signature:
+		return
+	_build_signature = signature
+	for child in _build_bar.get_children():
+		child.queue_free()
+	for group in [world.skills, world.passives]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 3)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_build_bar.add_child(row)
+		for id in group:
+			row.add_child(_build_slot(id, int(group[id]), world.is_evolved(id), 26.0))
+	_build_bar.visible = not world.skills.is_empty() or not world.passives.is_empty()
+
+func _build_slot(id: String, lvl: int, evolved: bool, size: float) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(size, size)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon := _ability_icon(id, evolved, size)
+	holder.add_child(icon)
+	var badge := Label.new()
+	badge.text = "★" if evolved else str(lvl)
+	badge.position = Vector2(size - 9, size - 13)
+	badge.add_theme_font_size_override("font_size", 10)
+	badge.add_theme_color_override("font_color", GOLD if evolved else UiTheme.TEXT)
+	badge.add_theme_color_override("font_shadow_color", Color.BLACK)
+	badge.add_theme_constant_override("shadow_offset_x", 1)
+	badge.add_theme_constant_override("shadow_offset_y", 1)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(badge)
+	return holder
 
 func _on_joystick(value: Vector2) -> void:
 	if is_instance_valid(world) and is_instance_valid(world.player):
@@ -331,8 +383,7 @@ func _on_joystick(value: Vector2) -> void:
 func _reroll() -> void:
 	if world.reroll_power_choices():
 		SfxPlayer.play_ui("ui/ui_select.wav")
-		panel.queue_free()
-		panel = null
+		_close_level_up_panel()
 
 func show_pause_panel() -> void:
 	pause_panel = PanelContainer.new()
@@ -391,22 +442,20 @@ func _build_pause_content() -> void:
 		pause_sub.add_theme_font_size_override("font_size", 11)
 		pause_sub.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		box.add_child(pause_sub)
-		var fusion_title := Label.new()
-		fusion_title.text = "FUSIONES"
-		fusion_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		fusion_title.add_theme_font_size_override("font_size", 14)
-		fusion_title.add_theme_color_override("font_color", UiTheme.ACCENT)
-		box.add_child(fusion_title)
-		var fusion_scroll := ScrollContainer.new()
-		fusion_scroll.custom_minimum_size = Vector2(0, 160)
-		fusion_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		box.add_child(fusion_scroll)
-		var fusion_list := VBoxContainer.new()
-		fusion_list.add_theme_constant_override("separation", 8)
-		fusion_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		fusion_scroll.add_child(fusion_list)
-		for fusion_name in world.FUSION_RECIPES:
-			fusion_list.add_child(_build_fusion_row(fusion_name))
+		box.add_child(_card_label("TU BUILD", 14, UiTheme.ACCENT))
+		var build_scroll := ScrollContainer.new()
+		build_scroll.custom_minimum_size = Vector2(0, 160)
+		build_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		build_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		box.add_child(build_scroll)
+		var build_list := VBoxContainer.new()
+		build_list.add_theme_constant_override("separation", 6)
+		build_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		build_scroll.add_child(build_list)
+		for id in world.skills:
+			build_list.add_child(_build_row(id))
+		for id in world.passives:
+			build_list.add_child(_build_row(id))
 		var resume := Button.new()
 		resume.text = "REANUDAR"
 		resume.icon = UiTheme.icon("play.png")
@@ -423,30 +472,27 @@ func _build_pause_content() -> void:
 		)
 		box.add_child(exit)
 
-func _build_fusion_row(fusion_name: String) -> Control:
-	var unlocked: bool = world.fusions.has(fusion_name)
-	var pair: Array = world.FUSION_RECIPES[fusion_name]
-	var row := VBoxContainer.new()
-	row.add_theme_constant_override("separation", 2)
-	var label := Label.new()
-	label.text = ("✓ " if unlocked else "🔒 ") + fusion_name
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", UiTheme.ACCENT if unlocked else UiTheme.TEXT_MUTED)
-	row.add_child(label)
-	if not unlocked:
-		var req := Label.new()
-		var level_a: int = world.ability_level(pair[0])
-		var level_b: int = world.ability_level(pair[1])
-		req.text = "%s Nv.%d/%d  +  %s Nv.%d/%d" % [
-			str(POWER_NAMES.get(pair[0], pair[0])), level_a, world.FUSION_LEVEL_REQUIRED,
-			str(POWER_NAMES.get(pair[1], pair[1])), level_b, world.FUSION_LEVEL_REQUIRED,
-		]
-		req.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		req.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		req.add_theme_font_size_override("font_size", 9)
-		req.add_theme_color_override("font_color", Color("8a7d9c"))
-		row.add_child(req)
+## One pause-screen line per owned ability; actives also show how close
+## they are to evolving (level + paired passive).
+func _build_row(id: String) -> Control:
+	var evolved: bool = world.is_evolved(id)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.add_child(_ability_icon(id, evolved, 32.0))
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 0)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(text)
+	var title := _card_label("%s  NV.%d" % [AbilityCatalog.display_name(id, evolved), world.ability_level(id)], 11, GOLD if evolved else UiTheme.TEXT)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	text.add_child(title)
+	if AbilityCatalog.is_active(id) and not evolved:
+		var partner := str(AbilityCatalog.ACTIVES[id]["evolution"]["passive"])
+		var ready_level: bool = world.ability_level(id) >= AbilityCatalog.MAX_LEVEL
+		var has_partner: bool = world.passive_level(partner) > 0
+		var hint := _card_label("%s Nv.%d/%d  ·  %s %s" % ["✓" if ready_level else "·", world.ability_level(id), AbilityCatalog.MAX_LEVEL, "✓" if has_partner else "·", AbilityCatalog.display_name(partner)], 9, Color("8a7d9c"))
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		text.add_child(hint)
 	return row
 
 func _exit_run() -> void:

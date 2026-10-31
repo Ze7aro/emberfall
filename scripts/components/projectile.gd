@@ -9,6 +9,7 @@ const DEFAULT_FRAME_NAMES: PackedStringArray = ["projectile_00.png", "projectile
 var direction := Vector2.RIGHT
 var damage_amount := 20
 var lifetime := 3.0
+var speed := 520.0
 var color := Color(0.2, 0.95, 0.85)
 
 var _sprite: AnimatedSprite2D
@@ -64,7 +65,7 @@ func _build_frames(folder: String, frame_names: PackedStringArray) -> SpriteFram
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":
 		return
-	global_position += direction * 520.0 * delta
+	global_position += direction * speed * delta
 	lifetime -= delta
 	if lifetime <= 0.0:
 		queue_free()

@@ -104,7 +104,7 @@ func _build() -> void:
 	settings.tooltip_text = "Configuración"
 	settings.accessibility_name = "Abrir configuración"
 	settings.icon = load(ART_DIR + "icons/settings.png") as Texture2D
-	settings.icon_max_width = 22
+	settings.add_theme_constant_override("icon_max_width", 22)
 	settings.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	settings.offset_left = -44
 	settings.offset_right = -4

@@ -28,6 +28,10 @@ var game_ref: Node
 ## z-order note in _physics_process for why that's needed instead of z_index.
 var player_node: Node2D
 var damage := 10
+## Scales the orbit with the Área passive.
+var radius_scale := 1.0
+## Eclipse Eterno: each hit also pushes the enemy outward.
+var knockback_force := 0.0
 var moon_count := MIN_MOONS:
 	set(value):
 		var clamped := clampi(value, MIN_MOONS, MAX_MOONS)
@@ -60,7 +64,7 @@ func _physics_process(delta: float) -> void:
 		if not is_instance_valid(moon):
 			continue
 		var angle := _orbit_time * ANGULAR_SPEED + TAU * float(i) / float(moon_count)
-		moon.position = Vector2(cos(angle) * RADIUS_X, sin(angle) * RADIUS_Y)
+		moon.position = Vector2(cos(angle) * RADIUS_X, sin(angle) * RADIUS_Y) * radius_scale
 		# Passes in front of the player for the lower half of the orbit,
 		# behind for the upper half — a cheap pseudo-depth cue for the 3/4
 		# view. Done by reordering as a sibling of the player's own sprite
@@ -93,3 +97,5 @@ func _check_hits(moon: EmberfallOrbitalMoon, moon_index: int) -> void:
 			continue
 		enemy.set_meta(meta_key, _orbit_time)
 		game_ref._apply_damage(enemy, damage)
+		if knockback_force > 0.0 and is_instance_valid(enemy) and is_instance_valid(player_node):
+			enemy.knockback(player_node.global_position.direction_to(enemy.global_position) * knockback_force)

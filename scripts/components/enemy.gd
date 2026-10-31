@@ -28,7 +28,12 @@ var burn_timer := 0.0
 var burn_tick_clock := 0.0
 var burn_damage := 0
 var freeze_timer := 0.0
+## Electrocutado (Cadena Eléctrica): the next hit taken deals +25%.
+var shock_timer := 0.0
 var hit_flash := 0.0
+## Push from abilities (Eclipse Eterno, Bastión), decays on its own. Bosses
+## ignore it — their state machine owns their movement.
+var _knockback := Vector2.ZERO
 
 # Shooter (tirador): holds a preferred distance and fires at the player
 # instead of closing in for contact damage.
@@ -95,6 +100,20 @@ func apply_freeze(duration: float) -> void:
 	freeze_timer = maxf(freeze_timer, duration)
 	SfxPlayer.play("status/freeze_apply.wav")
 
+func apply_shock(duration: float) -> void:
+	shock_timer = maxf(shock_timer, duration)
+
+## Returns the multiplier for an incoming hit and consumes the shock.
+func consume_shock() -> float:
+	if shock_timer <= 0.0:
+		return 1.0
+	shock_timer = 0.0
+	return 1.25
+
+func knockback(impulse: Vector2) -> void:
+	if not is_boss:
+		_knockback = impulse
+
 func _physics_process(delta: float) -> void:
 	if dead or not is_instance_valid(target) or GameState.screen != "playing":
 		return
@@ -109,6 +128,9 @@ func _physics_process(delta: float) -> void:
 			_process_charger(delta)
 		_:
 			_process_chase(delta)
+	if _knockback.length_squared() > 1.0:
+		position += _knockback * delta
+		_knockback = _knockback.move_toward(Vector2.ZERO, 900.0 * delta)
 	queue_redraw()
 
 func _process_chase(delta: float) -> void:
@@ -180,6 +202,7 @@ func _process_charger(delta: float) -> void:
 
 func _tick_status(delta: float) -> void:
 	freeze_timer = maxf(0.0, freeze_timer - delta)
+	shock_timer = maxf(0.0, shock_timer - delta)
 	if poison_timer > 0.0:
 		poison_timer -= delta
 		poison_tick_clock -= delta
@@ -255,3 +278,5 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, size / 2 + 5, Color(1.0, 0.5, 0.1, 0.3))
 	if freeze_timer > 0.0:
 		draw_circle(Vector2.ZERO, size / 2 + 5, Color(0.4, 0.8, 1.0, 0.3))
+	if shock_timer > 0.0:
+		draw_arc(Vector2.ZERO, size / 2 + 3, 0.0, TAU, 12, Color(0.5, 0.96, 0.92, 0.7), 2.0)

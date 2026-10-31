@@ -17,3 +17,4 @@ attack_color = Color(0.7529, 0.8, 0.898, 1)
 attack_sprite_folder = "darven"
 attack_range_scale = 0.35
 attack_frame_names = PackedStringArray("slash_x_00.png", "slash_x_01.png")
+starting_power = "slash"

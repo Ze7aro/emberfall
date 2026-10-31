@@ -17,3 +17,4 @@ attack_color = Color(0.4314, 0.8784, 0.4196, 1)
 attack_sprite_folder = "disparo_veneno"
 attack_speed_modifier = 1.1
 guaranteed_status = "poison"
+starting_power = "poison_bomb"

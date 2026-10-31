@@ -1,11 +1,10 @@
 extends Node2D
 
 const BOSS_TIME := 720.0
-const POWER_IDS: Array[String] = ["directed", "orbital", "area", "chain", "fire", "blizzard", "poison_bomb"]
-const BOOST_IDS: Array[String] = ["boost_damage", "boost_health", "boost_speed", "boost_regen", "magnetism", "piercing", "poison_chance", "burn_chance", "freeze_chance", "extra_projectile", "crit_chance", "crit_damage", "attack_speed", "cooldown_reduction", "ability_duration"]
-const BOOST_HEALTH_AMOUNT := 2 # 1 full heart per pick
-const MAX_ABILITY_LEVEL := 6
+const MAX_ABILITY_LEVEL := AbilityCatalog.MAX_LEVEL
 const ABILITY_SPRITE_FX := preload("res://scripts/components/ability_sprite_fx.gd")
+## Used when a hero has no starting_power set in its CharacterData.
+const DEFAULT_STARTING_POWER := "daggers"
 
 ## STAGE-01: each of the 10 campaign stages (keyed by HomeScreen's 1-based
 ## index, matching its STAGE_NAMES order) gets its own enemy mix instead of
@@ -46,24 +45,31 @@ var enemies: Array[EmberfallEnemy] = []
 var orbs: Array[EmberfallXPOrb] = []
 var projectiles: Array[EmberfallProjectile] = []
 var _attack_count := 0
-var skills: Dictionary = {"directed": 1}
-var boosts: Dictionary = {
-	"boost_damage": 0, "boost_health": 0, "boost_speed": 0, "boost_regen": 0, "magnetism": 0, "piercing": 0,
-	"poison_chance": 0, "burn_chance": 0, "freeze_chance": 0, "extra_projectile": 0, "crit_chance": 0, "crit_damage": 0,
-	"attack_speed": 0, "cooldown_reduction": 0, "ability_duration": 0,
-}
+## Owned actives and passives, id -> level (see AbilityCatalog). Insertion
+## order is pick order, which the build bar shows as-is.
+var skills: Dictionary = {}
+var passives: Dictionary = {}
+## Actives that already evolved (their id stays in `skills`).
+var evolved: Array[String] = []
+## Options removed from this run with "Descartar".
+var banished: Array[String] = []
 var pending_levels := 0
 var rerolls := 2
-var fusions: Array[String] = []
-var skill_timers := {"orbital": 0.0, "area": 0.0, "chain": 0.0, "fire": 0.0, "blizzard": 0.0, "poison_bomb": 0.0}
+var banishes := 2
+var skill_timers := {}
 var boss: EmberfallEnemy
 var boss_spawned := false
-## Alternates the level-up screen between offering powers or boosts, one at a
-## time. Starts true so the first flip lands on false (actives come first).
-var current_options_are_boosts := true
 var current_level_up_options: Array[String] = []
 var _orbital_wave: EmberfallOrbitalWave
 var _fire_aura: EmberfallPersistentAura
+var _perpetual_winter: EmberfallFrostZone
+var _familiars: Array[EmberfallSpectralFamiliar] = []
+var aegis_charges := 0
+var _aegis_clock := 0.0
+var _solar_heal_clock := 0.0
+var _cataclysm_clock := 0.0
+## Set by _apply_damage so callers (Guadaña del Vacío) know if the hit crit.
+var _last_hit_crit := false
 
 ## STAGE-01: no per-biome background art exists yet, so a flat tint stands in
 ## for "bioma" — chapter 1 (Criptas/Ruinas/Forja/Bosque) reads cold violet,
@@ -95,9 +101,20 @@ func _ready() -> void:
 	player.setup(self)
 	player.died.connect(_on_player_died)
 	add_child(player)
+	_grant_starting_power()
 	for i in 4:
 		spawn_enemy()
 	queue_redraw()
+
+## Each hero starts with the active that defines them (CharacterData's
+## starting_power), so their element shows from the first second.
+func _grant_starting_power() -> void:
+	var hero_data := GameState.get_character_data(GameState.selected_character_id)
+	var start := DEFAULT_STARTING_POWER
+	if hero_data != null and AbilityCatalog.is_active(hero_data.starting_power):
+		start = hero_data.starting_power
+	skills[start] = 1
+	_refresh_powers()
 
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":
@@ -135,67 +152,357 @@ func spawn_boss() -> void:
 	add_child(boss)
 	enemies.append(boss)
 
+# --- Active abilities --------------------------------------------------------
+
+## Fires every owned active whose own clock is due. Persistent ones
+## (Lunas, Aura, Familiar, Invierno Perpetuo) live as nodes that
+## _refresh_powers() keeps in sync; only their periodic extras tick here.
 func update_powers(delta: float) -> void:
-	for key in skill_timers:
-		skill_timers[key] = float(skill_timers[key]) + delta
-	var cooldown := cooldown_multiplier()
-	# Onda Orbital v2: the moons themselves (EmberfallOrbitalWave) do their own
-	# continuous per-target damage every physics frame — this timer only
-	# drives the Corona del Trueno fusion's bonus bolt to whatever's beyond
-	# the moons' actual orbit, since that's an occasional proc, not a constant.
-	if int(skills.get("orbital", 0)) > 0 and fusions.has("Corona del Trueno") and skill_timers["orbital"] >= 0.6 * cooldown:
-		skill_timers["orbital"] = 0.0
-		var outside_ring := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and e.global_position.distance_to(player.global_position) >= EmberfallOrbitalWave.RADIUS_X)
-		var crown_target: EmberfallEnemy = nearest_from(outside_ring, player.global_position)
-		if crown_target:
-			_apply_damage(crown_target, 10 + int(skills["orbital"]) * 5)
-			_spawn_chain_fx(player.global_position, crown_target.global_position)
-	if int(skills.get("area", 0)) > 0 and skill_timers["area"] >= 2.4 * cooldown:
-		skill_timers["area"] = 0.0
-		SfxPlayer.play("abilities/area_explosion.wav")
+	for id in skills:
+		skill_timers[id] = float(skill_timers.get(id, 0.0)) + delta
+	var cd := cooldown_multiplier()
+	if skills.has("daggers"):
+		var interval := (0.3 if is_evolved("daggers") else 1.1) * attack_speed_multiplier()
+		if _due("daggers", interval):
+			_fire_daggers(skill_level("daggers"))
+	if skills.has("fire") and _due("fire", FIRE_TICK_INTERVAL):
+		_tick_fire_aura(skill_level("fire"), delta)
+	if skills.has("chain") and _due("chain", (1.2 if is_evolved("chain") else 2.0) * cd):
+		_fire_chain(skill_level("chain"))
+	if skills.has("poison_bomb") and _due("poison_bomb", 4.0 * cd):
+		for i in (2 if is_evolved("poison_bomb") else 1):
+			_trigger_poison_bomb(skill_level("poison_bomb"))
+	if skills.has("blizzard") and not is_evolved("blizzard") and _due("blizzard", 3.0 * cd):
+		_trigger_blizzard(skill_level("blizzard"))
+	if skills.has("boomerang") and _due("boomerang", 2.2 * cd):
+		_fire_boomerang(skill_level("boomerang"))
+	if skills.has("slash") and _due("slash", 1.5 * cd):
+		_trigger_slash(skill_level("slash"))
+	if skills.has("meteor"):
+		if _due("meteor", 3.2 * cd):
+			_trigger_meteors(skill_level("meteor"))
+		if is_evolved("meteor"):
+			_cataclysm_clock += delta
+			if _cataclysm_clock >= 10.0 * cd:
+				_cataclysm_clock = 0.0
+				_spawn_meteor(_meteor_target(), METEOR_BASE_RADIUS * 2.8 * area_multiplier(), (28 + 10 * skill_level("meteor")) * 4, 1.1)
+	if skills.has("shard") and _due("shard", 2.6 * cd):
+		_fire_shards(skill_level("shard"))
+	if skills.has("aegis"):
+		_tick_aegis(delta)
+
+## True (and resets the clock) once `id` has waited `interval` seconds.
+func _due(id: String, interval: float) -> bool:
+	if float(skill_timers.get(id, 0.0)) < interval:
+		return false
+	skill_timers[id] = 0.0
+	return true
+
+func skill_level(id: String) -> int:
+	return int(skills.get(id, 0))
+
+func is_evolved(id: String) -> bool:
+	return evolved.has(id)
+
+## Dagas Rúnicas: a fan toward where the player faces (not auto-aimed — the
+## direction is the player's to choose, unlike every other active).
+func _fire_daggers(lvl: int) -> void:
+	var count := 1 + (lvl - 1) / 2 + amount_bonus() + (1 if is_evolved("daggers") else 0)
+	var aim := player.facing_direction
+	for i in count:
+		var spread := deg_to_rad(9.0) * (float(i) - float(count - 1) / 2.0)
+		var dagger := _make_skill_projectile(EmberfallSkillProjectile.Style.DAGGER, "daggers")
+		dagger.direction = aim.rotated(spread)
+		dagger.speed = 640.0 * proj_speed_multiplier()
+		dagger.damage = 9 + 4 * lvl
+		dagger.lifetime = 0.6
+		dagger.pierce = -1 if is_evolved("daggers") else 0
+		add_child(dagger)
+	SfxPlayer.play("combat/basic_projectile.wav")
+
+## Aura Ígnea: unlike the other actives this isn't a burst on a cooldown,
+## it's meant to be *constant* — so its tick rate stays fixed instead of
+## scaling with Enfriamiento. Corona Solar also heals while it's burning.
+func _tick_fire_aura(lvl: int, _delta: float) -> void:
+	var radius := fire_aura_radius()
+	var tick_damage := int(round((4.0 + lvl * 3.0) * 0.5 * (1.5 if is_evolved("fire") else 1.0)))
+	var burned_any := false
+	for enemy in enemies.duplicate():
+		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
+			enemy.apply_burn(2.0 * duration_multiplier(), 2 + lvl)
+			_apply_damage(enemy, tick_damage)
+			burned_any = true
+	if is_evolved("fire"):
+		_solar_heal_clock += FIRE_TICK_INTERVAL
+		if burned_any and _solar_heal_clock >= 6.0:
+			_solar_heal_clock = 0.0
+			player.heal(1)
+
+func fire_aura_radius() -> float:
+	return (FIRE_AURA_BASE_RADIUS + 6.0 * skill_level("fire")) * area_multiplier() * (1.4 if is_evolved("fire") else 1.0)
+
+## Cadena Eléctrica: capped per jump so the arc reads as lightning hopping
+## between nearby enemies, not teleporting across the map. Every hit
+## leaves the target electrocuted (next hit +25%).
+func _fire_chain(lvl: int) -> void:
+	SfxPlayer.play("abilities/chain_lightning.wav")
+	var remaining := enemies.duplicate()
+	var origin := player.global_position
+	var jumps := 20 if is_evolved("chain") else 2 + lvl + amount_bonus()
+	var jump_range := CHAIN_JUMP_RANGE * area_multiplier()
+	for i in mini(jumps, remaining.size()):
+		var target: EmberfallEnemy = nearest_from(remaining, origin, jump_range)
+		if not target:
+			break
+		_apply_damage(target, 20 + lvl * 8)
+		if is_instance_valid(target):
+			target.apply_shock(1.5 * duration_multiplier())
+		_spawn_chain_fx(origin, target.global_position)
+		origin = target.global_position
+		remaining.erase(target)
+
+## Ventisca: a lasting frost zone drops at a random spot near the player (not
+## centered on them) and keeps chilling/damaging anything that stays inside
+## it for its whole lifetime, instead of a single instant hit.
+func _trigger_blizzard(lvl: int) -> void:
+	var angle := randf_range(0.0, TAU)
+	var pos := player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(40.0, 150.0)
+	SfxPlayer.play("abilities/blizzard_start.wav")
+	var zone := preload("res://scripts/components/frost_zone.gd").new()
+	zone.position = pos
+	zone.radius = (70.0 + lvl * 6.0) * area_multiplier()
+	zone.tick_damage = 6 + lvl * 2
+	zone.freeze_duration = 0.6
+	zone.lifetime = 7.0 * duration_multiplier()
+	zone.game_ref = self
+	add_child(zone)
+
+## Frasco Tóxico: a flask visibly arcs from the player to a nearby point (see
+## EmberfallPoisonBombProjectile), then on landing leaves a pool that keeps
+## poisoning whatever stands in it until it dissipates.
+func _trigger_poison_bomb(lvl: int) -> void:
+	var angle := randf_range(0.0, TAU)
+	var pos := player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(60.0, 180.0)
+	var thrown := preload("res://scripts/components/poison_bomb_projectile.gd").new()
+	thrown.launch(player.global_position, pos)
+	thrown.landed.connect(_spawn_poison_pool.bind(lvl))
+	add_child(thrown)
+	SfxPlayer.play("abilities/poison_bomb_throw.wav")
+
+func _spawn_poison_pool(pos: Vector2, lvl: int) -> void:
+	SfxPlayer.play("abilities/poison_bomb_impact.wav")
+	var pool := preload("res://scripts/components/poison_pool.gd").new()
+	pool.position = pos
+	pool.radius = (55.0 + lvl * 4.0) * area_multiplier()
+	pool.tick_damage = 3 + lvl * 2
+	pool.lifetime = (4.0 + lvl * 0.5) * duration_multiplier()
+	pool.chase_speed = 45.0 if is_evolved("poison_bomb") else 0.0
+	pool.game_ref = self
+	add_child(pool)
+
+## Hacha Bumerán: thrown at the nearest enemy (or ahead, if none), flies out
+## and comes back to the player, hitting on both legs. Torbellino de Acero
+## swaps that for a widening spiral around the player.
+func _fire_boomerang(lvl: int) -> void:
+	var count := 1 + (1 if lvl >= 3 else 0) + (1 if lvl >= 5 else 0) + amount_bonus()
+	var target: EmberfallEnemy = nearest_from(enemies, player.global_position, 400.0)
+	var aim := player.global_position.direction_to(target.global_position) if target else player.facing_direction
+	for i in count:
+		var axe := _make_skill_projectile(EmberfallSkillProjectile.Style.AXE, "boomerang")
+		axe.direction = aim.rotated(TAU * float(i) / float(count))
+		axe.damage = 16 + 6 * lvl
+		axe.pierce = -1
+		axe.hit_radius = 20.0 * area_multiplier()
+		axe.visual_scale = area_multiplier()
+		if is_evolved("boomerang"):
+			axe.mode = EmberfallSkillProjectile.Mode.SPIRAL
+			axe.speed = 300.0 * proj_speed_multiplier()
+			axe.lifetime = 2.6 * duration_multiplier()
+			axe.rehit_interval = 0.5
+		else:
+			axe.mode = EmberfallSkillProjectile.Mode.BOOMERANG
+			axe.speed = 380.0 * proj_speed_multiplier()
+			axe.out_distance = 220.0 * area_multiplier()
+			axe.return_target = player
+			axe.lifetime = 4.0
+		add_child(axe)
+
+## Tajo Sombrío: one wide horizontal cut to both sides at once, so it
+## covers the player's flanks no matter where they face.
+func _trigger_slash(lvl: int) -> void:
+	var half_width := (65.0 + 9.0 * lvl) * area_multiplier()
+	var half_height := 24.0 * area_multiplier()
+	var hit_damage := 14 + 6 * lvl
+	SfxPlayer.play("combat/basic_melee.wav")
+	for enemy in enemies.duplicate():
+		if not is_instance_valid(enemy) or enemy.dead:
+			continue
+		var offset: Vector2 = enemy.global_position - player.global_position
+		if absf(offset.x) > half_width or absf(offset.y) > half_height + 20.0:
+			continue
+		var hit_pos: Vector2 = enemy.global_position
+		var killed := _apply_damage(enemy, hit_damage)
+		# Guadaña del Vacío: critical kills burst into nearby enemies.
+		if killed and _last_hit_crit and is_evolved("slash"):
+			_void_burst(hit_pos, int(hit_damage * 0.6))
+	var fx := EmberfallSlashFx.new()
+	fx.half_width = half_width
+	fx.half_height = half_height
+	fx.position = Vector2(0, -6)
+	player.add_child(fx)
+
+func _void_burst(at: Vector2, burst_damage: int) -> void:
+	var radius := 60.0 * area_multiplier()
+	for enemy in enemies.duplicate():
+		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(at) < radius:
+			_apply_damage(enemy, burst_damage, false, false)
+	_spawn_ability_fx("explosion_area", at, radius)
+
+const METEOR_BASE_RADIUS := 48.0
+
+## Lluvia de Meteoros: lands on enemies near the player when there are any,
+## otherwise anywhere close by, always with a visible marker first.
+func _trigger_meteors(lvl: int) -> void:
+	var count := 1 + (lvl - 1) / 2 + amount_bonus()
+	for i in count:
+		_spawn_meteor(_meteor_target(), (METEOR_BASE_RADIUS + 4.0 * lvl) * area_multiplier(), 28 + 10 * lvl, 0.7)
+
+func _meteor_target() -> Vector2:
+	var nearby := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and e.global_position.distance_to(player.global_position) < 320.0)
+	if not nearby.is_empty():
+		return nearby.pick_random().global_position
+	var angle := randf_range(0.0, TAU)
+	return player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(60.0, 220.0)
+
+func _spawn_meteor(at: Vector2, radius: float, meteor_damage: int, telegraph: float) -> void:
+	var meteor := EmberfallMeteorStrike.new()
+	meteor.game_ref = self
+	meteor.position = at
+	meteor.radius = radius
+	meteor.damage = meteor_damage
+	meteor.telegraph = telegraph
+	meteor.burn_duration = 2.0 * duration_multiplier()
+	add_child(meteor)
+
+## Esquirla Errante: launched in a random direction, ricochets off the
+## screen edges. Prisma Infinito splits off two short-lived shards per bounce.
+func _fire_shards(lvl: int) -> void:
+	for i in 1 + amount_bonus():
+		var angle := randf_range(0.0, TAU)
+		_spawn_shard(player.global_position, Vector2(cos(angle), sin(angle)), 12 + 5 * lvl, 1 + lvl, 3.5 * duration_multiplier(), true)
+
+func _spawn_shard(at: Vector2, dir: Vector2, shard_damage: int, bounce_count: int, life: float, can_split: bool) -> void:
+	var shard := _make_skill_projectile(EmberfallSkillProjectile.Style.SHARD, "shard")
+	shard.global_position = at
+	shard.mode = EmberfallSkillProjectile.Mode.BOUNCE
+	shard.direction = dir
+	shard.speed = 420.0 * proj_speed_multiplier()
+	shard.damage = shard_damage
+	shard.bounces = bounce_count
+	shard.lifetime = life
+	shard.pierce = -1
+	shard.rehit_interval = 0.4
+	shard.visual_scale = 1.0 if can_split else 0.6
+	if can_split and is_evolved("shard"):
+		shard.bounced.connect(_split_shard.bind(shard_damage))
+	add_child(shard)
+
+func _split_shard(at: Vector2, dir: Vector2, parent_damage: int) -> void:
+	for turn in [-0.6, 0.6]:
+		_spawn_shard(at, dir.rotated(turn), parent_damage / 2, 0, 0.9, false)
+
+## Égida Rúnica: recharges one charge at a time; player.damage() spends
+## them through try_block() before any heart is lost.
+func _tick_aegis(delta: float) -> void:
+	var max_charges := 2 if is_evolved("aegis") else 1
+	if aegis_charges >= max_charges:
+		_aegis_clock = 0.0
+		return
+	_aegis_clock += delta
+	if _aegis_clock >= maxf(4.0, 12.0 - 1.5 * skill_level("aegis")) * cooldown_multiplier():
+		_aegis_clock = 0.0
+		aegis_charges += 1
+		player.queue_redraw()
+
+## Called by player.damage(): Armadura's chance first, then an Égida charge.
+## True means the hit is fully negated.
+func try_block() -> bool:
+	if randf() < armor_block_chance():
+		return true
+	if aegis_charges <= 0:
+		return false
+	aegis_charges -= 1
+	player.queue_redraw()
+	SfxPlayer.play("status/freeze_apply.wav", false)
+	# Bastión: the breaking shield pushes everything back with a nova.
+	if is_evolved("aegis"):
+		var radius := 110.0 * area_multiplier()
 		for enemy in enemies.duplicate():
-			if is_instance_valid(enemy) and enemy.global_position.distance_to(player.global_position) < AREA_RADIUS:
-				_apply_damage(enemy, 16 + int(skills["area"]) * 8)
-				# Tormenta de Ceniza (Área + Fuego): the burst leaves everything
-				# it hits burning instead of just a one-time hit.
-				if fusions.has("Tormenta de Ceniza"):
-					enemy.apply_burn(3.0 * duration_multiplier(), 6)
-		_spawn_ability_fx("explosion_area", player.global_position, AREA_RADIUS)
-	if int(skills.get("chain", 0)) > 0 and skill_timers["chain"] >= 2.0 * cooldown:
-		skill_timers["chain"] = 0.0
-		SfxPlayer.play("abilities/chain_lightning.wav")
-		var remaining := enemies.duplicate()
-		var origin := player.global_position
-		for i in mini(2 + int(skills["chain"]), remaining.size()):
-			# Capped per jump so the arc reads as lightning hopping between
-			# nearby enemies, not teleporting to whatever's left on the map.
-			var target: EmberfallEnemy = nearest_from(remaining, origin, CHAIN_JUMP_RANGE)
-			if not target:
-				break
-			_apply_damage(target, 20 + int(skills["chain"]) * 8)
-			# Tempestad Ígnea (Cadena + Fuego): every jump also ignites.
-			if fusions.has("Tempestad Ígnea"):
-				target.apply_burn(3.0 * duration_multiplier(), 6)
-			_spawn_chain_fx(origin, target.global_position)
-			origin = target.global_position
-			remaining.erase(target)
-	# Fuego Constante: unlike the other actives, this one isn't a burst on a
-	# cooldown, it's meant to be *constant* — so its tick rate stays fixed
-	# instead of scaling with the cooldown-reduction stat, and it ticks twice
-	# as often as before (every 0.25s) so it reads as continuous instead of
-	# an intermittent pulse. Per-tick damage is halved to keep the same DPS.
-	if int(skills.get("fire", 0)) > 0 and skill_timers["fire"] >= FIRE_TICK_INTERVAL:
-		skill_timers["fire"] = 0.0
-		var fire_tick_damage := int(round((4.0 + int(skills["fire"]) * 3.0) * 0.5))
-		for enemy in enemies.duplicate():
-			if is_instance_valid(enemy) and enemy.global_position.distance_to(player.global_position) < FIRE_AURA_RADIUS:
-				_apply_damage(enemy, fire_tick_damage)
-	if int(skills.get("blizzard", 0)) > 0 and skill_timers["blizzard"] >= 3.0 * cooldown:
-		skill_timers["blizzard"] = 0.0
-		_trigger_blizzard(int(skills["blizzard"]))
-	if int(skills.get("poison_bomb", 0)) > 0 and skill_timers["poison_bomb"] >= 4.0 * cooldown:
-		skill_timers["poison_bomb"] = 0.0
-		_trigger_poison_bomb(int(skills["poison_bomb"]))
+			if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
+				_apply_damage(enemy, 40 + 8 * skill_level("aegis"))
+				if is_instance_valid(enemy):
+					enemy.knockback(player.global_position.direction_to(enemy.global_position) * 420.0)
+		_spawn_ability_fx("explosion_area", player.global_position, radius)
+	return true
+
+func _make_skill_projectile(style: int, id: String) -> EmberfallSkillProjectile:
+	var projectile := EmberfallSkillProjectile.new()
+	projectile.game_ref = self
+	projectile.style = style
+	projectile.color = AbilityCatalog.color(id)
+	projectile.global_position = player.projectile_origin.global_position if is_instance_valid(player.projectile_origin) else player.global_position
+	return projectile
+
+## Re-syncs every persistent ability node with the current levels, passives
+## and evolutions. Called after any pick, since passives (Área, Amplitud…)
+## change them too.
+func _refresh_powers() -> void:
+	if skills.has("orbital"):
+		if not is_instance_valid(_orbital_wave):
+			_orbital_wave = preload("res://scripts/components/orbital_wave.gd").new()
+			_orbital_wave.game_ref = self
+			_orbital_wave.player_node = player
+			player.add_child(_orbital_wave)
+			SfxPlayer.play("abilities/orbital.wav", false)
+		var orbital_level := skill_level("orbital")
+		_orbital_wave.moon_count = EmberfallOrbitalWave.MAX_MOONS if is_evolved("orbital") else orbital_level + 1 + amount_bonus()
+		_orbital_wave.damage = int((6 + orbital_level * 3) * (1.5 if is_evolved("orbital") else 1.0))
+		_orbital_wave.radius_scale = area_multiplier()
+		_orbital_wave.knockback_force = 260.0 if is_evolved("orbital") else 0.0
+	if skills.has("fire"):
+		if not is_instance_valid(_fire_aura):
+			_fire_aura = preload("res://scripts/components/persistent_aura.gd").new()
+			player.add_child(_fire_aura)
+			player.move_child(_fire_aura, 0)
+			SfxPlayer.play("abilities/constant_fire_start.wav", false)
+		# Re-run on every pick so Área / level / Corona Solar resize the visual.
+		_fire_aura.setup("fuego_constante", fire_aura_radius() / FX_NATIVE_RADIUS["fuego_constante"])
+	if skills.has("blizzard") and is_evolved("blizzard") and not is_instance_valid(_perpetual_winter):
+		_perpetual_winter = preload("res://scripts/components/frost_zone.gd").new()
+		_perpetual_winter.radius = (70.0 + 6.0 * skill_level("blizzard")) * 1.3 * area_multiplier()
+		_perpetual_winter.tick_damage = 8 + 3 * skill_level("blizzard")
+		_perpetual_winter.freeze_duration = 1.2
+		_perpetual_winter.lifetime = INF
+		_perpetual_winter.game_ref = self
+		player.add_child(_perpetual_winter)
+		player.move_child(_perpetual_winter, 0)
+	if skills.has("familiar"):
+		var familiar_level := skill_level("familiar")
+		var wanted := 1 + (1 if familiar_level >= 3 else 0) + (1 if familiar_level >= 5 else 0) + (2 if is_evolved("familiar") else 0)
+		while _familiars.size() < wanted:
+			var familiar := EmberfallSpectralFamiliar.new()
+			familiar.game_ref = self
+			familiar.player_node = player
+			familiar.global_position = player.global_position
+			add_child(familiar)
+			_familiars.append(familiar)
+		for i in _familiars.size():
+			_familiars[i].slot = i
+			_familiars[i].slot_count = _familiars.size()
+			_familiars[i].damage = 8 + 4 * familiar_level
+			_familiars[i].fire_interval = (0.6 if is_evolved("familiar") else 1.2) * attack_speed_multiplier()
+
+# --- Shared combat helpers ---------------------------------------------------
 
 ## Roughly how big each ability's visible art reads at scale 1.0 (eyeballed
 ## from the source PNGs), so `_spawn_ability_fx`'s target_radius lines up
@@ -207,50 +514,12 @@ const FX_NATIVE_RADIUS := {
 }
 
 ## Fuego Constante's frame_01/02 are a near-solid disc (unlike frame_00's
-## sparse ring) — at the old 70px radius its *bounding box* was similar to
-## Onda Orbital's moon orbit (78x44), but being solid instead of sparse, it
-## visually swallowed the moons and the character whenever they passed near
-## or under it. Shrunk so its footprint (40) sits entirely inside the
-## moons' orbit (min half-axis 44, see EmberfallOrbitalWave.RADIUS_Y) —
-## a small flame core with the moons circling cleanly around the outside of
-## it, instead of the two fighting for the same screen space.
-const FIRE_AURA_RADIUS := 40.0
+## sparse ring); the base radius keeps the aura's footprint inside the
+## Lunas' orbit so the two don't fight for the same screen space.
+const FIRE_AURA_BASE_RADIUS := 44.0
 const FIRE_TICK_INTERVAL := 0.25
-## Explosión de Área used to read as covering a disproportionate chunk of the
-## arena at its old size (120); shrunk to a personal-space burst instead of a
-## screen-filling one. (Onda Orbital's own reach now lives on
-## EmberfallOrbitalWave, since it's driven by that scene, not a flat radius.)
-const AREA_RADIUS := 90.0
-## Cadena Eléctrica had no cap at all — each jump picked the nearest
-## *remaining* enemy anywhere on the map, so a sparse field could send it
-## arcing clear across the screen. Bounded to a believable lightning hop.
+## Cadena Eléctrica: bounded to a believable lightning hop.
 const CHAIN_JUMP_RANGE := 220.0
-
-## Onda Orbital and Fuego Constante are auras, not bursts — they read wrong
-## as a flash recreated on every damage tick, so instead this creates one
-## persistent visual the first time the power is picked, parented directly
-## to the player so it follows for free. Called again on every subsequent
-## level-up of the same power too, so Onda Orbital can grow its moon count.
-func _ensure_aura(power_id: String) -> void:
-	match power_id:
-		"orbital":
-			if not is_instance_valid(_orbital_wave):
-				_orbital_wave = preload("res://scripts/components/orbital_wave.gd").new()
-				_orbital_wave.game_ref = self
-				_orbital_wave.player_node = player
-				player.add_child(_orbital_wave)
-				SfxPlayer.play("abilities/orbital.wav", false)
-			# Re-synced on every level-up, not just the first pick: 2 moons at
-			# level 1, growing to the design's max of 6 by level 5.
-			_orbital_wave.moon_count = int(skills["orbital"]) + 1
-			_orbital_wave.damage = 6 + int(skills["orbital"]) * 3
-		"fire":
-			if not is_instance_valid(_fire_aura):
-				_fire_aura = preload("res://scripts/components/persistent_aura.gd").new()
-				_fire_aura.setup("fuego_constante", FIRE_AURA_RADIUS / FX_NATIVE_RADIUS["fuego_constante"])
-				player.add_child(_fire_aura)
-				player.move_child(_fire_aura, 0)
-				SfxPlayer.play("abilities/constant_fire_start.wav", false)
 
 func _spawn_ability_fx(folder: String, pos: Vector2, target_radius: float) -> void:
 	var fx := ABILITY_SPRITE_FX.new()
@@ -280,64 +549,29 @@ func _spawn_chain_fx(from: Vector2, to: Vector2) -> void:
 	fx.setup("cadena_electrica", 1.0, Vector2(scale_x, 0.5))
 	add_child(fx)
 
-## Ventisca: a lasting frost zone drops at a random spot near the player (not
-## centered on them, unlike Área) and keeps chilling/damaging anything that
-## stays inside it for its whole 7s lifetime, instead of a single instant hit.
-func _trigger_blizzard(level: int) -> void:
-	var angle := randf_range(0.0, TAU)
-	var pos := player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(40.0, 150.0)
-	SfxPlayer.play("abilities/blizzard_start.wav")
-	var zone := preload("res://scripts/components/frost_zone.gd").new()
-	zone.position = pos
-	zone.radius = 70.0 + level * 6.0
-	zone.tick_damage = 6 + level * 2
-	zone.freeze_duration = 0.6
-	zone.lifetime = 7.0 * duration_multiplier()
-	zone.game_ref = self
-	add_child(zone)
-
-## Bomba Venenosa: a bomb visibly arcs from the player to a nearby point (see
-## EmberfallPoisonBombProjectile), then on landing leaves a pool that keeps
-## poisoning whatever stands in it until it dissipates.
-func _trigger_poison_bomb(level: int) -> void:
-	var angle := randf_range(0.0, TAU)
-	var pos := player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(60.0, 180.0)
-	var thrown := preload("res://scripts/components/poison_bomb_projectile.gd").new()
-	thrown.launch(player.global_position, pos)
-	thrown.landed.connect(_spawn_poison_pool.bind(level))
-	add_child(thrown)
-	SfxPlayer.play("abilities/poison_bomb_throw.wav")
-
-func _spawn_poison_pool(pos: Vector2, level: int) -> void:
-	SfxPlayer.play("abilities/poison_bomb_impact.wav")
-	var pool := preload("res://scripts/components/poison_pool.gd").new()
-	pool.position = pos
-	pool.radius = 55.0 + level * 4.0
-	pool.tick_damage = 3 + level * 2
-	pool.lifetime = 4.0 + level * 0.5
-	pool.game_ref = self
-	add_child(pool)
-
-## Applies damage to an enemy (rolling crit + status effects) and, if it
-## dies, grants kills/loot consistently across every damage source
-## (projectiles and ability ticks alike).
-func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = true) -> void:
-	if not is_instance_valid(enemy):
-		return
-	var final_amount := amount
+## Applies damage to an enemy (rolling crit, consuming Electrocutado) and,
+## if it dies, grants kills/loot consistently across every damage source.
+## Returns true when this hit killed it.
+func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = true, can_crit: bool = true) -> bool:
+	_last_hit_crit = false
+	if not is_instance_valid(enemy) or enemy.dead:
+		return false
+	var final_amount := float(amount)
 	if apply_multiplier:
-		final_amount = int(round(final_amount * damage_multiplier()))
-	var is_crit := randf() < crit_chance()
-	if is_crit:
-		final_amount = int(round(final_amount * crit_multiplier()))
-	spawn_damage_number(enemy.global_position, final_amount, is_crit)
+		final_amount *= damage_multiplier()
+	final_amount *= enemy.consume_shock()
+	if can_crit and randf() < crit_chance():
+		_last_hit_crit = true
+		final_amount *= crit_multiplier()
+	var dealt := int(round(final_amount))
+	spawn_damage_number(enemy.global_position, dealt, _last_hit_crit)
 	SfxPlayer.play_enemy_hit()
-	if is_crit:
+	if _last_hit_crit:
 		SfxPlayer.play("combat/critical_hit.wav")
-	if enemy.damage(final_amount):
+	if enemy.damage(dealt):
 		_on_enemy_killed(enemy)
-		return
-	_maybe_apply_status(enemy)
+		return true
+	return false
 
 ## Public so enemy.gd can show numbers for its own poison/burn ticks too,
 ## keeping every damage source visually consistent.
@@ -347,15 +581,6 @@ func spawn_damage_number(pos: Vector2, amount: int, is_crit: bool) -> void:
 	number.amount = amount
 	number.is_crit = is_crit
 	add_child(number)
-
-func _maybe_apply_status(enemy: EmberfallEnemy) -> void:
-	var duration := duration_multiplier()
-	if randf() < poison_chance():
-		enemy.apply_poison(3.0 * duration, 4 + int(boosts.get("poison_chance", 0)))
-	if randf() < burn_chance():
-		enemy.apply_burn(3.0 * duration, 4 + int(boosts.get("burn_chance", 0)))
-	if randf() < freeze_chance():
-		enemy.apply_freeze(1.5 * duration)
 
 func nearest_from(pool: Array, origin: Vector2, max_distance: float = INF) -> EmberfallEnemy:
 	var result: EmberfallEnemy
@@ -368,6 +593,8 @@ func nearest_from(pool: Array, origin: Vector2, max_distance: float = INF) -> Em
 				best = distance
 				result = enemy
 	return result
+
+# --- Enemies and stages -------------------------------------------------------
 
 ## Always a plain chase for the first minute regardless of stage, so the
 ## opening moments of any encounter stay simple and readable — then the
@@ -437,11 +664,14 @@ func spawn_enemy() -> void:
 	add_child(enemy)
 	enemies.append(enemy)
 
+# --- Hero basic attack --------------------------------------------------------
+
 const PROJECTILE_SPEED := 520.0
 ## Tuned so the default (ranged) reach lands past melee/mid-range without
 ## covering the whole arena — enemies spawn 540px out, so a shot needs to let
 ## some of them close in first instead of sniping everything on spawn.
 const PROJECTILE_BASE_LIFETIME := 1.0
+const BASIC_ATTACK_BASE_DAMAGE := 20
 
 ## Effective reach of the current hero's basic attack — same speed/lifetime
 ## math spawn_projectile uses, exposed for the temporary debug range overlay.
@@ -450,11 +680,12 @@ func player_attack_range() -> float:
 	var range_scale := hero_data.attack_range_scale if hero_data != null else 1.0
 	return PROJECTILE_SPEED * PROJECTILE_BASE_LIFETIME * range_scale
 
+## The hero's own attack is no longer an ability slot: it grows only with
+## passives (Fuerza, Celeridad, Amplitud, Velocidad de proyectil, Crítico)
+## and permanent upgrades/equipment.
 func spawn_projectile(_from: EmberfallPlayer) -> void:
-	# The debug overlay in player.gd has always drawn this radius as "the"
-	# attack range, but nothing actually enforced it — any living enemy could
-	# be targeted regardless of distance, which read as infinite range. Gate
-	# candidates by it for real instead of just picking the globally nearest.
+	# Gate candidates by the real attack range instead of just picking the
+	# globally nearest, which read as infinite range.
 	var attack_range := player_attack_range()
 	var living_enemies := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and e.global_position.distance_to(player.global_position) <= attack_range)
 	if living_enemies.is_empty():
@@ -462,9 +693,8 @@ func spawn_projectile(_from: EmberfallPlayer) -> void:
 	living_enemies.sort_custom(func(a, b):
 		return player.global_position.distance_squared_to(a.global_position) < player.global_position.distance_squared_to(b.global_position)
 	)
-	var directed_level := int(skills.get("directed", 1))
 	var bonus_damage := GameState.permanent_damage + GameState.get_equipped_bonus("damage")
-	var base_damage := 20 + bonus_damage * 2 + (directed_level - 1) * 6
+	var base_damage := BASIC_ATTACK_BASE_DAMAGE + bonus_damage * 2
 	var hero_data := GameState.get_character_data(GameState.selected_character_id)
 	var hero_damage_mod := hero_data.damage_modifier if hero_data != null else 1.0
 	var final_damage := int(round(base_damage * damage_multiplier() * hero_damage_mod))
@@ -478,7 +708,7 @@ func spawn_projectile(_from: EmberfallPlayer) -> void:
 
 	var shot_range_scale := hero_data.attack_range_scale if hero_data != null else 1.0
 	SfxPlayer.play("combat/basic_melee.wav" if shot_range_scale < 1.0 else "combat/basic_projectile.wav")
-	var shot_count := 1 + int(boosts.get("extra_projectile", 0))
+	var shot_count := 1 + amount_bonus()
 	var shot_color := hero_data.attack_color if hero_data != null else Color(0.2, 0.95, 0.85)
 	var shot_sprite_folder := hero_data.attack_sprite_folder if hero_data != null else ""
 	var shot_frame_names := _shot_frame_names(hero_data)
@@ -488,8 +718,9 @@ func spawn_projectile(_from: EmberfallPlayer) -> void:
 		var projectile := EmberfallProjectile.new()
 		projectile.position = origin_pos
 		projectile.setup(target.position, final_damage, shot_color, shot_sprite_folder, shot_range_scale, shot_frame_names)
+		projectile.speed = PROJECTILE_SPEED * proj_speed_multiplier()
 		projectile.set_meta("hit_enemies", [])
-		projectile.set_meta("max_pierces", int(boosts.get("piercing", 0)))
+		projectile.set_meta("max_pierces", 0)
 		projectile.tree_exiting.connect(_on_projectile_removed.bind(projectile))
 		add_child(projectile)
 		projectiles.append(projectile)
@@ -512,8 +743,8 @@ func _trigger_melee_aoe(hero_data: CharacterData, hit_damage: int) -> void:
 	var radius := hero_data.attack_aoe_radius
 	for enemy in enemies.duplicate():
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
-			_apply_damage(enemy, hit_damage, false)
-			_apply_hero_guaranteed_status(enemy)
+			if not _apply_damage(enemy, hit_damage, false):
+				_apply_hero_guaranteed_status(enemy)
 	var fx := EmberfallProjectile.new()
 	fx.position = player.position
 	fx.setup(player.position, 0, hero_data.attack_color, hero_data.attack_sprite_folder, 0.4, hero_data.attack_aoe_frame_names, 0.5)
@@ -531,42 +762,17 @@ func _process(_delta: float) -> void:
 			if is_instance_valid(enemy) and not enemy.dead and not hit_enemies.has(enemy) and projectile.global_position.distance_to(enemy.global_position) < 34.0:
 				hit_enemies.append(enemy)
 				projectile.set_meta("hit_enemies", hit_enemies)
-				_apply_damage(enemy, projectile.damage_amount, false)
-				_apply_basic_attack_fusions(enemy, projectile.damage_amount)
-				_apply_hero_guaranteed_status(enemy)
-				_spawn_impact_flash(enemy.global_position, projectile.color)
+				var hit_pos: Vector2 = enemy.global_position
+				if not _apply_damage(enemy, projectile.damage_amount, false):
+					_apply_hero_guaranteed_status(enemy)
+				_spawn_impact_flash(hit_pos, projectile.color)
 				if hit_enemies.size() > max_pierces:
 					projectile.queue_free()
 				break
 
-## Lanza del Eclipse and Horizonte Magnético both enhance every basic-attack
-## hit once unlocked (ranged shots and melee swings alike, since they all
-## land through this same collision check), rather than being tied to one
-## specific hero's power.
-func _apply_basic_attack_fusions(hit_enemy: EmberfallEnemy, base_damage: int) -> void:
-	# Lanza del Eclipse (Dirigido + Cadena): the shot arcs to one more nearby
-	# enemy after its primary hit, at reduced damage.
-	if fusions.has("Lanza del Eclipse"):
-		var others := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and e != hit_enemy)
-		var arc_target: EmberfallEnemy = nearest_from(others, hit_enemy.global_position)
-		if arc_target:
-			_apply_damage(arc_target, int(base_damage * 0.6), false)
-			_spawn_chain_fx(hit_enemy.global_position, arc_target.global_position)
-	# Horizonte Magnético (Área + Dirigido): the shot also splashes a portion
-	# of its damage to anything else standing right next to the hit enemy.
-	if fusions.has("Horizonte Magnético"):
-		var splash_radius := 55.0
-		var splashed := false
-		for enemy in enemies.duplicate():
-			if is_instance_valid(enemy) and not enemy.dead and enemy != hit_enemy and enemy.global_position.distance_to(hit_enemy.global_position) < splash_radius:
-				_apply_damage(enemy, int(base_damage * 0.4), false)
-				splashed = true
-		if splashed:
-			_spawn_ability_fx("explosion_area", hit_enemy.global_position, splash_radius)
-
-## HERO-01: ties each mage's element to their own identity instead of the
-## random passive chances (AUD-05) — Vaelor's fire always burns, Azyren's
-## ice always briefly freezes, Orven's poison always poisons.
+## HERO-01: ties each mage's element to their own identity instead of luck
+## (AUD-05) — Vaelor's fire always burns, Azyren's ice always briefly
+## freezes, Orven's poison always poisons.
 func _apply_hero_guaranteed_status(enemy: EmberfallEnemy) -> void:
 	if not is_instance_valid(enemy) or enemy.dead:
 		return
@@ -608,8 +814,54 @@ func spawn_gold(at: Vector2, amount: int) -> void:
 	add_child(orb)
 	orbs.append(orb)
 
+# --- Passive stats --------------------------------------------------------------
+
+func passive_level(id: String) -> int:
+	return int(passives.get(id, 0))
+
 func pickup_radius() -> float:
-	return 80.0 + float(boosts.get("magnetism", 0)) * 35.0
+	return 80.0 + passive_level("magnet") * 35.0 + (60.0 if is_evolved("familiar") else 0.0)
+
+func damage_multiplier() -> float:
+	return 1.0 + passive_level("might") * 0.10
+
+## Movement speed is no longer an in-run pick (it moved to permanent
+## upgrades); kept so player.gd's movement code needs no special case.
+func speed_multiplier() -> float:
+	return 1.0
+
+## Half-hearts per second.
+func regen_per_second() -> float:
+	return passive_level("regen") * 0.1
+
+func armor_block_chance() -> float:
+	return passive_level("armor") * 0.08
+
+func crit_chance() -> float:
+	return passive_level("crit") * 0.08
+
+func crit_multiplier() -> float:
+	return 1.5 + passive_level("crit") * 0.2
+
+func attack_speed_multiplier() -> float:
+	return maxf(0.5, 1.0 - passive_level("haste") * 0.08)
+
+func cooldown_multiplier() -> float:
+	return maxf(0.4, 1.0 - passive_level("cooldown") * 0.08)
+
+func area_multiplier() -> float:
+	return 1.0 + passive_level("area") * 0.10
+
+func duration_multiplier() -> float:
+	return 1.0 + passive_level("duration") * 0.15
+
+func amount_bonus() -> int:
+	return passive_level("amount")
+
+func proj_speed_multiplier() -> float:
+	return 1.0 + passive_level("proj_speed") * 0.15
+
+# --- Level-up -------------------------------------------------------------------
 
 func add_xp(amount: int) -> void:
 	xp += amount
@@ -621,9 +873,8 @@ func add_xp(amount: int) -> void:
 	if pending_levels > 0 and GameState.screen != "level_up":
 		_present_level_up()
 
-## AUD-07: if every active power and passive boost is already at
-## MAX_ABILITY_LEVEL, both pools in _roll_level_up_options() come back empty
-## — showing that screen would leave the player stuck looking at zero
+## AUD-07: once every slot is full and maxed there may be nothing left to
+## offer — showing that screen would leave the player stuck looking at zero
 ## choices forever. Auto-resolve each such pending level with a small gold
 ## bonus instead, and only actually open the screen once there's a real
 ## choice to offer.
@@ -642,64 +893,63 @@ func _present_level_up() -> void:
 		GameState.change_screen("level_up")
 		SfxPlayer.play("progression/level_up.wav", false)
 
+## Level shown on a card: the current level of an owned ability, 0 if new.
 func ability_level(id: String) -> int:
-	return int(boosts.get(id, 0)) if id in BOOST_IDS else int(skills.get(id, 0))
+	return passive_level(id) if AbilityCatalog.is_passive(id) else skill_level(id)
 
-func _available(pool: Array[String]) -> Array[String]:
-	var result: Array[String] = []
-	for id in pool:
-		if ability_level(id) < MAX_ABILITY_LEVEL:
-			result.append(id)
+func can_evolve(active_id: String) -> bool:
+	if skill_level(active_id) < MAX_ABILITY_LEVEL or is_evolved(active_id):
+		return false
+	var paired := str(AbilityCatalog.ACTIVES[active_id]["evolution"]["passive"])
+	return passive_level(paired) > 0
+
+## Every non-evolution option that could be picked right now, with its
+## weight: upgrades of what you already own are 3× as likely as something
+## new, so builds come together instead of spreading thin.
+func _upgrade_candidates(exclude: Array[String] = []) -> Dictionary:
+	var result := {}
+	for id in AbilityCatalog.ACTIVES:
+		if id in banished or id in exclude:
+			continue
+		if skills.has(id):
+			if skill_level(id) < MAX_ABILITY_LEVEL:
+				result[id] = 3.0
+		elif skills.size() < AbilityCatalog.ACTIVE_SLOTS:
+			result[id] = 1.0
+	for id in AbilityCatalog.PASSIVES:
+		if id in banished or id in exclude:
+			continue
+		if passives.has(id):
+			if passive_level(id) < MAX_ABILITY_LEVEL:
+				result[id] = 3.0
+		elif passives.size() < AbilityCatalog.PASSIVE_SLOTS:
+			result[id] = 1.0
 	return result
 
-## Picks up to 3 choices, all of the same kind (power or boost), alternating
-## kind each time a fresh level-up round starts (not on reroll, which keeps
-## the kind). Abilities already at MAX_ABILITY_LEVEL are left out entirely.
-func _roll_level_up_options(flip_kind: bool = true) -> Array[String]:
-	if flip_kind:
-		current_options_are_boosts = not current_options_are_boosts
-	var boost_pool := _available(BOOST_IDS)
-	var power_pool := _available(POWER_IDS)
-	if current_options_are_boosts and boost_pool.is_empty():
-		current_options_are_boosts = false
-	elif not current_options_are_boosts and power_pool.is_empty():
-		current_options_are_boosts = true
-	var pool := (boost_pool if current_options_are_boosts else power_pool).duplicate()
-	pool.shuffle()
-	return pool.slice(0, 3)
+## Up to 3 cards: any ready evolution first (golden card), then a weighted
+## mix of actives and passives.
+func _roll_level_up_options(exclude: Array[String] = []) -> Array[String]:
+	var options: Array[String] = []
+	for id in skills:
+		if can_evolve(id) and options.size() < 3:
+			options.append(AbilityCatalog.evolution_option(id))
+	var candidates := _upgrade_candidates(exclude)
+	while options.size() < 3 and not candidates.is_empty():
+		var pick := _weighted_pick(candidates)
+		options.append(pick)
+		candidates.erase(pick)
+	return options
 
-func damage_multiplier() -> float:
-	return 1.0 + float(boosts.get("boost_damage", 0)) * 0.08
-
-func speed_multiplier() -> float:
-	return 1.0 + float(boosts.get("boost_speed", 0)) * 0.08
-
-func regen_per_second() -> float:
-	return float(boosts.get("boost_regen", 0)) * 0.25
-
-func poison_chance() -> float:
-	return float(boosts.get("poison_chance", 0)) * 0.15
-
-func burn_chance() -> float:
-	return float(boosts.get("burn_chance", 0)) * 0.15
-
-func freeze_chance() -> float:
-	return float(boosts.get("freeze_chance", 0)) * 0.12
-
-func crit_chance() -> float:
-	return float(boosts.get("crit_chance", 0)) * 0.08
-
-func crit_multiplier() -> float:
-	return 1.5 + float(boosts.get("crit_damage", 0)) * 0.3
-
-func attack_speed_multiplier() -> float:
-	return maxf(0.5, 1.0 - float(boosts.get("attack_speed", 0)) * 0.07)
-
-func cooldown_multiplier() -> float:
-	return maxf(0.4, 1.0 - float(boosts.get("cooldown_reduction", 0)) * 0.08)
-
-func duration_multiplier() -> float:
-	return 1.0 + float(boosts.get("ability_duration", 0)) * 0.15
+func _weighted_pick(weights: Dictionary) -> String:
+	var total := 0.0
+	for w in weights.values():
+		total += float(w)
+	var roll := randf() * total
+	for id in weights:
+		roll -= float(weights[id])
+		if roll <= 0.0:
+			return id
+	return weights.keys().back()
 
 ## The level-up panel's queue_free() is deferred (still alive/clickable for
 ## the rest of the frame it was freed on), so a fast double-tap on the same
@@ -708,23 +958,44 @@ func duration_multiplier() -> float:
 ## has fully finished, well before the rebuilt panel could be tapped again.
 var _choice_locked := false
 
-func choose_power(power_id: String) -> void:
-	if _choice_locked or GameState.screen != "level_up":
-		return
-	if ability_level(power_id) >= MAX_ABILITY_LEVEL:
+func choose_power(option_id: String) -> void:
+	if _choice_locked or GameState.screen != "level_up" or option_id not in current_level_up_options:
 		return
 	_choice_locked = true
 	call_deferred("_unlock_choice")
-	SfxPlayer.play("progression/power_selected.wav", false)
-	if power_id in BOOST_IDS:
-		boosts[power_id] = int(boosts.get(power_id, 0)) + 1
-		if power_id == "boost_health":
-			player.max_hp += BOOST_HEALTH_AMOUNT
-			player.hp += BOOST_HEALTH_AMOUNT
+	if AbilityCatalog.is_evolution(option_id):
+		var source := AbilityCatalog.evolution_source(option_id)
+		evolved.append(source)
+		GameState.add_notification("¡Evolución: %s!" % AbilityCatalog.display_name(source, true))
+		_spawn_ability_fx("explosion_area", player.global_position, 170.0)
+		SfxPlayer.play("progression/fusion_unlocked.wav", false)
 	else:
-		skills[power_id] = int(skills.get(power_id, 0)) + 1
-		check_fusions()
-		_ensure_aura(power_id)
+		SfxPlayer.play("progression/power_selected.wav", false)
+		if AbilityCatalog.is_active(option_id):
+			skills[option_id] = skill_level(option_id) + 1
+		else:
+			passives[option_id] = passive_level(option_id) + 1
+			if option_id == "vitality":
+				player.max_hp += VITALITY_HP
+				player.heal(VITALITY_HP)
+	_refresh_powers()
+	_finish_level_choice()
+
+const VITALITY_HP := 2 # 1 full heart per pick
+const SKIP_HEAL := 1
+const SKIP_GOLD := 5
+
+## Saltar: no pick this level, a small heal and some gold instead.
+func skip_level_up() -> void:
+	if _choice_locked or GameState.screen != "level_up":
+		return
+	_choice_locked = true
+	call_deferred("_unlock_choice")
+	player.heal(SKIP_HEAL)
+	GameState.add_gold(SKIP_GOLD)
+	_finish_level_choice()
+
+func _finish_level_choice() -> void:
 	pending_levels = maxi(0, pending_levels - 1)
 	if pending_levels == 0:
 		GameState.change_screen("playing")
@@ -738,31 +1009,25 @@ func reroll_power_choices() -> bool:
 	if rerolls <= 0 or GameState.screen != "level_up":
 		return false
 	rerolls -= 1
-	# Reroll within the same kind currently on offer, not a fresh flip.
-	current_level_up_options = _roll_level_up_options(false)
+	current_level_up_options = _roll_level_up_options()
 	return true
 
-## Each fusion's real combat effect lives inline in update_powers()/_process()
-## next to the two abilities it combines (search the fusion's name to find
-## it) — this dictionary is only the unlock recipe, shared with the UI so the
-## pause screen can show real requirements instead of a hidden formula.
-const FUSION_RECIPES := {
-	"Tormenta de Ceniza": ["area", "fire"],
-	"Corona del Trueno": ["orbital", "chain"],
-	"Lanza del Eclipse": ["directed", "chain"],
-	"Horizonte Magnético": ["area", "directed"],
-	"Tempestad Ígnea": ["chain", "fire"],
-}
-const FUSION_LEVEL_REQUIRED := 5
-
-func check_fusions() -> void:
-	for name in FUSION_RECIPES:
-		var pair: Array = FUSION_RECIPES[name]
-		if int(skills.get(pair[0], 0)) >= FUSION_LEVEL_REQUIRED and int(skills.get(pair[1], 0)) >= FUSION_LEVEL_REQUIRED and not fusions.has(name):
-			fusions.append(name)
-			GameState.add_notification("¡Fusión desbloqueada: %s!" % name)
-			_spawn_ability_fx("explosion_area", player.global_position, 170.0)
-			SfxPlayer.play("progression/fusion_unlocked.wav", false)
+## Descartar: that option never comes back this run; its card is replaced
+## by a fresh one (evolutions can't be banished).
+func banish_option(option_id: String) -> bool:
+	if banishes <= 0 or GameState.screen != "level_up" or AbilityCatalog.is_evolution(option_id) or option_id not in current_level_up_options:
+		return false
+	banishes -= 1
+	banished.append(option_id)
+	var index := current_level_up_options.find(option_id)
+	var replacement := _upgrade_candidates(current_level_up_options)
+	if replacement.is_empty():
+		current_level_up_options.remove_at(index)
+	else:
+		current_level_up_options[index] = _weighted_pick(replacement)
+	if current_level_up_options.is_empty():
+		skip_level_up()
+	return true
 
 func _on_player_died() -> void:
 	GameState.finish_run(false, kills)

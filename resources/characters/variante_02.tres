@@ -17,3 +17,4 @@ attack_color = Color(0.4196, 0.8784, 1, 1)
 attack_sprite_folder = "disparo_hielo"
 damage_modifier = 0.85
 guaranteed_status = "freeze"
+starting_power = "blizzard"
