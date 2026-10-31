@@ -132,10 +132,47 @@ func _ready() -> void:
 	player.setup(self)
 	player.died.connect(_on_player_died)
 	add_child(player)
+	_setup_lighting()
 	_grant_starting_power()
 	for i in 4:
 		spawn_enemy()
 	queue_redraw()
+
+## Dim arena with a few warm lights (hero, élites, boss), so the
+## violet/teal palette glows. Kept to a handful of lights: the Compatibility
+## renderer pays an extra pass per light on everything it touches.
+const LIGHTING_ENABLED := true
+const AMBIENT := Color(0.5, 0.46, 0.66)
+static var _light_texture: GradientTexture2D
+
+func _setup_lighting() -> void:
+	if not LIGHTING_ENABLED:
+		return
+	var ambient := CanvasModulate.new()
+	ambient.color = AMBIENT
+	add_child(ambient)
+	player.add_child(make_light(330.0, Color(1.0, 0.92, 0.82), 0.9))
+
+static func make_light(radius: float, color: Color, energy: float) -> PointLight2D:
+	if _light_texture == null:
+		var gradient := Gradient.new()
+		gradient.set_color(0, Color(1, 1, 1, 1))
+		gradient.set_color(1, Color(1, 1, 1, 0))
+		gradient.add_point(0.45, Color(1, 1, 1, 0.55))
+		_light_texture = GradientTexture2D.new()
+		_light_texture.gradient = gradient
+		_light_texture.fill = GradientTexture2D.FILL_RADIAL
+		_light_texture.fill_from = Vector2(0.5, 0.5)
+		_light_texture.fill_to = Vector2(1.0, 0.5)
+		_light_texture.width = 256
+		_light_texture.height = 256
+	var light := PointLight2D.new()
+	light.texture = _light_texture
+	light.texture_scale = radius / 128.0
+	light.color = color
+	light.energy = energy
+	light.blend_mode = Light2D.BLEND_MODE_ADD
+	return light
 
 ## Each hero starts with the active that defines them (CharacterData's
 ## starting_power), so their element shows from the first second.
@@ -186,6 +223,8 @@ func spawn_boss() -> void:
 	boss.configure_variant(_boss_variant_for_chapter())
 	boss.game_ref = self
 	boss.tree_exiting.connect(_on_enemy_removed.bind(boss))
+	if LIGHTING_ENABLED:
+		boss.add_child(make_light(220.0, Color(0.55, 0.95, 0.95), 0.7))
 	add_child(boss)
 	enemies.append(boss)
 
@@ -605,10 +644,33 @@ func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = 
 	SfxPlayer.play_enemy_hit()
 	if _last_hit_crit:
 		SfxPlayer.play("combat/critical_hit.wav")
+	if _last_hit_crit or enemy.is_boss:
+		hit_stop(0.035 if enemy.is_boss else 0.03)
+	# Small push away from the hero so every hit is felt; heavy foes budge less.
+	var push := HIT_PUSH * (0.35 if enemy.elite_tier > 0 or enemy.archetype == EmberfallEnemy.Archetype.TANK else 1.0)
+	enemy.knockback(player.global_position.direction_to(enemy.global_position) * push)
 	if enemy.damage(dealt):
 		_on_enemy_killed(enemy)
 		return true
 	return false
+
+const HIT_PUSH := 150.0
+const HIT_STOP_COOLDOWN := 0.25
+var _hit_stop_ready_at := 0
+
+## Freezes the game for a few milliseconds (crits, boss hits) so heavy hits
+## land with weight. Throttled so a crit-heavy build doesn't stutter.
+func hit_stop(duration: float) -> void:
+	var now := Time.get_ticks_msec()
+	if now < _hit_stop_ready_at or Engine.time_scale < 1.0:
+		return
+	_hit_stop_ready_at = now + int(HIT_STOP_COOLDOWN * 1000.0)
+	Engine.time_scale = 0.05
+	await get_tree().create_timer(duration, true, false, true).timeout
+	Engine.time_scale = 1.0
+
+func _exit_tree() -> void:
+	Engine.time_scale = 1.0
 
 ## Public so enemy.gd can show numbers for its own poison/burn ticks too,
 ## keeping every damage source visually consistent.
@@ -701,6 +763,8 @@ func _spawn_enemy_at(at: Vector2, archetype: int, elite_tier: int = 0) -> Emberf
 	enemy.setup(player, (1.0 + elapsed / 90.0) * _difficulty_multiplier(), false, archetype)
 	if elite_tier > 0:
 		enemy.make_elite(elite_tier)
+		if LIGHTING_ENABLED:
+			enemy.add_child(make_light(150.0, Color("e8b84a") if elite_tier == 1 else Color("b07cff"), 0.6))
 	enemy.game_ref = self
 	enemy.tree_exiting.connect(_on_enemy_removed.bind(enemy))
 	add_child(enemy)
@@ -971,6 +1035,7 @@ func _apply_hero_guaranteed_status(enemy: EmberfallEnemy) -> void:
 ## victory once the stage boss falls.
 func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 	kills += 1
+	_spawn_death_fx(enemy)
 	if enemy.elite_tier > 0:
 		var chest: int = EmberfallPickup.Kind.EPIC_CHEST if enemy.elite_tier >= 2 else EmberfallPickup.Kind.CHEST
 		spawn_pickup(enemy.global_position, chest)
@@ -987,6 +1052,19 @@ func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 		GameState.finish_run(true, kills)
 	else:
 		SfxPlayer.play("combat/enemy_death.wav")
+
+## Bosses draw their own art, so their death is a plain big ember burst.
+func _spawn_death_fx(enemy: EmberfallEnemy) -> void:
+	var fx := EmberfallDeathFx.new()
+	fx.position = enemy.global_position
+	if enemy.is_boss:
+		fx.size = 150.0
+		fx.ember = Color("2de1d0")
+	else:
+		fx.size = enemy.visual_size()
+		fx.tint = enemy.visual_tint()
+		fx.texture = load("res://assets/characters/enemy.png") as Texture2D
+	add_child(fx)
 
 func spawn_xp(at: Vector2, amount: int) -> void:
 	var orb := EmberfallXPOrb.new()

@@ -275,28 +275,72 @@ const ARCHETYPE_SIZES := {
 func _boss_tint() -> Color:
 	return Color(1.4, 0.7, 0.7)
 
-func _draw() -> void:
+
+## On-screen size, also used by the death effect.
+func visual_size() -> float:
 	var size := 100.0 if is_boss else float(ARCHETYPE_SIZES.get(archetype, 60.0))
 	if elite_tier > 0:
 		size *= 1.8 if elite_tier >= 2 else 1.4
+	return size
+
+func visual_tint() -> Color:
+	if is_boss:
+		return _boss_tint()
+	return ARCHETYPE_TINTS.get(archetype, Color.WHITE)
+
+func _draw() -> void:
+	var size := visual_size()
+	if elite_tier > 0:
 		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 180.0)
 		var aura := Color("e8b84a") if elite_tier == 1 else Color("b07cff")
 		draw_circle(Vector2.ZERO, size * 0.55, Color(aura, 0.10 + 0.08 * pulse))
 		draw_arc(Vector2.ZERO, size * 0.55, 0.0, TAU, 32, Color(aura, 0.55 + 0.3 * pulse), 2.5)
+	draw_set_transform(Vector2(0, size * 0.42), 0.0, Vector2(1.0, 0.35))
+	draw_circle(Vector2.ZERO, size * 0.36, Color(0, 0, 0, 0.28))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if _shared_texture == null:
 		_shared_texture = load("res://assets/characters/enemy.png") as Texture2D
 	if _shared_texture:
-		var tint: Color = _boss_tint() if is_boss else ARCHETYPE_TINTS.get(archetype, Color.WHITE)
-		tint = tint.lerp(Color.WHITE, hit_flash)
+		var tint := visual_tint()
+		if freeze_timer > 0.0:
+			tint = tint * Color(0.7, 0.9, 1.3)
+		elif burn_timer > 0.0:
+			tint = tint * Color(1.2, 0.85, 0.7)
+		# Values above 1 brighten the sprite: a real white flash on hit.
+		tint = Color(tint.r + hit_flash * 2.5, tint.g + hit_flash * 2.5, tint.b + hit_flash * 2.5, tint.a)
 		draw_texture_rect(_shared_texture, Rect2(-size / 2, -size / 2, size, size), false, tint)
 	var bar_width := 90.0 if is_boss else (70.0 if elite_tier > 0 else 50.0)
 	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width, 4), Color(0.04, 0.08, 0.10, 0.85))
 	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 4), Color(0.95, 0.68, 0.25) if is_boss or elite_tier > 0 else Color(0.91, 0.30, 0.29))
-	if poison_timer > 0.0:
-		draw_circle(Vector2.ZERO, size / 2 + 5, Color(0.3, 0.9, 0.3, 0.3))
-	if burn_timer > 0.0:
-		draw_circle(Vector2.ZERO, size / 2 + 5, Color(1.0, 0.5, 0.1, 0.3))
-	if freeze_timer > 0.0:
-		draw_circle(Vector2.ZERO, size / 2 + 5, Color(0.4, 0.8, 1.0, 0.3))
-	if shock_timer > 0.0:
-		draw_arc(Vector2.ZERO, size / 2 + 3, 0.0, TAU, 12, Color(0.5, 0.96, 0.92, 0.7), 2.0)
+	draw_status_icons(Vector2(0, -size / 2 - 19))
+
+## Small glyphs above the health bar, one per active status, so the player
+## can read at a glance what their build is doing to each enemy.
+func draw_status_icons(center: Vector2) -> void:
+	var active: Array[String] = []
+	if burn_timer > 0.0: active.append("burn")
+	if poison_timer > 0.0: active.append("poison")
+	if freeze_timer > 0.0: active.append("freeze")
+	if shock_timer > 0.0: active.append("shock")
+	if active.is_empty():
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	var spacing := 13.0
+	var x := -spacing * (active.size() - 1) / 2.0
+	for status in active:
+		var c := center + Vector2(x, sin(t * 6.0 + x) * 1.5)
+		draw_circle(c, 6.5, Color(0.05, 0.03, 0.10, 0.75))
+		match status:
+			"burn":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6), c + Vector2(4, 3), c + Vector2(-4, 3)]), Color("ff9a3c"))
+				draw_circle(c + Vector2(0, 2), 2.0, Color("ffd36a"))
+			"poison":
+				draw_circle(c + Vector2(0, 1.5), 3.5, Color("5ad65a"))
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -5.5), c + Vector2(3, 0), c + Vector2(-3, 0)]), Color("5ad65a"))
+			"freeze":
+				for i in 3:
+					var d := Vector2.from_angle(PI / 3.0 * i) * 5.0
+					draw_line(c - d, c + d, Color("aee6ff"), 1.5)
+			"shock":
+				draw_polyline(PackedVector2Array([c + Vector2(-2, -5), c + Vector2(2, -1), c + Vector2(-2, 1), c + Vector2(2, 5)]), Color("7ff5ea"), 1.8)
+		x += spacing

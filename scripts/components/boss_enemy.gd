@@ -265,10 +265,13 @@ func _draw() -> void:
 		_draw_aftermath()
 	var pose := _pose_index()
 	var texture: Texture2D = _poses[pose] if pose < _poses.size() else null
+	draw_set_transform(Vector2(0, SPRITE_SIZE * 0.36), 0.0, Vector2(1.0, 0.3))
+	draw_circle(Vector2.ZERO, SPRITE_SIZE * 0.32, Color(0, 0, 0, 0.3))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if texture:
 		var facing := 0 if pose == 0 else int(_facing[pose - 1])
 		var flip := (facing < 0 and _look_right) or (facing > 0 and not _look_right) or (facing == 0 and not _look_right and pose == 0)
-		var glow := 1.0 + hit_flash * 1.5
+		var glow := 1.0 + hit_flash * 2.5
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0 if flip else 1.0, 1.0))
 		draw_texture_rect(texture, Rect2(-SPRITE_SIZE / 2.0, -SPRITE_SIZE * 0.6, SPRITE_SIZE, SPRITE_SIZE), false, Color(glow, glow, glow))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -276,15 +279,7 @@ func _draw() -> void:
 	var bar_y := -SPRITE_SIZE * 0.6 - 6.0
 	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width, 5), Color(0.04, 0.08, 0.10, 0.85))
 	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 5), Color(0.95, 0.68, 0.25))
-	var status_radius := SPRITE_SIZE * 0.35
-	if poison_timer > 0.0:
-		draw_arc(Vector2.ZERO, status_radius, 0.0, TAU, 24, Color(0.3, 0.9, 0.3, 0.5), 3.0)
-	if burn_timer > 0.0:
-		draw_arc(Vector2.ZERO, status_radius + 4.0, 0.0, TAU, 24, Color(1.0, 0.5, 0.1, 0.5), 3.0)
-	if freeze_timer > 0.0:
-		draw_arc(Vector2.ZERO, status_radius + 8.0, 0.0, TAU, 24, Color(0.4, 0.8, 1.0, 0.5), 3.0)
-	if shock_timer > 0.0:
-		draw_arc(Vector2.ZERO, status_radius + 12.0, 0.0, TAU, 12, Color(0.5, 0.96, 0.92, 0.7), 2.0)
+	draw_status_icons(Vector2(0, bar_y - 11.0))
 
 func _draw_telegraph() -> void:
 	var progress := clampf(_telegraph_elapsed / TELEGRAPH_TIME, 0.0, 1.0)
