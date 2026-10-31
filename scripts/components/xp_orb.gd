@@ -4,6 +4,8 @@ class_name EmberfallXPOrb
 var value := 10
 var collected := false
 var is_gold := false
+## Set by the Imán pickup: flies to the player from anywhere on the map.
+var magnetized := false
 
 func setup(amount: int, gold: bool = false) -> void:
 	value = amount
@@ -14,7 +16,9 @@ func tick(player: Node2D, pickup_radius: float, delta: float) -> void:
 	if collected:
 		return
 	var distance := global_position.distance_to(player.global_position)
-	if distance < pickup_radius and distance > 1.0:
+	if magnetized and distance > 1.0:
+		global_position = global_position.move_toward(player.global_position, 750.0 * delta)
+	elif distance < pickup_radius and distance > 1.0:
 		global_position = global_position.move_toward(player.global_position, 320.0 * delta)
 	if distance < 30.0:
 		collected = true

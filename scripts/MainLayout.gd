@@ -22,6 +22,11 @@ var _starting_run := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Editor/debug builds start every session with full energy for testing.
+	if OS.is_debug_build() and GameState.energy < GameState.MAX_ENERGY:
+		GameState.energy = GameState.MAX_ENERGY
+		GameState.energy_changed.emit(GameState.energy)
+		GameState.save()
 	# Shared dark backdrop: screens without their own background (Inicio,
 	# Mazmorras) would otherwise show the engine's default gray.
 	var backdrop := TextureRect.new(); backdrop.name = "Backdrop"; backdrop.texture = load("res://assets/ui/pixel_simple_v1/backgrounds/background.png"); backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; backdrop.stretch_mode = TextureRect.STRETCH_SCALE; backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE; backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(backdrop)
@@ -175,9 +180,18 @@ func start_run(map_data: Dictionary) -> void:
 	# background and could grant its own victory/defeat reward later.
 	if is_instance_valid(_active_game) or _starting_run:
 		return
+	# Editor/debug builds top energy up so testing never gets blocked;
+	# exported releases keep the real cost.
+	if OS.is_debug_build() and not GameState.can_start():
+		GameState.energy = GameState.MAX_ENERGY
+		GameState.energy_changed.emit(GameState.energy)
+		_show_toast("[debug] Energía recargada")
 	if not GameState.can_start():
+		_show_toast("Sin energía: necesitás %d y tenés %d.\nSe recarga con el tiempo o en la Tienda." % [GameState.ENERGY_COST, GameState.energy])
+		SfxPlayer.play_ui("economy/purchase_failed.wav")
 		return
 	if not GameState.begin_stage(map_data):
+		_show_toast("Ese mapa todavía está bloqueado.")
 		return
 	if not GameState.start_run():
 		return
@@ -198,6 +212,30 @@ func start_run(map_data: Dictionary) -> void:
 	_active_game_ui = load("res://scripts/ui.gd").new()
 	content_host.add_child(_active_game_ui)
 	_active_game_ui.setup(_active_game)
+
+## Short message over everything that fades out on its own.
+func _show_toast(text: String) -> void:
+	var toast := Label.new()
+	toast.text = text
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	toast.anchor_left = 0.5; toast.anchor_right = 0.5; toast.anchor_top = 0.5; toast.anchor_bottom = 0.5
+	toast.offset_left = -170; toast.offset_right = 170; toast.offset_top = -30; toast.offset_bottom = 30
+	toast.add_theme_font_size_override("font_size", 15)
+	toast.add_theme_color_override("font_color", UiTheme.TEXT)
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.06, 0.04, 0.12, 0.92)
+	box.border_color = UiTheme.DANGER
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(6)
+	box.set_content_margin_all(10)
+	toast.add_theme_stylebox_override("normal", box)
+	add_child(toast)
+	var tween := toast.create_tween()
+	tween.tween_interval(2.2)
+	tween.tween_property(toast, "modulate:a", 0.0, 0.5)
+	tween.tween_callback(toast.queue_free)
 
 func _run_resource_paths() -> Array[String]:
 	var paths: Array[String] = [

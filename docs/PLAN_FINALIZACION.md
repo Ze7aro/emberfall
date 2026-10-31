@@ -190,6 +190,8 @@ Decorados (lámina de 8, 128×128 cada uno, fondo transparente): "broken rune pi
 
 ### 6.4 Recolectables
 
+**Dónde van:** recortar cada objeto a su propio PNG en `assets/pickups/`: `chest.png`, `chest_epic.png`, `potion.png`, `magnet.png`, `bomb.png` (el juego los toma solos). Mientras falten, el cofre y la poción usan íconos de la UI y el imán y la bomba se dibujan por código. El cofre épico es el mismo cofre con herrajes dorados y gemas violetas: agregarlo como celda (11) del prompt.
+
 > [ESTILO] Sprite sheet, single row, each cell 64×64, small game pickups: (1) small cyan XP gem, (2) medium teal XP gem, (3) large violet XP gem with sparkle, (4) gold coin, (5) stack of 3 gold coins, (6) red health potion bottle, (7) horseshoe magnet with cyan glow, (8) round black bomb with lit fuse, (9) closed wooden-and-iron treasure chest with rune lock, (10) same chest opened with golden light.
 
 ### 6.5 VFX de las habilidades nuevas (tiras de 3–4 frames, como las actuales)

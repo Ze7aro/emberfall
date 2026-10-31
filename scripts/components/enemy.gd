@@ -18,6 +18,8 @@ var dead := false
 var is_boss := false
 var game_ref: Node
 var archetype: int = Archetype.CHASER
+## 0 = regular, 1 = élite (drops a chest), 2 = mini-jefe (drops an epic chest).
+var elite_tier := 0
 
 const CONTACT_RANGE := 48.0 # matches the distance check in _check_contact
 
@@ -87,6 +89,18 @@ func setup(player: Node2D, difficulty: float, boss: bool = false, new_archetype:
 		xp_value = 10
 		gold_value = 6
 	max_hp = hp
+
+## Élite / mini-jefe: same archetype behavior, much tougher, bigger and with
+## a golden aura so it reads as "worth chasing" from across the screen.
+func make_elite(tier: int) -> void:
+	elite_tier = tier
+	var hp_mult := 22.0 if tier >= 2 else 8.0
+	hp = int(hp * hp_mult)
+	max_hp = hp
+	contact_damage += 1
+	move_speed *= 0.9 if tier >= 2 else 0.95
+	xp_value *= 8 if tier >= 2 else 5
+	gold_value *= 5 if tier >= 2 else 3
 
 func apply_poison(duration: float, damage_per_tick: int) -> void:
 	poison_timer = maxf(poison_timer, duration)
@@ -263,15 +277,21 @@ func _boss_tint() -> Color:
 
 func _draw() -> void:
 	var size := 100.0 if is_boss else float(ARCHETYPE_SIZES.get(archetype, 60.0))
+	if elite_tier > 0:
+		size *= 1.8 if elite_tier >= 2 else 1.4
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 180.0)
+		var aura := Color("e8b84a") if elite_tier == 1 else Color("b07cff")
+		draw_circle(Vector2.ZERO, size * 0.55, Color(aura, 0.10 + 0.08 * pulse))
+		draw_arc(Vector2.ZERO, size * 0.55, 0.0, TAU, 32, Color(aura, 0.55 + 0.3 * pulse), 2.5)
 	if _shared_texture == null:
 		_shared_texture = load("res://assets/characters/enemy.png") as Texture2D
 	if _shared_texture:
 		var tint: Color = _boss_tint() if is_boss else ARCHETYPE_TINTS.get(archetype, Color.WHITE)
 		tint = tint.lerp(Color.WHITE, hit_flash)
 		draw_texture_rect(_shared_texture, Rect2(-size / 2, -size / 2, size, size), false, tint)
-	var bar_width := 50.0 if not is_boss else 90.0
+	var bar_width := 90.0 if is_boss else (70.0 if elite_tier > 0 else 50.0)
 	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width, 4), Color(0.04, 0.08, 0.10, 0.85))
-	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 4), Color(0.91, 0.30, 0.29) if not is_boss else Color(0.95, 0.68, 0.25))
+	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 4), Color(0.95, 0.68, 0.25) if is_boss or elite_tier > 0 else Color(0.91, 0.30, 0.29))
 	if poison_timer > 0.0:
 		draw_circle(Vector2.ZERO, size / 2 + 5, Color(0.3, 0.9, 0.3, 0.3))
 	if burn_timer > 0.0:

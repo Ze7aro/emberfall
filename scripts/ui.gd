@@ -21,6 +21,8 @@ var _build_bar: VBoxContainer
 var _build_signature := ""
 ## "Descartar" arms this; the next card tapped is banished instead of picked.
 var _banish_mode := false
+var _announce_label: Label
+var _announce_tween: Tween
 
 ## First-run guidance (PLAY-01): a non-blocking hint that states the goal and
 ## the control scheme, gone as soon as the player actually moves, plus one
@@ -90,23 +92,56 @@ func setup(owner: Node) -> void:
 	pause_button.pressed.connect(_toggle_pause)
 	add_child(pause_button)
 
-	# Testing aid, editor/debug builds only: brings the stage boss right away.
+	# Testing aid, editor/debug builds only (never in an exported release).
 	if OS.is_debug_build():
-		var boss_debug := Button.new()
-		boss_debug.text = "JEFE"
-		boss_debug.anchor_left = 1.0; boss_debug.anchor_right = 1.0
-		boss_debug.offset_left = -72; boss_debug.offset_right = -16
-		boss_debug.offset_top = 72; boss_debug.offset_bottom = 104
-		boss_debug.focus_mode = Control.FOCUS_NONE
-		boss_debug.add_theme_font_size_override("font_size", 11)
-		boss_debug.pressed.connect(func():
-			if is_instance_valid(world) and not world.boss_spawned:
-				world.spawn_boss()
-			boss_debug.visible = false)
-		add_child(boss_debug)
+		var debug_column := VBoxContainer.new()
+		debug_column.anchor_left = 1.0; debug_column.anchor_right = 1.0
+		debug_column.offset_left = -76; debug_column.offset_right = -16
+		debug_column.offset_top = 72
+		debug_column.add_theme_constant_override("separation", 4)
+		add_child(debug_column)
+		for entry in [["JEFE", "boss"], ["ÉLITE", "elite"], ["MINI", "miniboss"], ["HORDA", "horde"], ["DROPS", "drops"]]:
+			var debug_button := Button.new()
+			debug_button.text = str(entry[0])
+			debug_button.focus_mode = Control.FOCUS_NONE
+			debug_button.add_theme_font_size_override("font_size", 10)
+			debug_button.custom_minimum_size = Vector2(60, 26)
+			var action := str(entry[1])
+			debug_button.pressed.connect(func(): world.debug_action(action))
+			debug_column.add_child(debug_button)
+
+	_announce_label = Label.new()
+	_announce_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_announce_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_announce_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_announce_label.anchor_left = 0.5; _announce_label.anchor_right = 0.5
+	_announce_label.offset_left = -170; _announce_label.offset_right = 170
+	_announce_label.anchor_top = 0.3; _announce_label.anchor_bottom = 0.3
+	_announce_label.add_theme_font_size_override("font_size", 20)
+	_announce_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	_announce_label.add_theme_constant_override("shadow_offset_x", 2)
+	_announce_label.add_theme_constant_override("shadow_offset_y", 2)
+	_announce_label.modulate.a = 0.0
+	add_child(_announce_label)
+	if world.has_signal("announced"):
+		world.announced.connect(_announce)
 
 	if _tutorial_active:
 		_build_tutorial_hint()
+
+## Centered banner that pops in and fades out; a newer one replaces it.
+func _announce(text: String, color: Color) -> void:
+	if _announce_tween:
+		_announce_tween.kill()
+	_announce_label.text = text
+	_announce_label.add_theme_color_override("font_color", color)
+	_announce_label.modulate.a = 1.0
+	_announce_label.scale = Vector2(1.15, 1.15)
+	_announce_label.pivot_offset = Vector2(170, 14)
+	_announce_tween = create_tween()
+	_announce_tween.tween_property(_announce_label, "scale", Vector2.ONE, 0.18)
+	_announce_tween.tween_interval(1.8)
+	_announce_tween.tween_property(_announce_label, "modulate:a", 0.0, 0.5)
 
 func _build_tutorial_hint() -> void:
 	_tutorial_hint = Label.new()

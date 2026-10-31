@@ -1,6 +1,34 @@
 extends Node2D
 
+## Short in-run banner (hordes, élites, chests, evolutions); ui.gd shows it.
+signal announced(text: String, color: Color)
+
 const BOSS_TIME := 720.0
+const GOLD := Color("e8b84a")
+const DANGER := Color("e86958")
+const VIOLET := Color("b07cff")
+
+## Élites (drop a chest) every 90-120 s until the boss shows up.
+const ELITE_INTERVAL_MIN := 90.0
+const ELITE_INTERVAL_MAX := 120.0
+## Scripted wave events on top of the regular spawn curve: "ring" closes a
+## circle around the player, "swarm" sends a fast column from one side, and
+## "miniboss" brings a tier-2 élite that drops an epic chest.
+const WAVE_EVENTS := [
+	{"time": 150.0, "type": "ring"},
+	{"time": 240.0, "type": "swarm"},
+	{"time": 330.0, "type": "ring"},
+	{"time": 360.0, "type": "miniboss"},
+	{"time": 420.0, "type": "swarm"},
+	{"time": 510.0, "type": "ring"},
+	{"time": 600.0, "type": "swarm"},
+	{"time": 660.0, "type": "ring"},
+]
+## Chance per regular kill for each small drop (rolled once, in this order).
+const DROP_POTION := 0.008
+const DROP_MAGNET := 0.004
+const DROP_BOMB := 0.003
+const POTION_HEAL := 2 # 1 full heart
 const MAX_ABILITY_LEVEL := AbilityCatalog.MAX_LEVEL
 const ABILITY_SPRITE_FX := preload("res://scripts/components/ability_sprite_fx.gd")
 ## Used when a hero has no starting_power set in its CharacterData.
@@ -44,6 +72,9 @@ var spawn_interval := 2.2
 var enemies: Array[EmberfallEnemy] = []
 var orbs: Array[EmberfallXPOrb] = []
 var projectiles: Array[EmberfallProjectile] = []
+var pickups: Array[EmberfallPickup] = []
+var _next_elite_time := ELITE_INTERVAL_MIN
+var _events_fired: Array[int] = []
 var _attack_count := 0
 ## Owned actives and passives, id -> level (see AbilityCatalog). Insertion
 ## order is pick order, which the build bar shows as-is.
@@ -122,6 +153,12 @@ func _physics_process(delta: float) -> void:
 	elapsed += delta
 	if not boss_spawned and elapsed >= _boss_time():
 		spawn_boss()
+	_tick_events()
+	for pickup in pickups.duplicate():
+		if not is_instance_valid(pickup):
+			pickups.erase(pickup)
+		elif pickup.tick(player, delta):
+			_collect_pickup(pickup)
 	spawn_clock += delta
 	if spawn_clock >= spawn_interval * _stage_spawn_interval_mult():
 		spawn_clock = 0.0
@@ -137,17 +174,6 @@ func _physics_process(delta: float) -> void:
 			projectiles.erase(projectile)
 	update_powers(delta)
 	queue_redraw()
-
-## Testing shortcut, only in editor/debug builds: B (or F9) brings the boss now.
-func _input(event: InputEvent) -> void:
-	if not OS.is_debug_build() or boss_spawned or GameState.screen != "playing":
-		return
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	var key := (event as InputEventKey).physical_keycode
-	if key == KEY_B or key == KEY_F9:
-		print("[debug] jefe invocado con atajo")
-		spawn_boss()
 
 func spawn_boss() -> void:
 	boss_spawned = true
@@ -666,14 +692,160 @@ func _boss_variant_for_chapter() -> int:
 		_: return EmberfallBoss.Variant.STANDARD
 
 func spawn_enemy() -> void:
-	var enemy := EmberfallEnemy.new()
 	var angle := randf_range(0.0, TAU)
-	enemy.position = player.position + Vector2(cos(angle), sin(angle)) * 540.0
-	enemy.setup(player, (1.0 + elapsed / 90.0) * _difficulty_multiplier(), false, _pick_archetype())
+	_spawn_enemy_at(player.position + Vector2(cos(angle), sin(angle)) * 540.0, _pick_archetype())
+
+func _spawn_enemy_at(at: Vector2, archetype: int, elite_tier: int = 0) -> EmberfallEnemy:
+	var enemy := EmberfallEnemy.new()
+	enemy.position = at
+	enemy.setup(player, (1.0 + elapsed / 90.0) * _difficulty_multiplier(), false, archetype)
+	if elite_tier > 0:
+		enemy.make_elite(elite_tier)
 	enemy.game_ref = self
 	enemy.tree_exiting.connect(_on_enemy_removed.bind(enemy))
 	add_child(enemy)
 	enemies.append(enemy)
+	return enemy
+
+# --- Élites, wave events and special drops -------------------------------------
+
+func _tick_events() -> void:
+	if boss_spawned:
+		return
+	if elapsed >= _next_elite_time:
+		_next_elite_time = elapsed + randf_range(ELITE_INTERVAL_MIN, ELITE_INTERVAL_MAX)
+		spawn_elite(1)
+	for i in WAVE_EVENTS.size():
+		if i in _events_fired or elapsed < float(WAVE_EVENTS[i]["time"]):
+			continue
+		_events_fired.append(i)
+		run_wave_event(str(WAVE_EVENTS[i]["type"]))
+
+func spawn_elite(tier: int) -> void:
+	var angle := randf_range(0.0, TAU)
+	var archetype: int = EmberfallEnemy.Archetype.TANK if tier >= 2 else _pick_archetype()
+	_spawn_enemy_at(player.position + Vector2.from_angle(angle) * 520.0, archetype, tier)
+	if tier >= 2:
+		announced.emit("¡Se acerca un mini-jefe!", VIOLET)
+		SfxPlayer.play("boss/boss_spawn.wav", false)
+	else:
+		announced.emit("¡Apareció un élite!", GOLD)
+
+func run_wave_event(kind: String) -> void:
+	var chapter := int(GameState.current_stage_context.get("chapter", 1))
+	match kind:
+		"ring":
+			announced.emit("¡Horda!", DANGER)
+			var count := 14 + chapter * 2
+			var offset := randf() * TAU
+			for i in count:
+				var at := player.position + Vector2.from_angle(offset + TAU * i / count) * 380.0
+				_spawn_enemy_at(at, EmberfallEnemy.Archetype.CHASER)
+		"swarm":
+			announced.emit("¡Enjambre!", DANGER)
+			var from := Vector2.from_angle(randf() * TAU)
+			var across := from.orthogonal()
+			for i in 10 + chapter * 2:
+				var at := player.position + from * 480.0 + across * (i - 5) * 38.0
+				_spawn_enemy_at(at, EmberfallEnemy.Archetype.FAST)
+		"miniboss":
+			spawn_elite(2)
+
+func spawn_pickup(at: Vector2, kind: int) -> void:
+	var pickup := EmberfallPickup.new()
+	pickup.position = at
+	pickup.setup(kind)
+	add_child(pickup)
+	pickups.append(pickup)
+
+func _roll_small_drop(at: Vector2) -> void:
+	var roll := randf()
+	if roll < DROP_POTION:
+		spawn_pickup(at, EmberfallPickup.Kind.POTION)
+	elif roll < DROP_POTION + DROP_MAGNET:
+		spawn_pickup(at, EmberfallPickup.Kind.MAGNET)
+	elif roll < DROP_POTION + DROP_MAGNET + DROP_BOMB:
+		spawn_pickup(at, EmberfallPickup.Kind.BOMB)
+
+func _collect_pickup(pickup: EmberfallPickup) -> void:
+	pickups.erase(pickup)
+	var at := pickup.global_position
+	match pickup.kind:
+		EmberfallPickup.Kind.CHEST:
+			_open_chest(false)
+		EmberfallPickup.Kind.EPIC_CHEST:
+			_open_chest(true)
+		EmberfallPickup.Kind.POTION:
+			player.heal(POTION_HEAL)
+			SfxPlayer.play("progression/power_selected.wav", false)
+		EmberfallPickup.Kind.MAGNET:
+			for orb in orbs:
+				if is_instance_valid(orb):
+					orb.magnetized = true
+			SfxPlayer.play("economy/pickup_xp.wav", false)
+		EmberfallPickup.Kind.BOMB:
+			_detonate_bomb(at)
+	pickup.queue_free()
+
+## Chest: a ready evolution if there is one (common chest stops there), then
+## 1-2 upgrades (common) or 2-3 (epic) picked like the level-up cards, plus gold.
+func _open_chest(epic: bool) -> void:
+	SfxPlayer.play("economy/chest_open.wav", false)
+	var gained: Array[String] = []
+	for id in skills.keys():
+		if can_evolve(id):
+			_apply_evolution(id)
+			gained.append(AbilityCatalog.display_name(id, true))
+			break
+	var count := randi_range(2, 3) if epic else (0 if not gained.is_empty() else randi_range(1, 2))
+	for i in count:
+		var candidates := _upgrade_candidates()
+		if candidates.is_empty():
+			break
+		var pick := _weighted_pick(candidates)
+		_apply_upgrade(pick)
+		gained.append("%s Nv.%d" % [AbilityCatalog.display_name(pick), ability_level(pick)])
+	_refresh_powers()
+	var gold := 30 if epic else 15
+	GameState.add_gold(gold)
+	var text := "Cofre: " + (", ".join(PackedStringArray(gained)) if not gained.is_empty() else "+%d de oro" % gold)
+	announced.emit(text, VIOLET if epic else GOLD)
+
+## Bomba: clears regular enemies on screen; élites and the boss take a chunk.
+func _detonate_bomb(at: Vector2) -> void:
+	SfxPlayer.play("abilities/area_explosion.wav", false)
+	_spawn_ability_fx("explosion_area", at, 260.0)
+	var half := get_viewport_rect().size * 0.5
+	for enemy in enemies.duplicate():
+		if not is_instance_valid(enemy) or enemy.dead:
+			continue
+		var offset: Vector2 = enemy.global_position - player.global_position
+		if absf(offset.x) > half.x or absf(offset.y) > half.y:
+			continue
+		if enemy.is_boss:
+			_apply_damage(enemy, 120, false, false)
+		elif enemy.elite_tier > 0:
+			_apply_damage(enemy, 250, false, false)
+		else:
+			_apply_damage(enemy, enemy.hp, false, false)
+
+## Debug-build testing aid, used by the HUD's debug buttons.
+func debug_action(action: String) -> void:
+	if not OS.is_debug_build():
+		return
+	match action:
+		"boss":
+			if not boss_spawned:
+				spawn_boss()
+		"elite":
+			spawn_elite(1)
+		"miniboss":
+			spawn_elite(2)
+		"horde":
+			run_wave_event("ring" if randf() < 0.5 else "swarm")
+		"drops":
+			for i in 3:
+				spawn_pickup(player.position + Vector2.from_angle(TAU * i / 3.0) * 90.0, [EmberfallPickup.Kind.POTION, EmberfallPickup.Kind.MAGNET, EmberfallPickup.Kind.BOMB][i])
 
 # --- Hero basic attack --------------------------------------------------------
 
@@ -799,10 +971,17 @@ func _apply_hero_guaranteed_status(enemy: EmberfallEnemy) -> void:
 ## victory once the stage boss falls.
 func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 	kills += 1
-	if randf() < 0.15:
+	if enemy.elite_tier > 0:
+		var chest: int = EmberfallPickup.Kind.EPIC_CHEST if enemy.elite_tier >= 2 else EmberfallPickup.Kind.CHEST
+		spawn_pickup(enemy.global_position, chest)
+		spawn_xp(enemy.global_position + Vector2(24, 0), enemy.xp_value)
+		spawn_gold(enemy.global_position + Vector2(-24, 0), enemy.gold_value)
+	elif randf() < 0.15:
 		spawn_gold(enemy.global_position, enemy.gold_value)
 	else:
 		spawn_xp(enemy.global_position, enemy.xp_value)
+	if enemy.elite_tier == 0 and not enemy.is_boss:
+		_roll_small_drop(enemy.global_position)
 	if enemy == boss:
 		SfxPlayer.play("boss/boss_defeated.wav", false)
 		GameState.finish_run(true, kills)
@@ -975,22 +1154,28 @@ func choose_power(option_id: String) -> void:
 	_choice_locked = true
 	call_deferred("_unlock_choice")
 	if AbilityCatalog.is_evolution(option_id):
-		var source := AbilityCatalog.evolution_source(option_id)
-		evolved.append(source)
-		GameState.add_notification("¡Evolución: %s!" % AbilityCatalog.display_name(source, true))
-		_spawn_ability_fx("explosion_area", player.global_position, 170.0)
-		SfxPlayer.play("progression/fusion_unlocked.wav", false)
+		_apply_evolution(AbilityCatalog.evolution_source(option_id))
 	else:
 		SfxPlayer.play("progression/power_selected.wav", false)
-		if AbilityCatalog.is_active(option_id):
-			skills[option_id] = skill_level(option_id) + 1
-		else:
-			passives[option_id] = passive_level(option_id) + 1
-			if option_id == "vitality":
-				player.max_hp += VITALITY_HP
-				player.heal(VITALITY_HP)
+		_apply_upgrade(option_id)
 	_refresh_powers()
 	_finish_level_choice()
+
+## Shared by the level-up cards and the chests. Callers run _refresh_powers().
+func _apply_upgrade(id: String) -> void:
+	if AbilityCatalog.is_active(id):
+		skills[id] = skill_level(id) + 1
+	else:
+		passives[id] = passive_level(id) + 1
+		if id == "vitality":
+			player.max_hp += VITALITY_HP
+			player.heal(VITALITY_HP)
+
+func _apply_evolution(source: String) -> void:
+	evolved.append(source)
+	announced.emit("¡Evolución: %s!" % AbilityCatalog.display_name(source, true), GOLD)
+	_spawn_ability_fx("explosion_area", player.global_position, 170.0)
+	SfxPlayer.play("progression/fusion_unlocked.wav", false)
 
 const VITALITY_HP := 2 # 1 full heart per pick
 const SKIP_HEAL := 1
