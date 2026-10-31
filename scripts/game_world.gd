@@ -680,6 +680,9 @@ var damage_by_source := {}
 var damage_source := "basic"
 var _gold_at_start := 0
 
+func gold_this_run() -> int:
+	return maxi(0, GameState.gold - _gold_at_start)
+
 func record_damage(source: String, amount: int) -> void:
 	if amount > 0:
 		damage_by_source[source] = int(damage_by_source.get(source, 0)) + amount
@@ -692,7 +695,7 @@ var _hit_stop_ready_at := 0
 ## land with weight. Throttled so a crit-heavy build doesn't stutter.
 func hit_stop(duration: float) -> void:
 	var now := Time.get_ticks_msec()
-	if now < _hit_stop_ready_at or Engine.time_scale < 1.0:
+	if GameState.reduce_motion or now < _hit_stop_ready_at or Engine.time_scale < 1.0:
 		return
 	_hit_stop_ready_at = now + int(HIT_STOP_COOLDOWN * 1000.0)
 	Engine.time_scale = 0.05

@@ -309,7 +309,8 @@ func _draw() -> void:
 		elif burn_timer > 0.0:
 			tint = tint * Color(1.2, 0.85, 0.7)
 		# Values above 1 brighten the sprite: a real white flash on hit.
-		tint = Color(tint.r + hit_flash * 2.5, tint.g + hit_flash * 2.5, tint.b + hit_flash * 2.5, tint.a)
+		var flash := hit_flash * (0.6 if GameState.reduce_motion else 2.5)
+		tint = Color(tint.r + flash, tint.g + flash, tint.b + flash, tint.a)
 		draw_texture_rect(_shared_texture, Rect2(-size / 2, -size / 2, size, size), false, tint)
 	var bar_width := 90.0 if is_boss else (70.0 if elite_tier > 0 else 50.0)
 	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width, 4), Color(0.04, 0.08, 0.10, 0.85))

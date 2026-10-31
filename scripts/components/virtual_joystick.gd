@@ -11,8 +11,13 @@ var radius := 64.0
 var active := false
 var touch_origin := Vector2.ZERO
 
+var knob_radius := 23.0
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	var joystick_scale: float = GameState.joystick_scale()
+	radius *= joystick_scale
+	knob_radius *= joystick_scale
 
 ## If the OS suspends the app mid-drag (a call, the home button, a
 ## notification), it never delivers the matching "finger lifted" touch event
@@ -54,4 +59,4 @@ func _draw() -> void:
 	# enemies or projectiles underneath it.
 	draw_circle(touch_origin, radius, Color(0.03, 0.08, 0.10, 0.38))
 	draw_arc(touch_origin, radius, 0, TAU, 32, Color(0.72, 0.86, 0.66, 0.38), 1.5)
-	draw_circle(touch_origin + direction * radius, 23, Color(0.47, 0.78, 0.31, 0.78))
+	draw_circle(touch_origin + direction * radius, knob_radius,Color(0.47, 0.78, 0.31, 0.78))

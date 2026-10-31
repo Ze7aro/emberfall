@@ -186,7 +186,7 @@ static func icon(file_name: String) -> Texture2D:
 	if file_name.ends_with(".png"):
 		var stem := file_name.trim_suffix(".png")
 		var mapped := {
-			"badge_notificacion": "icons/mail.png", "notificacion": "icons/mail.png", "settings": "icons/settings.png", "ajustes": "icons/settings.png", "refresh": "icons/refresh.png", "recargar": "icons/refresh.png", "espada": "equipment/weapon.png", "icono_ataque": "equipment/weapon.png",
+			"notificacion": "icons/mail.png", "settings": "icons/settings.png", "ajustes": "icons/settings.png", "refresh": "icons/refresh.png", "recargar": "icons/refresh.png", "espada": "equipment/weapon.png", "icono_ataque": "equipment/weapon.png",
 			"corazon": "icons/heart.png", "energia": "icons/energy.png",
 			"flecha": "icons/arrow.png", "arrow": "icons/arrow.png", "arrow_left": "icons/arrow.png", "candado": "icons/lock.png",
 			"objetivo": "icons/target.png", "mazmorras": "icons/target.png",

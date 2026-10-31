@@ -271,15 +271,27 @@ func _draw() -> void:
 	if texture:
 		var facing := 0 if pose == 0 else int(_facing[pose - 1])
 		var flip := (facing < 0 and _look_right) or (facing > 0 and not _look_right) or (facing == 0 and not _look_right and pose == 0)
-		var glow := 1.0 + hit_flash * 2.5
+		var glow := 1.0 + hit_flash * (0.6 if GameState.reduce_motion else 2.5)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0 if flip else 1.0, 1.0))
 		draw_texture_rect(texture, Rect2(-SPRITE_SIZE / 2.0, -SPRITE_SIZE * 0.6, SPRITE_SIZE, SPRITE_SIZE), false, Color(glow, glow, glow))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	var bar_width := 110.0
-	var bar_y := -SPRITE_SIZE * 0.6 - 6.0
-	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width, 5), Color(0.04, 0.08, 0.10, 0.85))
-	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 5), Color(0.95, 0.68, 0.25))
-	draw_status_icons(Vector2(0, bar_y - 11.0))
+	# Name + health bar over the head (the HUD keeps the top of the screen
+	# for the hero's own XP and hearts).
+	var bar_width := 130.0
+	var bar_height := 9.0
+	var bar_y := -SPRITE_SIZE * 0.6 - 10.0
+	var ratio := clampf(float(hp) / float(max_hp), 0.0, 1.0)
+	draw_rect(Rect2(-bar_width / 2.0 - 2.0, bar_y - 2.0, bar_width + 4.0, bar_height + 4.0), Color(0.02, 0.02, 0.05, 0.9))
+	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * ratio, bar_height), Color("d96168"))
+	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * ratio, 3.0), Color(1.0, 0.62, 0.62, 0.8))
+	var font := ThemeDB.fallback_font
+	var label := display_name.to_upper()
+	var font_size := 12
+	var text_width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var text_pos := Vector2(-text_width / 2.0, bar_y - 6.0)
+	draw_string_outline(font, text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0, 0, 0, 0.9))
+	draw_string(font, text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("ffd166"))
+	draw_status_icons(Vector2(0, bar_y - 26.0))
 
 func _draw_telegraph() -> void:
 	var progress := clampf(_telegraph_elapsed / TELEGRAPH_TIME, 0.0, 1.0)

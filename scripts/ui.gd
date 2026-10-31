@@ -9,8 +9,6 @@ var xp_bar: ProgressBar
 var level_label: Label
 var timer_label: Label
 var hearts: HeartsRow
-var boss_label: Label
-var boss_bar: ProgressBar
 var panel: PanelContainer
 var pause_button: Button
 var pause_panel: PanelContainer
@@ -34,48 +32,57 @@ var _tutorial_hint: Label
 func setup(owner: Node) -> void:
 	world = owner
 	_tutorial_active = not GameState.tutorial_completed
-	var top := VBoxContainer.new()
-	top.theme = UiTheme.make_theme()
-	top.position = Vector2(16, 16)
-	top.size = Vector2(358, 88)
-	add_child(top)
-	level_label = Label.new()
-	level_label.add_theme_font_size_override("font_size", 16)
-	top.add_child(level_label)
+	# Layout: XP bar glued to the top edge; under it, hearts on the left and
+	# the level on the right; then timer/kills and the build bar.
+	var top := _safe_top()
 	xp_bar = ProgressBar.new()
-	xp_bar.custom_minimum_size = Vector2(0, 14)
-	UiTheme.style_bar(xp_bar, 14.0, "fill_xp.png")
-	top.add_child(xp_bar)
+	xp_bar.theme = UiTheme.make_theme()
+	xp_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	xp_bar.offset_top = top; xp_bar.offset_bottom = top + XP_BAR_HEIGHT
+	xp_bar.show_percentage = false
+	xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Flat thin style: the kit's framed bar needs ~24px of height to show a fill.
+	var xp_back := UiTheme.bar(Color(0.05, 0.03, 0.10, 0.92))
+	xp_back.set_corner_radius_all(0)
+	xp_back.border_color = Color("55446e")
+	xp_back.border_width_bottom = 2
+	var xp_fill := UiTheme.bar(Color("42d8e8"))
+	xp_fill.set_corner_radius_all(0)
+	xp_fill.border_color = Color("b6f4fb")
+	xp_fill.border_width_top = 2
+	xp_bar.add_theme_stylebox_override("background", xp_back)
+	xp_bar.add_theme_stylebox_override("fill", xp_fill)
+	add_child(xp_bar)
 	hearts = HeartsRow.new()
-	hearts.heart_size = 16.0
-	top.add_child(hearts)
+	hearts.heart_size = 24.0
+	hearts.spacing = 4.0
+	hearts.position = Vector2(12, top + XP_BAR_HEIGHT + 8)
+	hearts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hearts)
+	level_label = Label.new()
+	level_label.theme = UiTheme.make_theme()
+	level_label.anchor_left = 1.0; level_label.anchor_right = 1.0
+	level_label.offset_left = -140; level_label.offset_right = -12
+	level_label.offset_top = top + XP_BAR_HEIGHT + 6
+	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	level_label.add_theme_font_size_override("font_size", 18)
+	level_label.add_theme_color_override("font_color", Color("9fe8ff"))
+	level_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	level_label.add_theme_constant_override("shadow_offset_x", 1)
+	level_label.add_theme_constant_override("shadow_offset_y", 1)
+	add_child(level_label)
 	timer_label = Label.new()
-	timer_label.position = Vector2(16, 118)
-	timer_label.add_theme_font_size_override("font_size", 16)
+	timer_label.position = Vector2(12, top + XP_BAR_HEIGHT + 40)
+	timer_label.add_theme_font_size_override("font_size", 14)
+	timer_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	timer_label.add_theme_constant_override("shadow_offset_x", 1)
+	timer_label.add_theme_constant_override("shadow_offset_y", 1)
 	add_child(timer_label)
 	_build_bar = VBoxContainer.new()
-	_build_bar.position = Vector2(16, 144)
+	_build_bar.position = Vector2(12, top + XP_BAR_HEIGHT + 64)
 	_build_bar.add_theme_constant_override("separation", 3)
 	_build_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_build_bar)
-	boss_label = Label.new()
-	boss_label.position = Vector2(0, 20)
-	boss_label.anchor_left = 0.5; boss_label.anchor_right = 0.5
-	boss_label.offset_left = -140; boss_label.offset_right = 140
-	boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	boss_label.text = "¡JEFE!"
-	boss_label.add_theme_font_size_override("font_size", 18)
-	boss_label.add_theme_color_override("font_color", UiTheme.DANGER)
-	boss_label.visible = false
-	add_child(boss_label)
-	boss_bar = ProgressBar.new()
-	boss_bar.anchor_left = 0.5; boss_bar.anchor_right = 0.5
-	boss_bar.offset_left = -140; boss_bar.offset_right = 140
-	boss_bar.position.y = 48
-	boss_bar.custom_minimum_size = Vector2(280, 14)
-	UiTheme.style_bar(boss_bar, 14.0, "fill_health.png")
-	boss_bar.visible = false
-	add_child(boss_bar)
 	var joystick: Control = load("res://scripts/components/virtual_joystick.gd").new()
 	joystick.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	joystick.direction_changed.connect(_on_joystick)
@@ -85,7 +92,7 @@ func setup(owner: Node) -> void:
 	pause_button.text = ""
 	pause_button.anchor_left = 1.0; pause_button.anchor_right = 1.0
 	pause_button.offset_left = -64; pause_button.offset_right = -16
-	pause_button.offset_top = 16; pause_button.offset_bottom = 64
+	pause_button.offset_top = top + XP_BAR_HEIGHT + 34; pause_button.offset_bottom = top + XP_BAR_HEIGHT + 82
 	pause_button.icon = UiTheme.icon("pause.png")
 	pause_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pause_button.theme = UiTheme.make_theme()
@@ -97,7 +104,7 @@ func setup(owner: Node) -> void:
 		var debug_column := VBoxContainer.new()
 		debug_column.anchor_left = 1.0; debug_column.anchor_right = 1.0
 		debug_column.offset_left = -76; debug_column.offset_right = -16
-		debug_column.offset_top = 72
+		debug_column.offset_top = top + XP_BAR_HEIGHT + 90
 		debug_column.add_theme_constant_override("separation", 4)
 		add_child(debug_column)
 		for entry in [["JEFE", "boss"], ["ÉLITE", "elite"], ["MINI", "miniboss"], ["HORDA", "horde"], ["DROPS", "drops"]]:
@@ -128,6 +135,18 @@ func setup(owner: Node) -> void:
 
 	if _tutorial_active:
 		_build_tutorial_hint()
+
+const XP_BAR_HEIGHT := 12.0
+
+## Top inset for notches/cutouts on phones, in viewport units.
+func _safe_top() -> float:
+	if not OS.has_feature("mobile"):
+		return 0.0
+	var window := DisplayServer.window_get_size()
+	if window.y <= 0:
+		return 0.0
+	var safe := DisplayServer.get_display_safe_area()
+	return maxf(0.0, float(safe.position.y) * get_viewport().get_visible_rect().size.y / float(window.y))
 
 ## Centered banner that pops in and fades out; a newer one replaces it.
 func _announce(text: String, color: Color) -> void:
@@ -183,17 +202,11 @@ func _process(_delta: float) -> void:
 	if is_instance_valid(_tutorial_hint) and is_instance_valid(world.player) and world.player.velocity.length_squared() > 400.0:
 		_tutorial_hint.queue_free()
 		_tutorial_hint = null
-	level_label.text = "NV. %d  ·  ELIMINADOS %d" % [world.level, world.kills]
+	level_label.text = "NV. %d" % world.level
 	xp_bar.value = float(world.xp) / float(world.xp_needed) * 100.0
 	hearts.set_hearts(world.player.hp, world.player.max_hp)
-	timer_label.text = "%02d:%02d" % [int(world.elapsed) / 60, int(world.elapsed) % 60]
-	var boss_alive: bool = is_instance_valid(world.boss)
-	boss_label.visible = boss_alive
-	boss_bar.visible = boss_alive
-	if boss_alive:
-		if world.boss is EmberfallBoss:
-			boss_label.text = (world.boss as EmberfallBoss).display_name.to_upper()
-		boss_bar.value = float(world.boss.hp) / float(world.boss.max_hp) * 100.0
+	timer_label.text = "%02d:%02d  ·  %d BAJAS" % [int(world.elapsed) / 60, int(world.elapsed) % 60, world.kills]
+	# The boss draws its own name and health bar over its head.
 	_refresh_build_bar()
 	if GameState.screen == "level_up" and not panel:
 		show_level_up()
@@ -444,9 +457,9 @@ func show_pause_panel() -> void:
 	_add_blocker_for(pause_panel)
 	pause_panel.anchor_left = 0.5; pause_panel.anchor_right = 0.5
 	pause_panel.anchor_top = 0.5; pause_panel.anchor_bottom = 0.5
-	pause_panel.offset_left = -140; pause_panel.offset_right = 140
-	pause_panel.offset_top = -220; pause_panel.offset_bottom = 220
-	pause_panel.custom_minimum_size = Vector2(280, 440)
+	pause_panel.offset_left = -165; pause_panel.offset_right = 165
+	pause_panel.offset_top = -260; pause_panel.offset_bottom = 260
+	pause_panel.custom_minimum_size = Vector2(330, 520)
 	add_child(pause_panel)
 	_build_pause_content()
 
@@ -494,6 +507,7 @@ func _build_pause_content() -> void:
 		pause_sub.add_theme_font_size_override("font_size", 11)
 		pause_sub.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		box.add_child(pause_sub)
+		box.add_child(_pause_stats())
 		box.add_child(_card_label("TU BUILD", 14, UiTheme.ACCENT))
 		var build_scroll := ScrollContainer.new()
 		build_scroll.custom_minimum_size = Vector2(0, 160)
@@ -523,6 +537,30 @@ func _build_pause_content() -> void:
 			_build_pause_content()
 		)
 		box.add_child(exit)
+
+## Run-so-far numbers plus the top damage sources, so the pause doubles as
+## a quick check of how the build is performing.
+func _pause_stats() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	var seconds := int(world.elapsed)
+	var line := "%d:%02d  ·  %d BAJAS  ·  NV.%d  ·  +%d ORO" % [seconds / 60, seconds % 60, world.kills, world.level, world.gold_this_run()]
+	box.add_child(_card_label(line, 12, UiTheme.TEXT))
+	var damage: Dictionary = world.damage_by_source
+	if damage.is_empty():
+		return box
+	var ids: Array = damage.keys()
+	ids.sort_custom(func(a, b): return int(damage[a]) > int(damage[b]))
+	var total := 0
+	for id in ids:
+		total += int(damage[id])
+	var parts := PackedStringArray()
+	for i in mini(3, ids.size()):
+		var id := str(ids[i])
+		var label := RunResultScreen.EXTRA_SOURCES.get(id, {}).get("name", AbilityCatalog.display_name(id, world.is_evolved(id))) as String
+		parts.append("%s %d%%" % [label, int(round(100.0 * int(damage[id]) / maxf(1.0, float(total))))])
+	box.add_child(_card_label("DAÑO: " + "  ·  ".join(parts), 10, UiTheme.TEXT_MUTED))
+	return box
 
 ## One pause-screen line per owned ability; actives also show how close
 ## they are to evolving (level + paired passive).

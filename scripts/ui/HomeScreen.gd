@@ -63,9 +63,17 @@ func _side_button(y: float, icon_path: String, caption_text: String, on_press: C
 	icon.offset_bottom = -4
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side.add_child(icon)
-	var badge: Control = UiTheme.icon_rect("badge_notificacion.png", 20)
-	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	badge.position = Vector2(side.size.x - 14.0, -8.0)
+	# "Something new" marker: a plain red dot on the shortcut's corner.
+	var badge := Panel.new()
+	var dot := StyleBoxFlat.new()
+	dot.bg_color = UiTheme.DANGER
+	dot.border_color = Color("ffe3e3")
+	dot.set_border_width_all(2)
+	dot.set_corner_radius_all(8)
+	badge.add_theme_stylebox_override("panel", dot)
+	badge.size = Vector2(14, 14)
+	badge.position = Vector2(side.size.x - 12.0, -2.0)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side.add_child(badge)
 	badge.visible = has_news.call()
 	# The signal lives on an autoload, so disconnect when the badge goes away;

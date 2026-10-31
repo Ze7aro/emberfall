@@ -93,6 +93,13 @@ var unlocked_abilities: Array[String] = []
 var music_enabled := true
 var effects_enabled := true
 var tutorial_completed := false
+## Accessibility/comfort options (Configuración).
+var vibration_enabled := true
+## Turns off camera shake, hit stop and bright hit flashes.
+var reduce_motion := false
+## 0 small, 1 normal, 2 large — see JOYSTICK_SCALES.
+var joystick_size := 1
+const JOYSTICK_SCALES := [0.8, 1.0, 1.3]
 var boss_encounter_active := false
 
 var level := 1
@@ -461,6 +468,26 @@ func set_effects_enabled(value: bool) -> void:
 	effects_enabled = value
 	effects_enabled_changed.emit(value)
 	save()
+
+func set_vibration_enabled(value: bool) -> void:
+	vibration_enabled = value
+	save()
+
+func set_reduce_motion(value: bool) -> void:
+	reduce_motion = value
+	save()
+
+func set_joystick_size(value: int) -> void:
+	joystick_size = clampi(value, 0, JOYSTICK_SCALES.size() - 1)
+	save()
+
+func joystick_scale() -> float:
+	return float(JOYSTICK_SCALES[clampi(joystick_size, 0, JOYSTICK_SCALES.size() - 1)])
+
+## Short buzz on phones, respecting the Vibración option.
+func vibrate(ms: int) -> void:
+	if vibration_enabled:
+		Input.vibrate_handheld(ms)
 
 func mark_tutorial_completed() -> void:
 	if tutorial_completed:
@@ -907,6 +934,7 @@ func save() -> void:
 		"damage": permanent_damage, "health": permanent_health, "speed": permanent_speed, "gems": gems,
 		"permanent_upgrades": permanent_upgrades, "run_stats": run_stats, "unlocked_abilities": unlocked_abilities,
 		"music": music_enabled, "effects": effects_enabled, "tutorial_completed": tutorial_completed,
+		"vibration": vibration_enabled, "reduce_motion": reduce_motion, "joystick_size": joystick_size,
 		"level": level, "experience": experience, "experience_to_next": experience_to_next,
 		"selected_character_id": str(selected_character_id), "selected_character_texture": selected_character_texture,
 		"selected_character_sprite_folder": selected_character_sprite_folder,
@@ -987,6 +1015,9 @@ func load_save() -> void:
 	music_enabled = _safe_bool(data.get("music"), true)
 	effects_enabled = _safe_bool(data.get("effects"), true)
 	tutorial_completed = _safe_bool(data.get("tutorial_completed"), false)
+	vibration_enabled = _safe_bool(data.get("vibration"), true)
+	reduce_motion = _safe_bool(data.get("reduce_motion"), false)
+	joystick_size = clampi(_safe_int(data.get("joystick_size"), 1), 0, JOYSTICK_SCALES.size() - 1)
 	level = maxi(1, _safe_int(data.get("level"), 1))
 	experience = maxi(0, _safe_int(data.get("experience"), 0))
 	experience_to_next = maxi(1, _safe_int(data.get("experience_to_next"), 100))
