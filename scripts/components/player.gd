@@ -153,7 +153,3 @@ func _draw() -> void:
 	var heart_count := int(ceil(max_hp / 2.0))
 	var row_width := heart_count * 13.0 - 3.0
 	HeartsRow.draw_row(self, Vector2(-row_width / 2.0, -46), 10.0, 3.0, hp, max_hp, Color("e86958"), Color("29404a"))
-	# Égida Rúnica: one ring per stored charge.
-	if game and game.aegis_charges > 0:
-		for i in game.aegis_charges:
-			draw_arc(Vector2(0, -4), 30.0 + i * 5.0, 0.0, TAU, 32, Color(0.31, 0.84, 1.0, 0.55), 2.0)

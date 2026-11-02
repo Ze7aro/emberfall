@@ -5,8 +5,8 @@ class_name EmberfallSkillProjectile
 ## Esquirla, Familiar). Hit-tests by distance against game_ref.enemies like
 ## every other ability, instead of going through game_world's basic-attack
 ## loop, so it never picks up hero-only effects (guaranteed status, etc.).
-## Drawn procedurally until the generated VFX strips from
-## docs/PLAN_FINALIZACION.md §6.5 exist.
+## Drawn in code with the shared look (EmberfallFx, PLAN_FINALIZACION §8):
+## white core, ability color, additive halo and a short fading trail.
 
 enum Mode { STRAIGHT, BOOMERANG, SPIRAL, BOUNCE }
 enum Style { DAGGER, AXE, SHARD, BOLT }
@@ -33,6 +33,11 @@ var return_target: Node2D
 var visual_scale := 1.0
 ## Ability id credited in the result screen's damage ranking.
 var source_id := ""
+## Evolved abilities draw bigger and shifted toward gold.
+var evolved := false
+
+const TRAIL_LENGTH := {Style.DAGGER: 6, Style.AXE: 0, Style.SHARD: 5, Style.BOLT: 6}
+var _trail: Array[Vector2] = [] # global positions, oldest first
 
 var _age := 0.0
 var _travelled := 0.0
@@ -40,9 +45,18 @@ var _returning := false
 var _hits := 0
 var _last_hit := {} # instance_id -> _age
 
+func _ready() -> void:
+	material = EmberfallFx.additive()
+	if evolved:
+		color = EmberfallFx.evolved_color(color)
+		visual_scale *= 1.25
+
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":
 		return
+	_trail.append(global_position)
+	if _trail.size() > int(TRAIL_LENGTH.get(style, 0)):
+		_trail.pop_front()
 	_age += delta
 	if _age >= lifetime:
 		queue_free()
@@ -98,6 +112,8 @@ func _bounce_off_screen() -> void:
 		queue_free()
 		return
 	bounces -= 1
+	if is_instance_valid(game_ref):
+		game_ref.spawn_sparks(global_position, color, 4, 120.0)
 	bounced.emit(global_position, direction)
 
 func _check_hits() -> void:
@@ -119,23 +135,55 @@ func _check_hits() -> void:
 			return
 
 func _draw() -> void:
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
+	var local_trail := PackedVector2Array()
+	for point in _trail:
+		local_trail.append(to_local(point))
 	match style:
 		Style.DAGGER:
-			var tip := direction * 14.0
-			var side := direction.orthogonal() * 3.0
-			draw_colored_polygon(PackedVector2Array([tip, -direction * 6.0 + side, -direction * 10.0, -direction * 6.0 - side]), color)
-			draw_line(-direction * 10.0, -direction * 22.0, Color(color, 0.35), 3.0)
+			EmberfallFx.trail(self, local_trail, color, 5.0 * visual_scale)
+			draw_set_transform(Vector2.ZERO, direction.angle(), Vector2.ONE * visual_scale)
+			EmberfallFx.glow(self, Vector2(2, 0), 13.0, color, 0.35)
+			# Long thin blade, a hilt, and a white edge down the middle.
+			draw_colored_polygon(PackedVector2Array([Vector2(16, 0), Vector2(-2, 3.2), Vector2(-7, 0), Vector2(-2, -3.2)]), color)
+			draw_line(Vector2(-6, 0), Vector2(13, 0), Color(1, 1, 1, 0.95), 1.4)
+			draw_line(Vector2(-7, -4.5), Vector2(-7, 4.5), color.lightened(0.3), 2.0)
 		Style.AXE:
-			var spin := _age * 14.0
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
+			var spin := _age * 15.0
+			EmberfallFx.glow(self, Vector2.ZERO, 22.0, color, 0.25)
+			# Motion blur: two faint arcs trailing each blade.
 			for i in 2:
-				var a := Vector2.RIGHT.rotated(spin + PI * i)
-				draw_colored_polygon(PackedVector2Array([a * 4.0, a * 16.0 + a.orthogonal() * 9.0, a * 18.0 - a.orthogonal() * 7.0]), color)
-			draw_circle(Vector2.ZERO, 4.0, Color("3b2457"))
+				var a := spin + PI * i
+				draw_arc(Vector2.ZERO, 15.0, a - 1.6, a, 10, Color(color, 0.35), 7.0)
+				draw_arc(Vector2.ZERO, 17.0, a - 0.8, a, 6, Color(1, 1, 1, 0.35), 2.0)
+			for i in 2:
+				var dir := Vector2.RIGHT.rotated(spin + PI * i)
+				var side := dir.orthogonal()
+				var blade := PackedVector2Array([dir * 5.0, dir * 15.0 + side * 10.0, dir * 20.0, dir * 15.0 - side * 7.0])
+				draw_colored_polygon(blade, color)
+				draw_line(dir * 15.0 + side * 10.0, dir * 20.0, Color.WHITE, 2.0)
+				draw_line(dir * 20.0, dir * 15.0 - side * 7.0, Color.WHITE, 2.0)
+			draw_line(Vector2.RIGHT.rotated(spin) * 6.0, Vector2.RIGHT.rotated(spin + PI) * 6.0, Color("cfc6dc"), 3.0)
+			draw_circle(Vector2.ZERO, 3.5, Color("3b2457"))
 		Style.SHARD:
-			var r := Vector2.RIGHT.rotated(_age * 9.0)
-			draw_colored_polygon(PackedVector2Array([r * 11.0, r.orthogonal() * 6.0, -r * 11.0, -r.orthogonal() * 6.0]), color)
-			draw_circle(Vector2.ZERO, 2.5, Color.WHITE)
+			# Afterimages along the path instead of a line trail.
+			for i in local_trail.size():
+				var k := float(i + 1) / float(local_trail.size() + 1)
+				_draw_shard(local_trail[i], Color(color, 0.35 * k), 0.75 + 0.25 * k, false)
+			EmberfallFx.glow(self, Vector2.ZERO, 16.0 * visual_scale, color, 0.4)
+			_draw_shard(Vector2.ZERO, color, 1.0, true)
 		Style.BOLT:
-			draw_circle(Vector2.ZERO, 6.0, Color(color, 0.45))
-			draw_circle(Vector2.ZERO, 3.0, Color.WHITE)
+			EmberfallFx.trail(self, local_trail, color, 6.0 * visual_scale)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
+			EmberfallFx.glow(self, Vector2.ZERO, 12.0, color, 0.5)
+			draw_circle(Vector2.ZERO, 4.5, color)
+			draw_circle(Vector2.ZERO, 2.4, Color.WHITE)
+
+## Spinning crystal: colored rhombus with a white inner facet.
+func _draw_shard(at: Vector2, tint: Color, scale_factor: float, with_core: bool) -> void:
+	var s := scale_factor * visual_scale
+	var r := Vector2.RIGHT.rotated(_age * 9.0)
+	var o := r.orthogonal()
+	draw_colored_polygon(PackedVector2Array([at + r * 12.0 * s, at + o * 6.0 * s, at - r * 12.0 * s, at - o * 6.0 * s]), tint)
+	if with_core:
+		draw_colored_polygon(PackedVector2Array([at + r * 6.0 * s, at + o * 2.5 * s, at - r * 2.0 * s, at - o * 2.5 * s]), Color(1, 1, 1, 0.95))

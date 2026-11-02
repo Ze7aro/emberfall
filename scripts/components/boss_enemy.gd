@@ -169,7 +169,7 @@ func _execute_pattern() -> void:
 		Pattern.SLAM:
 			if global_position.distance_to(target.global_position) < SLAM_RADIUS:
 				target.damage(SLAM_DAMAGE)
-			_spawn_fx("explosion_area", global_position, SLAM_RADIUS)
+			_spawn_fx(global_position, SLAM_RADIUS)
 		Pattern.SWEEP:
 			if _in_sector(SWEEP_RADIUS, SWEEP_HALF_ANGLE):
 				target.damage(SWEEP_DAMAGE)
@@ -249,9 +249,10 @@ func _spawn_zones() -> void:
 		zone.target = target
 		game_ref.add_child(zone)
 
-func _spawn_fx(kind: String, at: Vector2, radius: float) -> void:
-	if is_instance_valid(game_ref) and game_ref.has_method("_spawn_ability_fx"):
-		game_ref._spawn_ability_fx(kind, at, radius)
+## Slam burst: reddish so it reads as enemy damage, not one of the player's.
+func _spawn_fx(at: Vector2, radius: float) -> void:
+	if is_instance_valid(game_ref) and game_ref.has_method("_spawn_burst_fx"):
+		game_ref._spawn_burst_fx(at, radius, Color("ff5a4a"))
 
 func _pose_index() -> int:
 	if _state == "chase":

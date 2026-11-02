@@ -648,6 +648,32 @@ func unlock_progress(id: String) -> Array:
 		return [1, 1]
 	return [int(run_stats.get(str(requirement["stat"]), 0)), int(requirement["target"])]
 
+## -- Códex --
+## Abilities/passives ever taken, evolutions ever made, and lifetime kills
+## per bestiary key (see BestiaryCatalog). Updated once per run in record_run.
+var discovered_abilities: Array[String] = []
+var discovered_evolutions: Array[String] = []
+var bestiary: Dictionary = {}
+
+func _load_ability_ids(stored: Variant, target: Array[String]) -> void:
+	target.clear()
+	if not stored is Array:
+		return
+	for id in stored:
+		if id is String and (AbilityCatalog.ACTIVES.has(id) or AbilityCatalog.PASSIVES.has(id)) and id not in target:
+			target.append(id)
+
+func _record_discoveries(stats: Dictionary) -> void:
+	for id in stats.get("abilities", []):
+		if str(id) not in discovered_abilities:
+			discovered_abilities.append(str(id))
+	for id in stats.get("evolved", []):
+		if str(id) not in discovered_evolutions:
+			discovered_evolutions.append(str(id))
+	var kills_by_type: Dictionary = stats.get("kills_by_type", {})
+	for key in kills_by_type:
+		bestiary[str(key)] = int(bestiary.get(str(key), 0)) + int(kills_by_type[key])
+
 ## The still-locked ability closest to unlocking, as {id, text, current,
 ## target}; empty once everything is unlocked.
 func next_unlock_goal() -> Dictionary:
@@ -673,6 +699,7 @@ func record_run(stats: Dictionary) -> Array[String]:
 	run_stats["evolutions_done"] = int(run_stats.get("evolutions_done", 0)) + int(stats.get("evolutions", 0))
 	run_stats["best_level"] = maxi(int(run_stats.get("best_level", 0)), int(stats.get("level", 0)))
 	run_stats["best_time"] = maxi(int(run_stats.get("best_time", 0)), int(stats.get("time", 0)))
+	_record_discoveries(stats)
 	var unlocked: Array[String] = []
 	for id in AbilityCatalog.UNLOCKS:
 		if id in unlocked_abilities:
@@ -933,6 +960,7 @@ func save() -> void:
 		"energy": energy, "energy_timestamp": energy_timestamp, "gold": gold, "high_score": high_score,
 		"damage": permanent_damage, "health": permanent_health, "speed": permanent_speed, "gems": gems,
 		"permanent_upgrades": permanent_upgrades, "run_stats": run_stats, "unlocked_abilities": unlocked_abilities,
+		"discovered_abilities": discovered_abilities, "discovered_evolutions": discovered_evolutions, "bestiary": bestiary,
 		"music": music_enabled, "effects": effects_enabled, "tutorial_completed": tutorial_completed,
 		"vibration": vibration_enabled, "reduce_motion": reduce_motion, "joystick_size": joystick_size,
 		"level": level, "experience": experience, "experience_to_next": experience_to_next,
@@ -1012,6 +1040,14 @@ func load_save() -> void:
 		for id in stored_unlocked:
 			if id is String and AbilityCatalog.UNLOCKS.has(id) and id not in unlocked_abilities:
 				unlocked_abilities.append(id)
+	_load_ability_ids(data.get("discovered_abilities", []), discovered_abilities)
+	_load_ability_ids(data.get("discovered_evolutions", []), discovered_evolutions)
+	bestiary = {}
+	var stored_bestiary = data.get("bestiary", {})
+	if stored_bestiary is Dictionary:
+		for key in stored_bestiary:
+			if BestiaryCatalog.has(str(key)):
+				bestiary[str(key)] = maxi(0, _safe_int(stored_bestiary[key], 0))
 	music_enabled = _safe_bool(data.get("music"), true)
 	effects_enabled = _safe_bool(data.get("effects"), true)
 	tutorial_completed = _safe_bool(data.get("tutorial_completed"), false)

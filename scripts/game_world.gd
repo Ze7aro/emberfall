@@ -30,7 +30,6 @@ const DROP_MAGNET := 0.004
 const DROP_BOMB := 0.003
 const POTION_HEAL := 2 # 1 full heart
 const MAX_ABILITY_LEVEL := AbilityCatalog.MAX_LEVEL
-const ABILITY_SPRITE_FX := preload("res://scripts/components/ability_sprite_fx.gd")
 ## Used when a hero has no starting_power set in its CharacterData.
 const DEFAULT_STARTING_POWER := "daggers"
 
@@ -77,6 +76,8 @@ var _next_elite_time := ELITE_INTERVAL_MIN
 ## Run stats reported to GameState.record_run() (ability unlocks).
 var _chests_opened := 0
 var _evolutions_done := 0
+## Kills per bestiary key this run (BestiaryCatalog), saved in end_run.
+var _kills_by_type := {}
 var _run_reported := false
 var _revives_left := 0
 var _events_fired: Array[int] = []
@@ -101,6 +102,7 @@ var _fire_aura: EmberfallPersistentAura
 var _perpetual_winter: EmberfallFrostZone
 var _familiars: Array[EmberfallSpectralFamiliar] = []
 var aegis_charges := 0
+var _aegis_bubble: EmberfallAegisBubble
 var _aegis_clock := 0.0
 var _solar_heal_clock := 0.0
 var _cataclysm_clock := 0.0
@@ -137,6 +139,8 @@ func _ready() -> void:
 	player.setup(self)
 	player.died.connect(_on_player_died)
 	add_child(player)
+	sparks = EmberfallSparks.new()
+	add_child(sparks)
 	_setup_lighting()
 	rerolls = 2 + _up("reroll")
 	banishes = 2 + _up("banish")
@@ -440,6 +444,8 @@ func _trigger_slash(lvl: int) -> void:
 	var fx := EmberfallSlashFx.new()
 	fx.half_width = half_width
 	fx.half_height = half_height
+	fx.color = AbilityCatalog.color("slash")
+	fx.evolved = is_evolved("slash")
 	fx.position = Vector2(0, -6)
 	player.add_child(fx)
 
@@ -448,7 +454,7 @@ func _void_burst(at: Vector2, burst_damage: int) -> void:
 	for enemy in enemies:
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(at) < radius:
 			_apply_damage(enemy, burst_damage, false, false)
-	_spawn_ability_fx("explosion_area", at, radius)
+	_spawn_burst_fx(at, radius, AbilityCatalog.color("slash"))
 
 const METEOR_BASE_RADIUS := 48.0
 
@@ -526,6 +532,9 @@ func try_block() -> bool:
 	aegis_charges -= 1
 	player.queue_redraw()
 	SfxPlayer.play("status/freeze_apply.wav", false)
+	var shield_color := AbilityCatalog.color("aegis")
+	spawn_ring(player.global_position + Vector2(0, -4), shield_color, 70.0, 0.3, 4.0)
+	spawn_sparks(player.global_position + Vector2(0, -4), shield_color, 10, 220.0)
 	# Bastión: the breaking shield pushes everything back with a nova.
 	if is_evolved("aegis"):
 		var radius := 110.0 * area_multiplier()
@@ -534,7 +543,7 @@ func try_block() -> bool:
 				_apply_damage(enemy, 40 + 8 * skill_level("aegis"), true, true, "aegis")
 				if is_instance_valid(enemy):
 					enemy.knockback(player.global_position.direction_to(enemy.global_position) * 420.0)
-		_spawn_ability_fx("explosion_area", player.global_position, radius)
+		_spawn_burst_fx(player.global_position, radius, EmberfallFx.evolved_color(shield_color))
 	return true
 
 func _make_skill_projectile(style: int, id: String) -> EmberfallSkillProjectile:
@@ -543,6 +552,7 @@ func _make_skill_projectile(style: int, id: String) -> EmberfallSkillProjectile:
 	projectile.style = style
 	projectile.color = AbilityCatalog.color(id)
 	projectile.source_id = id
+	projectile.evolved = is_evolved(id)
 	projectile.global_position = player.projectile_origin.global_position if is_instance_valid(player.projectile_origin) else player.global_position
 	return projectile
 
@@ -569,7 +579,7 @@ func _refresh_powers() -> void:
 			player.move_child(_fire_aura, 0)
 			SfxPlayer.play("abilities/constant_fire_start.wav", false)
 		# Re-run on every pick so Área / level / Corona Solar resize the visual.
-		_fire_aura.setup("fuego_constante", fire_aura_radius() / FX_NATIVE_RADIUS["fuego_constante"])
+		_fire_aura.setup(fire_aura_radius(), is_evolved("fire"))
 	if skills.has("blizzard") and is_evolved("blizzard") and not is_instance_valid(_perpetual_winter):
 		_perpetual_winter = preload("res://scripts/components/frost_zone.gd").new()
 		_perpetual_winter.radius = (70.0 + 6.0 * skill_level("blizzard")) * 1.3 * area_multiplier()
@@ -579,6 +589,12 @@ func _refresh_powers() -> void:
 		_perpetual_winter.game_ref = self
 		player.add_child(_perpetual_winter)
 		player.move_child(_perpetual_winter, 0)
+	if skills.has("aegis"):
+		if not is_instance_valid(_aegis_bubble):
+			_aegis_bubble = EmberfallAegisBubble.new()
+			_aegis_bubble.game_ref = self
+			player.add_child(_aegis_bubble)
+		_aegis_bubble.evolved = is_evolved("aegis")
 	if skills.has("familiar"):
 		var familiar_level := skill_level("familiar")
 		var wanted := 1 + (1 if familiar_level >= 3 else 0) + (1 if familiar_level >= 5 else 0) + (2 if is_evolved("familiar") else 0)
@@ -597,15 +613,6 @@ func _refresh_powers() -> void:
 
 # --- Shared combat helpers ---------------------------------------------------
 
-## Roughly how big each ability's visible art reads at scale 1.0 (eyeballed
-## from the source PNGs), so `_spawn_ability_fx`'s target_radius lines up
-## with each ability's actual hit radius instead of needing a magic scale
-## per call site.
-const FX_NATIVE_RADIUS := {
-	"explosion_area": 300.0,
-	"fuego_constante": 165.0,
-}
-
 ## Fuego Constante's frame_01/02 are a near-solid disc (unlike frame_00's
 ## sparse ring); the base radius keeps the aura's footprint inside the
 ## Lunas' orbit so the two don't fight for the same screen space.
@@ -614,11 +621,12 @@ const FIRE_TICK_INTERVAL := 0.25
 ## Cadena Eléctrica: bounded to a believable lightning hop.
 const CHAIN_JUMP_RANGE := 220.0
 
-func _spawn_ability_fx(folder: String, pos: Vector2, target_radius: float) -> void:
-	var fx := ABILITY_SPRITE_FX.new()
-	fx.position = pos
-	fx.setup(folder, target_radius / float(FX_NATIVE_RADIUS.get(folder, target_radius)))
-	add_child(fx)
+## Area burst (bomb, evolution, revive, void burst, Bastión): a filled ring
+## out to the hit radius plus sparks, drawn in code like the rest of §8.
+func _spawn_burst_fx(pos: Vector2, radius: float, color: Color) -> void:
+	spawn_ring(pos, color, radius, 0.4, 5.0, true)
+	spawn_ring(pos, Color(1, 1, 1), radius * 0.55, 0.25, 3.0)
+	spawn_sparks(pos, color, clampi(int(radius / 10.0), 8, 24), 240.0)
 
 ## Basic-attack impact: the shot packs only ship "fly" frames, so this is a
 ## tiny procedural burst instead — separate from damage (already applied by
@@ -630,17 +638,38 @@ func _spawn_impact_flash(pos: Vector2, color: Color) -> void:
 	flash.color = color
 	add_child(flash)
 
-## Chain lightning's art is a fixed 4-node strip, not a tileable beam — it
-## gets rotated to face the hop and stretched horizontally to roughly bridge
-## the two points, same spirit as the old drawn LINE it replaces.
+## Cadena Eléctrica: a jagged bolt drawn between the two points.
 func _spawn_chain_fx(from: Vector2, to: Vector2) -> void:
-	var diff := to - from
-	var fx := ABILITY_SPRITE_FX.new()
-	fx.position = (from + to) / 2.0
-	fx.rotation = diff.angle()
-	var scale_x := clampf(diff.length() / 360.0, 0.35, 2.2)
-	fx.setup("cadena_electrica", 1.0, Vector2(scale_x, 0.5))
-	add_child(fx)
+	var bolt := EmberfallLightning.new()
+	bolt.from = from
+	bolt.to = to
+	var color := AbilityCatalog.color("chain")
+	bolt.color = EmberfallFx.evolved_color(color) if is_evolved("chain") else color
+	bolt.thick = 1.3 if is_evolved("chain") else 1.0
+	add_child(bolt)
+
+## Hit sparks shared by every ability (one node draws them all).
+var sparks: EmberfallSparks
+
+func spawn_sparks(at: Vector2, color: Color, count: int, speed: float = 150.0) -> void:
+	if is_instance_valid(sparks):
+		sparks.burst(at, color, count, speed)
+
+func spawn_ring(at: Vector2, color: Color, radius: float, lifetime: float = 0.35, width: float = 5.0, fill: bool = false) -> void:
+	var ring := EmberfallFxRing.new()
+	ring.position = at
+	ring.color = color
+	ring.radius = radius
+	ring.lifetime = lifetime
+	ring.width = width
+	ring.fill = fill
+	add_child(ring)
+
+## Sparks per hit for each ability; the constant ones (aura, pools, orbit)
+## hit often, so they spark less.
+const HIT_SPARKS := {
+	"fire": 1, "orbital": 2, "poison_bomb": 1, "blizzard": 1,
+}
 
 ## Applies damage to an enemy (rolling crit, consuming Electrocutado) and,
 ## if it dies, grants kills/loot consistently across every damage source.
@@ -661,6 +690,12 @@ func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = 
 	var dealt := int(round(final_amount))
 	record_damage(source if source != "" else damage_source, mini(dealt, enemy.hp))
 	spawn_damage_number(enemy.global_position, dealt, _last_hit_crit)
+	var spark_source := source if source != "" else damage_source
+	if AbilityCatalog.is_active(spark_source):
+		var spark_color := AbilityCatalog.color(spark_source)
+		if is_evolved(spark_source):
+			spark_color = EmberfallFx.evolved_color(spark_color)
+		spawn_sparks(enemy.global_position, spark_color, int(HIT_SPARKS.get(spark_source, 3)) + (2 if _last_hit_crit else 0))
 	SfxPlayer.play_enemy_hit()
 	if _last_hit_crit:
 		SfxPlayer.play("combat/critical_hit.wav")
@@ -921,7 +956,7 @@ func _open_chest(epic: bool) -> void:
 ## Bomba: clears regular enemies on screen; élites and the boss take a chunk.
 func _detonate_bomb(at: Vector2) -> void:
 	SfxPlayer.play("abilities/area_explosion.wav", false)
-	_spawn_ability_fx("explosion_area", at, 260.0)
+	_spawn_burst_fx(at, 260.0, Color("ff9a4a"))
 	var half := get_viewport_rect().size * 0.5
 	for enemy in enemies:
 		if not is_instance_valid(enemy) or enemy.dead:
@@ -953,6 +988,59 @@ func debug_action(action: String) -> void:
 		"drops":
 			for i in 3:
 				spawn_pickup(player.position + Vector2.from_angle(TAU * i / 3.0) * 90.0, [EmberfallPickup.Kind.POTION, EmberfallPickup.Kind.MAGNET, EmberfallPickup.Kind.BOMB][i])
+		"ability_next":
+			_debug_show_ability(1)
+		"ability_up":
+			_debug_level_up_ability()
+
+## Debug: the active being previewed by HAB / NV+.
+var _debug_ability_index := -1
+
+## Swaps every active for the next one in the catalog at level 1, so each
+## ability can be looked at alone.
+func _debug_show_ability(step: int) -> void:
+	var ids: Array = AbilityCatalog.ACTIVES.keys()
+	_debug_ability_index = posmod(_debug_ability_index + step, ids.size())
+	_debug_clear_actives()
+	var id := str(ids[_debug_ability_index])
+	skills[id] = 1
+	_refresh_powers()
+	announced.emit("PRUEBA: %s NV. 1" % AbilityCatalog.display_name(id), GOLD)
+
+## Debug: +1 level to the previewed active; past the max it evolves.
+func _debug_level_up_ability() -> void:
+	if _debug_ability_index < 0:
+		_debug_show_ability(1)
+		return
+	var id := str(AbilityCatalog.ACTIVES.keys()[_debug_ability_index])
+	if not skills.has(id):
+		return
+	if skill_level(id) < AbilityCatalog.MAX_LEVEL:
+		skills[id] = skill_level(id) + 1
+		announced.emit("PRUEBA: %s NV. %d" % [AbilityCatalog.display_name(id), skill_level(id)], GOLD)
+	elif not is_evolved(id):
+		_apply_evolution(id)
+	_refresh_powers()
+
+func _debug_clear_actives() -> void:
+	for id in skills.keys():
+		skill_timers.erase(id)
+	skills.clear()
+	evolved.clear()
+	aegis_charges = 0
+	for node: Node in [_orbital_wave, _fire_aura, _perpetual_winter, _aegis_bubble]:
+		if is_instance_valid(node):
+			node.queue_free()
+	# queue_free is deferred: drop the references now so _refresh_powers
+	# builds fresh nodes this same frame.
+	_orbital_wave = null
+	_fire_aura = null
+	_perpetual_winter = null
+	_aegis_bubble = null
+	for familiar in _familiars:
+		if is_instance_valid(familiar):
+			familiar.queue_free()
+	_familiars.clear()
 
 # --- Hero basic attack --------------------------------------------------------
 
@@ -1078,6 +1166,8 @@ func _apply_hero_guaranteed_status(enemy: EmberfallEnemy) -> void:
 ## victory once the stage boss falls.
 func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 	kills += 1
+	var bestiary_key := BestiaryCatalog.key_for(enemy)
+	_kills_by_type[bestiary_key] = int(_kills_by_type.get(bestiary_key, 0)) + 1
 	_spawn_death_fx(enemy)
 	if enemy.elite_tier > 0:
 		var chest: int = EmberfallPickup.Kind.EPIC_CHEST if enemy.elite_tier >= 2 else EmberfallPickup.Kind.CHEST
@@ -1339,7 +1429,7 @@ func _apply_evolution(source: String) -> void:
 	evolved.append(source)
 	_evolutions_done += 1
 	announced.emit("¡Evolución: %s!" % AbilityCatalog.display_name(source, true), GOLD)
-	_spawn_ability_fx("explosion_area", player.global_position, 170.0)
+	_spawn_burst_fx(player.global_position, 170.0, EmberfallFx.GOLD)
 	SfxPlayer.play("progression/fusion_unlocked.wav", false)
 
 const VITALITY_HP := 2 # 1 full heart per pick
@@ -1405,7 +1495,7 @@ func _revive() -> void:
 	player.queue_redraw()
 	announced.emit("¡Reviviste!", GOLD)
 	SfxPlayer.play("progression/fusion_unlocked.wav", false)
-	_spawn_ability_fx("explosion_area", player.global_position, 200.0)
+	_spawn_burst_fx(player.global_position, 200.0, EmberfallFx.GOLD)
 	for enemy in enemies:
 		if not is_instance_valid(enemy) or enemy.dead:
 			continue
@@ -1421,6 +1511,8 @@ func end_run(victory: bool) -> void:
 		var newly := GameState.record_run({
 			"victory": victory, "kills": kills, "level": level, "time": int(elapsed),
 			"chests": _chests_opened, "evolutions": _evolutions_done,
+			"abilities": skills.keys() + passives.keys(), "evolved": evolved.duplicate(),
+			"kills_by_type": _kills_by_type,
 		})
 		for id in newly:
 			announced.emit("¡Nueva habilidad: %s!" % AbilityCatalog.display_name(id), GOLD)

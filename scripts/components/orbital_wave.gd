@@ -19,7 +19,7 @@ const MAX_MOONS := 6
 const RADIUS_X := 78.0
 const RADIUS_Y := 44.0
 const ANGULAR_SPEED := 1.8 # radians/sec
-const HIT_DISTANCE := 38.0 # moon radius + a typical enemy's half-size
+const HIT_DISTANCE := 34.0 # moon radius + a typical enemy's half-size
 const HIT_COOLDOWN := 0.6 # seconds of simulated time, see _check_hits
 
 var game_ref: Node
@@ -54,6 +54,13 @@ func _rebuild_moons() -> void:
 		var moon := MOON_SCRIPT.new()
 		player_node.add_child(moon)
 		_moons.append(moon)
+
+## Moons live under the player, so they go with this node explicitly.
+func _exit_tree() -> void:
+	for m in _moons:
+		if is_instance_valid(m):
+			m.queue_free()
+	_moons.clear()
 
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":

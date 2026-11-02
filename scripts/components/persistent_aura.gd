@@ -1,54 +1,47 @@
 extends Node2D
 class_name EmberfallPersistentAura
 
-## Visual-only companion for aura-style active abilities (Onda Orbital, Fuego
-## Constante): added as a child of the player once, then just sits there
-## looping and following automatically via normal Node2D parenting — no
-## per-frame position syncing needed. Damage/intervals stay entirely owned
-## by game_world.update_powers(); this never touches damage, only replaces
-## what used to be a one-shot flash recreated on every damage tick.
+## Visual-only companion for Aura Ígnea: a child of the player that just
+## follows them. Damage and intervals stay owned by game_world. Drawn in
+## code (§8): a faint warm disc with a flickering edge and embers rising
+## from inside it, instead of the opaque fuego_constante sprite.
 
-const SPRITE_DIR := "res://assets/emberfall_habilidades_sprites"
-const FPS := 6.0
-
-var sprite: AnimatedSprite2D
-var _base_scale := Vector2.ONE
-var _flicker_time := 0.0
-var _flicker_enabled := false
+var radius := 44.0
+var evolved := false
+var _time := 0.0
+var _color := Color("ff8a3d")
+var _embers: Array[Vector3] = [] # x, y (unit disc), phase
 
 func _init() -> void:
-	sprite = AnimatedSprite2D.new()
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	add_child(sprite)
+	material = EmberfallFx.additive()
+	for i in 16:
+		var p := Vector2.from_angle(randf() * TAU) * sqrt(randf()) * 0.9
+		_embers.append(Vector3(p.x, p.y, randf()))
 
-## `frame_indices` lets a caller skip frames that don't actually belong in a
-## loop — fuego_constante's frame_01/02 are a much denser, near-solid disc
-## than frame_00's sparse ring (same authored canvas size, wildly different
-## content), so cycling all three reads as the aura suddenly ballooning into
-## a screen-covering blob every half second instead of a steady flame.
-func setup(folder: String, visual_scale: float, frame_indices: Array = [0, 1, 2]) -> void:
-	_base_scale = Vector2(visual_scale, visual_scale)
-	sprite.scale = _base_scale
-	var frames := SpriteFrames.new()
-	frames.remove_animation("default")
-	frames.add_animation("loop")
-	frames.set_animation_loop("loop", true)
-	frames.set_animation_speed("loop", FPS)
-	var base := "%s/%s" % [SPRITE_DIR, folder]
-	for i in frame_indices:
-		frames.add_frame("loop", load("%s/frame_%02d.png" % [base, i]))
-	sprite.sprite_frames = frames
-	sprite.play("loop")
-	# A single static frame (fuego_constante's case, see above) has no frame
-	# animation to give it life, so fake a gentle flame-flicker procedurally
-	# instead: a slow breathing scale, a light wobble, and a soft alpha pulse.
-	# Multi-frame auras (Onda Orbital) already get their motion from the loop.
-	_flicker_enabled = frame_indices.size() <= 1
+## Re-run on every pick so Área / level / Corona Solar resize the visual.
+func setup(aura_radius: float, is_evolved: bool) -> void:
+	radius = aura_radius
+	evolved = is_evolved
+	_color = AbilityCatalog.color("fire")
+	if evolved:
+		_color = EmberfallFx.evolved_color(_color)
 
 func _process(delta: float) -> void:
-	if not _flicker_enabled:
+	if GameState.screen != "playing":
 		return
-	_flicker_time += delta
-	sprite.scale = _base_scale * (1.0 + sin(_flicker_time * 6.0) * 0.06)
-	sprite.rotation = sin(_flicker_time * 3.7) * 0.05
-	sprite.modulate.a = 0.9 + 0.1 * sin(_flicker_time * 9.0)
+	_time += delta
+	queue_redraw()
+
+func _draw() -> void:
+	var flicker := 0.85 + 0.15 * sin(_time * 9.0) * sin(_time * 5.3)
+	draw_circle(Vector2.ZERO, radius, Color(_color, 0.06 * flicker))
+	draw_circle(Vector2.ZERO, radius * 0.5, Color(_color, 0.05 * flicker))
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(_color, 0.28 * flicker), 1.5)
+	# Embers: rise a little, drift and fade, then start again lower down.
+	for ember in _embers:
+		var t := fposmod(_time * 0.8 + ember.z, 1.0)
+		var at := Vector2(ember.x + sin(_time * 3.0 + ember.z * TAU) * 0.05, ember.y) * radius
+		at.y -= t * 22.0
+		var k := sin(PI * t)
+		var hot := _color.lerp(Color(1.0, 0.92, 0.6), 1.0 - t)
+		draw_circle(at, 1.6 * (1.0 - t * 0.5), Color(hot, 0.75 * k))

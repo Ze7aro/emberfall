@@ -5,17 +5,18 @@ class_name EmberfallPickup
 ## and bomb. game_world ticks them like the XP orbs and applies the effect
 ## when one is collected.
 ##
-## Art: a generated sprite at res://assets/pickups/<name>.png wins (see
-## docs/PLAN_FINALIZACION.md §6.4); otherwise chest and potion reuse existing
-## UI icons and magnet/bomb are drawn procedurally.
+## Art: the recolectable sheet cut into assets/pickups/ (PLAN_FINALIZACION
+## §6.4). The epic chest has no art of its own yet: it reuses the chest
+## tinted violet. If a file goes missing, magnet/bomb fall back to a drawing.
 
 enum Kind { CHEST, EPIC_CHEST, POTION, MAGNET, BOMB }
 
 const ART_DIR := "res://assets/pickups/"
 const ART_NAMES := {
-	Kind.CHEST: "chest", Kind.EPIC_CHEST: "chest_epic", Kind.POTION: "potion",
-	Kind.MAGNET: "magnet", Kind.BOMB: "bomb",
+	Kind.CHEST: "recolectable_09", Kind.EPIC_CHEST: "recolectable_19", Kind.POTION: "recolectable_06",
+	Kind.MAGNET: "recolectable_07", Kind.BOMB: "recolectable_08",
 }
+const EPIC_TINT := Color(0.86, 0.66, 1.0)
 const FALLBACK_ART := {
 	Kind.CHEST: "res://assets/ui/icon_exports_2026-09-24/19_chest_common.png",
 	Kind.EPIC_CHEST: "res://assets/ui/icon_exports_2026-09-24/22_chest_epic.png",
@@ -73,7 +74,12 @@ func _draw() -> void:
 	if not is_chest() and _age > SMALL_DROP_LIFETIME - 5.0 and int(_age * 8.0) % 2 == 0:
 		return
 	if _texture:
-		draw_texture_rect(_texture, Rect2(-size / 2.0, -size / 2.0 + bob, size, size), false)
+		# Keep the art's aspect ratio inside a size×size box.
+		var tex_size := _texture.get_size()
+		var fit := size / maxf(tex_size.x, tex_size.y)
+		var draw_size := tex_size * fit
+		var tint := EPIC_TINT if kind == Kind.EPIC_CHEST else Color.WHITE
+		draw_texture_rect(_texture, Rect2(Vector2(-draw_size.x / 2.0, -draw_size.y / 2.0 + bob), draw_size), false, tint)
 		return
 	match kind:
 		Kind.MAGNET:

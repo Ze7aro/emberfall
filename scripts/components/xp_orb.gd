@@ -6,12 +6,9 @@ var collected := false
 var is_gold := false
 ## Set by the Imán pickup: flies to the player from anywhere on the map.
 var magnetized := false
-## Orbs that absorbed others (see game_world.ORB_CAP) draw bigger.
-var _base_value := 10
 
 func setup(amount: int, gold: bool = false) -> void:
 	value = amount
-	_base_value = maxi(1, amount)
 	is_gold = gold
 	queue_redraw()
 
@@ -32,17 +29,26 @@ func tick(player: Node2D, pickup_radius: float, delta: float) -> void:
 		SfxPlayer.play("economy/pickup_gold.wav" if is_gold else "economy/pickup_xp.wav")
 		queue_free()
 
+## Gem / coin art from assets/pickups (PLAN_FINALIZACION §6.4). The tier
+## follows the orb's value, so élite drops and merged piles look richer.
+const XP_SMALL := preload("res://assets/pickups/recolectable_01.png")
+const XP_MEDIUM := preload("res://assets/pickups/recolectable_02.png")
+const XP_LARGE := preload("res://assets/pickups/recolectable_03.png")
+const GOLD_COIN := preload("res://assets/pickups/recolectable_04.png")
+const GOLD_STACK := preload("res://assets/pickups/recolectable_05.png")
+
 func _draw() -> void:
-	var grow := clampf(sqrt(float(value) / float(_base_value)), 1.0, 2.0)
-	var outer := 7.0 * grow
-	var inner := 3.0 * grow
+	var texture: Texture2D
+	var height: float
 	if is_gold:
-		draw_circle(Vector2.ZERO, outer, Color(0.90, 0.68, 0.20))
-		draw_circle(Vector2.ZERO, inner, Color(1.0, 0.91, 0.52))
-	elif grow > 1.2:
-		# Merged XP turns violet so a big pile reads as "worth more".
-		draw_circle(Vector2.ZERO, outer, Color(0.66, 0.42, 0.95))
-		draw_circle(Vector2.ZERO, inner, Color(0.90, 0.80, 1.0))
+		texture = GOLD_STACK if value >= 15 else GOLD_COIN
+		height = 20.0 if value >= 15 else 15.0
+	elif value >= 60:
+		texture = XP_LARGE; height = 26.0
+	elif value >= 20:
+		texture = XP_MEDIUM; height = 21.0
 	else:
-		draw_circle(Vector2.ZERO, outer, Color(0.39, 0.72, 0.92))
-		draw_circle(Vector2.ZERO, inner, Color(0.74, 0.90, 1.0))
+		texture = XP_SMALL; height = 16.0
+	var tex_size := texture.get_size()
+	var draw_size := Vector2(height * tex_size.x / tex_size.y, height)
+	draw_texture_rect(texture, Rect2(-draw_size / 2.0, draw_size), false)

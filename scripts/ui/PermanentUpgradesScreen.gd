@@ -38,10 +38,19 @@ func _ready() -> void:
 
 	root.add_child(UiTheme.header("PROGRESO", "CRECE. EVOLUCIONA. SOBREVIVE.", 30, "mejoras_header.png"))
 
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 8)
 	_gold_label = Label.new()
-	_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_gold_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_gold_label.add_theme_color_override("font_color", GOLD)
-	root.add_child(_gold_label)
+	top_row.add_child(_gold_label)
+	var codex := Button.new()
+	codex.text = "CÓDEX ›"
+	codex.custom_minimum_size = Vector2(100, 36)
+	codex.add_theme_font_size_override("font_size", 12)
+	codex.pressed.connect(_open_codex)
+	top_row.add_child(codex)
+	root.add_child(top_row)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -68,6 +77,14 @@ func _ready() -> void:
 
 	GameState.gold_changed.connect(func(_v): _refresh())
 	_refresh()
+
+func _open_codex() -> void:
+	var node := get_parent()
+	while node:
+		if node.has_method("navigate_to"):
+			node.navigate_to(&"codex")
+			return
+		node = node.get_parent()
 
 func _make_grid() -> GridContainer:
 	var grid := GridContainer.new()

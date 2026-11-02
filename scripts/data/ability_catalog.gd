@@ -31,6 +31,20 @@ const UNLOCKS := {
 
 const ICON_DIR := "res://assets/habilidades_iconos"
 const LEGACY_ICON_DIR := "res://assets/cuadros_habilidades_emberfall"
+## Evolution art is named after the evolution, not the active. Missing ones
+## (blizzard, familiar) fall back to the active's own icon.
+const EVOLUTION_ICONS := {
+	"daggers": "evo_tormenta_de_filos.png",
+	"orbital": "evo_eclipse_eterno.png",
+	"fire": "evo_corona_solar.png",
+	"chain": "evo_tormenta_viva.png",
+	"poison_bomb": "evo_plaga_abisal.png",
+	"boomerang": "evo_torbellino_de_acero.png",
+	"slash": "evo_guadana_del_ vacio.png",
+	"meteor": "evo_cataclismo.png",
+	"shard": "evo_prisma_infinito.png",
+	"aegis": "evo_bastion.png",
+}
 
 const ACTIVES := {
 	"daggers": {
@@ -175,6 +189,8 @@ static func icon(id: String, evolved: bool = false) -> Texture2D:
 	var base := evolution_source(id) if is_evolution(id) else id
 	var candidates: Array[String] = []
 	if is_evolution(id) or evolved:
+		if EVOLUTION_ICONS.has(base):
+			candidates.append("%s/%s" % [ICON_DIR, EVOLUTION_ICONS[base]])
 		candidates.append("%s/evo_%s.png" % [ICON_DIR, base])
 	candidates.append("%s/%s.png" % [ICON_DIR, base])
 	var fallback := str(_fallback_entry(base).get("fallback_icon", ""))

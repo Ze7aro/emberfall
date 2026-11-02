@@ -41,7 +41,7 @@ func _ready() -> void:
 	# Five footer destinations; missions open from the home shortcut.
 	navigation_footer.icons = [
 		load("res://assets/ui/pixel_simple_v1/navigation/shop.png"),
-		load("res://assets/ui/pixel_simple_v1/navigation/character.png"),
+		_upgrades_nav_icon(),
 		load("res://assets/ui/pixel_simple_v1/navigation/home.png"),
 		load("res://assets/ui/pixel_simple_v1/navigation/inventory.png"),
 		load("res://assets/ui/pixel_simple_v1/navigation/dungeons.png"),
@@ -97,6 +97,14 @@ func _handle_back() -> bool:
 		return true
 	return false
 
+## Footer icon for Progreso: the dedicated art if it exists (see
+## PLAN_FINALIZACION §6), otherwise the kit's green "mejora" arrow.
+func _upgrades_nav_icon() -> Texture2D:
+	var dedicated := "res://assets/ui/pixel_simple_v1/navigation/upgrades.png"
+	if ResourceLoader.exists(dedicated):
+		return load(dedicated)
+	return load("res://assets/ui/kit/UI_KIT_04_individual/indicador_mejora.png")
+
 func _wire_top_hud() -> void:
 	top_hud.set_level(GameState.level)
 	top_hud.set_experience(GameState.experience, GameState.experience_to_next)
@@ -136,6 +144,10 @@ func _screen_for(route_id: StringName) -> Node:
 		&"dungeons": return preload("res://scenes/screens/DungeonSelectionScreen.tscn").instantiate()
 		&"upgrades": return preload("res://scenes/screens/PermanentUpgradesScreen.tscn").instantiate()
 		&"shop": return preload("res://scenes/screens/ShopScreen.tscn").instantiate()
+		&"codex":
+			var codex: Control = preload("res://scripts/ui/CodexScreen.gd").new()
+			codex.connect("back_requested", func(): navigate_to(&"upgrades"))
+			return codex
 		_: return _placeholder_screen(route_id)
 
 func _character_equipment_screen(section: StringName) -> Control:

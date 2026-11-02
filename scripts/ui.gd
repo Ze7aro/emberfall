@@ -107,7 +107,7 @@ func setup(owner: Node) -> void:
 		debug_column.offset_top = top + XP_BAR_HEIGHT + 90
 		debug_column.add_theme_constant_override("separation", 4)
 		add_child(debug_column)
-		for entry in [["JEFE", "boss"], ["ÉLITE", "elite"], ["MINI", "miniboss"], ["HORDA", "horde"], ["DROPS", "drops"]]:
+		for entry in [["JEFE", "boss"], ["ÉLITE", "elite"], ["MINI", "miniboss"], ["HORDA", "horde"], ["DROPS", "drops"], ["HAB ›", "ability_next"], ["NV +", "ability_up"]]:
 			var debug_button := Button.new()
 			debug_button.text = str(entry[0])
 			debug_button.focus_mode = Control.FOCUS_NONE

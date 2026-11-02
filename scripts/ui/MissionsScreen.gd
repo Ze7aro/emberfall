@@ -99,14 +99,12 @@ func _build_content(root: VBoxContainer) -> void:
 	tabs.add_child(daily_tab); tabs.add_child(weekly_tab)
 	_tab_buttons = [daily_tab, weekly_tab]
 
+	# Own row under the tabs so it never pushes them past the panel edge.
 	_timer_label = Label.new()
 	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_timer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_timer_label.custom_minimum_size = Vector2(96, 0)
 	_timer_label.add_theme_font_size_override("font_size", 10)
 	_timer_label.add_theme_color_override("font_color", TEXT_MUTED)
-	tabs.add_child(_timer_label)
+	root.add_child(_timer_label)
 
 
 	var scroll := ScrollContainer.new()
@@ -142,9 +140,10 @@ func _format_seconds(total: int) -> String:
 func _build_tab_button(text_value: String, tab_id: String) -> Button:
 	var button := Button.new()
 	button.text = text_value
-	button.custom_minimum_size = Vector2(0, 54)
+	button.custom_minimum_size = Vector2(0, 48 if modal_mode else 54)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.add_theme_font_size_override("font_size", 16)
+	button.clip_text = true
+	button.add_theme_font_size_override("font_size", _tab_font_size())
 	button.pressed.connect(_select_tab.bind(tab_id))
 	return button
 
@@ -153,10 +152,13 @@ func _select_tab(tab_id: String) -> void:
 	for i in _tab_buttons.size():
 		var is_active := (i == 0 and tab_id == "daily") or (i == 1 and tab_id == "weekly")
 		if is_active:
-			UiTheme.apply_primary(_tab_buttons[i], 16.0)
+			UiTheme.apply_primary(_tab_buttons[i], _tab_font_size())
 		else:
-			UiTheme.apply_secondary(_tab_buttons[i], 16.0)
+			UiTheme.apply_secondary(_tab_buttons[i], _tab_font_size())
 	_refresh()
+
+func _tab_font_size() -> float:
+	return 14.0 if modal_mode else 16.0
 
 func _build_milestone_panel(parent: Control) -> void:
 	var panel := PanelContainer.new()
@@ -265,6 +267,8 @@ func _build_mission_card(mission: Dictionary) -> Control:
 
 	var title := Label.new()
 	title.text = str(mission.get("name", ""))
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.add_theme_font_size_override("font_size", 15)
 	title.add_theme_color_override("font_color", TURQ if not claimed else Color("6a5f7a"))
 	box.add_child(title)
@@ -283,14 +287,13 @@ func _build_mission_card(mission: Dictionary) -> Control:
 	bar.custom_minimum_size.y = 10
 	box.add_child(bar)
 
-	var footer := HBoxContainer.new()
-	box.add_child(footer)
+	# Progress and rewards on separate lines: side by side they were wider
+	# than the card on weekly missions and pushed it past the panel.
 	var progress_label := Label.new()
 	progress_label.text = "%d / %d" % [mini(progress, target), target]
-	progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	progress_label.add_theme_font_size_override("font_size", 11)
 	progress_label.add_theme_color_override("font_color", TEXT_MUTED)
-	footer.add_child(progress_label)
+	box.add_child(progress_label)
 
 	var reward_bits: Array[String] = []
 	if int(mission.get("gold", 0)) > 0:
@@ -299,20 +302,24 @@ func _build_mission_card(mission: Dictionary) -> Control:
 		reward_bits.append("%d esmeraldas" % int(mission.get("gems", 0)))
 	var reward_label := Label.new()
 	reward_label.text = " · ".join(reward_bits)
+	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reward_label.add_theme_font_size_override("font_size", 11)
 	reward_label.add_theme_color_override("font_color", GOLD if not claimed else TEXT_MUTED)
-	footer.add_child(reward_label)
+	box.add_child(reward_label)
 
 	if claimed:
 		var action := Button.new()
-		action.custom_minimum_size = Vector2(96, 44)
+		action.custom_minimum_size = Vector2(44, 44)
+		action.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		action.text = "✓"
 		action.disabled = true
 		action.add_theme_stylebox_override("disabled", _claimed_style())
 		row.add_child(action)
 	elif can_claim:
 		var action := Button.new()
-		action.custom_minimum_size = Vector2(96, 44)
+		action.custom_minimum_size = Vector2(84, 44)
+		action.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		action.add_theme_font_size_override("font_size", 12)
 		action.text = "RECLAMAR"
 		action.add_theme_color_override("font_color", Color("102018"))
 		action.add_theme_stylebox_override("normal", _claim_button_style())

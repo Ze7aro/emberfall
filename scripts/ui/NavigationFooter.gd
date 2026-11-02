@@ -7,7 +7,7 @@ signal navigation_requested(index: int, id: StringName)
 
 @export var entries: Array[Dictionary] = [
 	{"id": &"shop", "tooltip": "Tienda"},
-	{"id": &"character", "tooltip": "Personaje y equipo"},
+	{"id": &"upgrades", "tooltip": "Progreso"},
 	{"id": &"home", "tooltip": "Inicio"},
 	{"id": &"inventory", "tooltip": "Inventario"},
 	{"id": &"dungeons", "tooltip": "Mazmorras"},

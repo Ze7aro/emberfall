@@ -43,11 +43,32 @@ func _fire(target: EmberfallEnemy) -> void:
 	bolt.damage = damage
 	bolt.lifetime = 0.9
 	bolt.source_id = "familiar"
+	bolt.evolved = game_ref.is_evolved("familiar")
 	game_ref.add_child(bolt)
 
+## Small hooded ghost: round head, a body that narrows into a wavy tail,
+## glowing eyes. Not additive (it's a creature, not light), only its halo.
 func _draw() -> void:
 	var bob := sin(_time * 5.0) * 2.0
-	draw_circle(Vector2(0, bob), 9.0, Color(0.56, 0.94, 0.82, 0.35))
-	draw_colored_polygon(PackedVector2Array([Vector2(-6, bob + 6), Vector2(0, bob - 9), Vector2(6, bob + 6)]), Color("cfeee6"))
-	draw_circle(Vector2(-2, bob - 1), 1.3, Color("2de1d0"))
-	draw_circle(Vector2(2, bob - 1), 1.3, Color("2de1d0"))
+	var body := Color(0.80, 0.95, 0.92, 0.85)
+	EmberfallFx.glow(self, Vector2(0, bob), 16.0, Color("8ff0d0"), 0.35)
+	var outline := PackedVector2Array()
+	# Head arc on top, then down the sides into a 3-point wavy tail.
+	for i in 9:
+		var a := PI + PI * float(i) / 8.0
+		outline.append(Vector2(cos(a) * 7.0, bob - 2.0 + sin(a) * 7.0))
+	var wave := sin(_time * 8.0) * 1.5
+	outline.append(Vector2(7.0, bob + 6.0))
+	outline.append(Vector2(4.5 + wave, bob + 10.0))
+	outline.append(Vector2(2.0, bob + 7.0))
+	outline.append(Vector2(0.0 - wave, bob + 11.0))
+	outline.append(Vector2(-2.0, bob + 7.0))
+	outline.append(Vector2(-4.5 + wave, bob + 10.0))
+	outline.append(Vector2(-7.0, bob + 6.0))
+	draw_colored_polygon(outline, body)
+	outline.append(outline[0])
+	draw_polyline(outline, Color("2b4f57"), 1.2)
+	draw_circle(Vector2(-2.6, bob - 2.0), 1.6, Color("2de1d0"))
+	draw_circle(Vector2(2.6, bob - 2.0), 1.6, Color("2de1d0"))
+	draw_circle(Vector2(-2.6, bob - 2.4), 0.6, Color.WHITE)
+	draw_circle(Vector2(2.6, bob - 2.4), 0.6, Color.WHITE)

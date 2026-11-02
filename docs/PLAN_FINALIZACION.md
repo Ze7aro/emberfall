@@ -140,6 +140,8 @@ Usar el sprite de Vaelor (`variante_01_baculo (Vaelor)/walk_right_00.png`) y el 
 
 ### 6.1 Iconos de habilidades (24 activas y evoluciones + 1 pasiva)
 
+**Estado:** integrados las 12 activas, Armadura y 10 evoluciones. Faltan **Invierno Perpetuo** (`evo_blizzard.png`) y **Legión Espectral** (`evo_familiar.png`); mientras tanto usan el ícono de su activa.
+
 **Dónde van:** `assets/habilidades_iconos/<id>.png` y `evo_<id>.png` (ids en `scripts/data/ability_catalog.gd`: daggers, orbital, fire, chain, poison_bomb, blizzard, boomerang, slash, meteor, shard, familiar, aegis, armor…). El juego los toma solos; mientras falten, usa el icono anterior o una ficha con la inicial.
 
 Mismo marco que `cuadros_habilidades_emberfall/daño_critico.png`. Lo ideal es generar 1 icono por imagen o una lámina de 4×4 y recortarla con `tools/extract_icon_sheets.py`.
@@ -190,6 +192,8 @@ Decorados (lámina de 8, 128×128 cada uno, fondo transparente): "broken rune pi
 
 ### 6.4 Recolectables
 
+**Estado:** integrados (`recolectable_01`–`10`): gemas de XP en 3 tamaños según el valor, moneda y pila de monedas, poción, imán, bomba y cofre. El cofre épico usa el mismo cofre teñido de violeta; si querés uno propio, guardalo como `recolectable_19.png` (hoy es una copia del cofre). El juego 11–20 está duplicado y no se usa salvo el 19.
+
 **Dónde van:** recortar cada objeto a su propio PNG en `assets/pickups/`: `chest.png`, `chest_epic.png`, `potion.png`, `magnet.png`, `bomb.png` (el juego los toma solos). Mientras falten, el cofre y la poción usan íconos de la UI y el imán y la bomba se dibujan por código. El cofre épico es el mismo cofre con herrajes dorados y gemas violetas: agregarlo como celda (11) del prompt.
 
 > [ESTILO] Sprite sheet, single row, each cell 64×64, small game pickups: (1) small cyan XP gem, (2) medium teal XP gem, (3) large violet XP gem with sparkle, (4) gold coin, (5) stack of 3 gold coins, (6) red health potion bottle, (7) horseshoe magnet with cyan glow, (8) round black bomb with lit fuse, (9) closed wooden-and-iron treasure chest with rune lock, (10) same chest opened with golden light.
@@ -222,6 +226,8 @@ Evoluciones: reutilizar la tira de su activa con un recoloreado dorado/blanco y 
 
 ### 6.7 Iconos de mejoras permanentes que faltan
 
+**Estado:** integrados como `mejora_armadura.png`, `mejora_suerte.png` y `mejora_bloqueada.png` (Descartar).
+
 Con el mismo marco que 6.1: **Armadura** (pecho de armadura), **Suerte** (trébol rúnico de 4 hojas), **Descartar** (carta tachada con una X). El resto ya existe en `cuadros_habilidades_emberfall/`.
 
 **Dónde van:** `assets/cuadros_habilidades_emberfall/armadura.png`, `suerte.png` y `descartar.png` (la pantalla de Progreso los toma solos; mientras falten muestra la inicial).
@@ -231,6 +237,14 @@ Con el mismo marco que 6.1: **Armadura** (pecho de armadura), **Suerte** (trébo
 | Armadura | a sturdy chestplate with a rune rivet in the center | steel grey + cyan |
 | Suerte | a four-leaf clover made of glowing rune leaves | emerald green + cyan |
 | Descartar | a playing card crossed out with a bold X | violet + red X |
+
+### 6.8 Icono del footer: Progreso
+
+Reemplaza al botón de personaje (que ahora vive solo dentro de la mochila). Mientras falte, el footer usa la flecha verde del kit.
+
+**Dónde va:** `assets/ui/pixel_simple_v1/navigation/upgrades.png` (mismo tamaño y estilo que `home.png`, `shop.png`, etc.).
+
+> Pixel art game UI navigation icon, 64x64, transparent background, chunky dark purple outline, same style as a set of icons (shop stall, house, backpack, purple portal). Subject: a glowing upward arrow rising out of a small rune anvil, with tiny ember sparks. Palette: dark violet base, turquoise cyan glow (#3fe0d0), small gold highlights. Centered, readable at 48px, no text, no frame.
 
 ## 7. Exportar a Android
 
@@ -256,6 +270,68 @@ Lo que hay que hacer una sola vez en el editor:
 Para probar: conectá el teléfono con depuración USB activada. Aparece el ícono de Android arriba a la derecha del editor (Despliegue con un clic). La alternativa es Proyecto → Exportar → Exportar proyecto y copiar el APK al teléfono.
 
 Ya resuelto en el código: el botón Atrás cierra ventanas, pausa la partida y vuelve a Inicio, y en Inicio sale del juego. La partida se pausa al perder el foco, el progreso se guarda al pasar a segundo plano y la barra superior y el menú respetan las áreas seguras.
+
+## 8. Mejora visual de las habilidades en combate
+
+### 8.1 Diagnóstico
+
+- **Dos estilos mezclados.** Fuego, Ventisca, Frasco, Cadena y las explosiones usan sprites de pixel art detallados; Dagas, Hacha, Esquirla, Familiar, Tajo, Meteoro y Égida son polígonos chicos dibujados por código. Lado a lado no parecen del mismo juego.
+- **Sprites achicados con filtro "nearest".** Los sprites miden 724×724 y se dibujan al 10–20 %: con `TEXTURE_FILTER_NEAREST` se pierden píxeles al azar y titilan.
+- **Poco brillo.** Nada usa mezcla aditiva, así que los efectos se ven opacos sobre el suelo oscuro y cuesta distinguir los ataques propios de los enemigos.
+- **Sin respuesta al impacto.** Salvo el número de daño, el golpe de una habilidad no deja chispas ni destello de su color.
+- **Nivel y evolución casi no se notan.** Una habilidad al nivel 5 o evolucionada se ve igual que al nivel 1, apenas más grande.
+- **Lunas Orbitales:** ✅ hecho, ahora son esferas blancas con halo, dibujadas por código.
+
+### 8.2 Criterios (lenguaje visual común)
+
+1. Cada efecto tiene **núcleo blanco + color de la habilidad + halo aditivo** (`CanvasItemMaterial.BLEND_MODE_ADD`). El color sale de `AbilityCatalog` (`color`).
+2. Lo que se mueve deja **estela corta** que se desvanece (dagas, hacha, esquirla, meteoro).
+3. Cada golpe genera **2–4 chispas de su color** (pool compartido con tope, como los números de daño).
+4. Todo respeta la **perspectiva 3/4**: áreas y anillos son elipses (alto ≈ 55 % del ancho), como la órbita.
+5. **El nivel se nota:** +10 % de brillo/tamaño por nivel. **Evolución:** tinte dorado/blanco, ×1,3 de tamaño y un detalle extra propio.
+6. **Colores reservados:** cian/blanco/dorado = jugador; rojo/violeta oscuro = enemigos.
+7. **Rendimiento y accesibilidad:** tope global de efectos y chispas; con "Reducir temblor y destellos" se baja el halo y no hay destellos.
+
+### 8.3 Habilidad por habilidad
+
+| Habilidad | Hoy | Propuesta | ¿Arte? |
+|---|---|---|---|
+| Lunas Orbitales | Sprite de luna | ✅ Esferas blancas. Evolución: halo cian y línea tenue de la órbita | No |
+| Dagas Rúnicas | Triángulo | Hoja fina con núcleo blanco, halo cian y estela de 3 puntos | Opcional (§6.5) |
+| Aura Ígnea | Anillo de fuego (3 frames muy distintos) | Usar solo el frame 0 girando lento + pulso aditivo; chispas que suben | No |
+| Cadena Eléctrica | Sprite estirado entre enemigos | Rayo en zigzag dibujado por código que cambia cada 2 frames, núcleo blanco + halo cian, chispa en cada salto | No |
+| Frasco Tóxico | Sprite bomba + charco | Mantener la bomba; charco como elipse con burbujas que suben y revientan | No |
+| Ventisca | Sprite de anillo helado | Mantener, en elipse; copos que caen dentro del área | No |
+| Hacha Bumerán | 2 triángulos girando | Hacha con arcos de movimiento (estela circular) y brillo en los filos | Opcional (§6.5) |
+| Tajo Sombrío | 2 líneas curvas | Medialuna rellena que se afina en las puntas, borde blanco, partículas violeta | No |
+| Lluvia de Meteoros | Círculos | Marca rúnica en elipse que se llena; roca con estela de fuego; impacto con onda + escombros + temblor chico | Opcional (§6.5) |
+| Esquirla Errante | Rombo | Cristal con 3 imágenes fantasma detrás; destello en cada rebote | No |
+| Familiar Espectral | Triángulo con ojos | Fantasma con cuerpo redondeado y cola ondulante; su disparo deja estela | Opcional (§6.5) |
+| Égida Rúnica | Solo explosión al romperse | Burbuja hexagonal visible alrededor del jugador mientras tiene carga; al romperse, fragmentos + onda | No |
+
+### 8.4 Fases
+
+1. **Base común (solo código):** helper `FxKit` con material aditivo, halo, estela (`Line2D` con degradé), pool de chispas y tinte de evolución. Corregir el filtrado de los sprites grandes (pre-achicarlos a su tamaño real o usar filtro lineal con mipmaps).
+2. **Rehacer las habilidades dibujadas por código** con el kit: Dagas, Tajo, Esquirla, Hacha, Meteoro, Cadena, Égida, Familiar.
+3. **Sacar los sprites de efecto:** Aura Ígnea, Ventisca, Frasco y explosión pasan a dibujo por código (los sprites pixel-art opacos resaltaban demasiado frente al resto). Referencia de estilo: Magic Survival, con zonas translúcidas, borde fino y pocas partículas, y el foco en los enemigos.
+4. **Evoluciones:** el detalle propio de cada una (Tormenta de Filos = anillo de dagas, Cataclismo = meteoro gigante, etc.).
+5. **Arte opcional (§6.5):** si llegan las tiras, reemplazan el dibujo por código sin tocar la lógica.
+
+**Para probar:** en builds de depuración, botones **HAB ›** (siguiente habilidad, sola, al nivel 1) y **NV +** (sube un nivel; pasado el 5, evoluciona).
+
+**Estado:** fases 1 y 2 hechas (`fx_kit.gd`, `fx_sparks.gd`, `fx_ring.gd`, `fx_lightning.gd`, `aegis_bubble.gd`, y Dagas, Hacha, Esquirla, Familiar, Tajo, Meteoro, Cadena y Égida rehechos). Los sprites de habilidades ahora usan mipmaps. Fase 3 hecha: ventisca (disco helado con nieve), charco de veneno (borde ondulante con burbujas), frasco, aura de fuego (brasas) y explosiones (anillo con chispas, también el golpe del jefe) se dibujan en código; las esferas orbitales son más chicas. Los sprites de `emberfall_habilidades_sprites` quedaron sin uso. Pendiente: fase 4. Las áreas que dañan en círculo (meteoro) se dibujan en círculo para que lo que se ve sea lo que golpea.
+
+### 8.5 Arte opcional (solo si querés reemplazar el dibujo por código)
+
+El resto se ve mejor dibujado por código. Estas tres piezas son objetos con forma, donde una imagen sí suma. Usar el bloque de estilo §6.0, PNG con fondo transparente, sin texto.
+
+| Pieza | Archivo | Tamaño | Prompt |
+|---|---|---|---|
+| Hacha bumerán | `assets/emberfall_habilidades_sprites/hacha/axe.png` | 1 imagen, 128×128 | "a double-bladed throwing axe seen from above, blades pointing left and right, dark steel with thin glowing cyan rune edges, short wrapped handle in the center, centered, symmetric" (el código la hace girar y le agrega la estela) |
+| Familiar espectral | `assets/emberfall_habilidades_sprites/familiar/frame_00.png` a `frame_02.png` | 3 imágenes, 96×96 | "small hooded ghost spirit floating, pale teal translucent body that ends in a wavy wispy tail, two glowing cyan eyes, no arms; 3 frames of an idle bob where only the tail waves" |
+| Roca del meteoro | `assets/emberfall_habilidades_sprites/meteoro/rock.png` | 1 imagen, 96×96 | "a burning meteor rock, dark cracked basalt with glowing orange-yellow lava cracks, round chunky shape, no trail, centered" (la estela de fuego la pone el código) |
+
+Avisame cuando estén y los conecto.
 
 ## Fuentes de referencia
 - [Vampire Survivors: weapon evolution guide (Prima Games)](https://primagames.com/gaming/vampire-survivors-weapon-evolution-guide)

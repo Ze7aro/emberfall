@@ -26,7 +26,7 @@ Roguelike de supervivencia 2D vertical para Godot 4.7, pensado primero para Andr
 - Habilidades: 12 activas y 12 pasivas, 4 espacios de cada una, nivel máximo 5 y una evolución por activa (activa al máximo + su pasiva). Barra de build en el HUD y cartas de subida de nivel con Cambiar, Descartar y Saltar.
 - Partida: élites con cofre cada 90–120 s, hordas en anillo, enjambres, mini-jefe a los 6 minutos, pociones, imanes y bombas, y 3 jefes con sprite y patrones propios.
 - Sensación de combate: destello y empuje al golpear, pausa breve en críticos, muertes con ceniza e iluminación con luces dinámicas.
-- Metaprogresión: cuadrícula de 21 mejoras permanentes (incluye revivir) y 6 habilidades que se desbloquean con objetivos.
+- Metaprogresión: cuadrícula de 21 mejoras permanentes (incluye revivir), 6 habilidades que se desbloquean con objetivos y un Códex con las habilidades y evoluciones descubiertas y un bestiario con bajas por enemigo.
 - Resultado detallado: tiempo, bajas, nivel, recompensas, ranking de daño por habilidad y próximo objetivo. La pausa muestra la build y el daño hasta el momento.
 - Audio: música por contexto (`MusicDirector`, con tema de jefe) y efectos (`SfxPlayer`), ambos desactivables.
 - Configuración: música, efectos, vibración, reducir temblor y destellos, y tamaño del joystick.
@@ -40,5 +40,4 @@ Roguelike de supervivencia 2D vertical para Godot 4.7, pensado primero para Andr
 
 - Arte de enemigos, suelo y recolectables (prompts en `docs/PLAN_FINALIZACION.md` §6).
 - Rendimiento medido en un teléfono real; reutilización de nodos (pooling) solo si el perfil lo justifica.
-- Bestiario y códex de habilidades descubiertas.
 - Tests automatizados de guardado, energía, economía y transiciones críticas.
