@@ -10,6 +10,8 @@ var radius := 50.0
 var damage := 30
 var telegraph := 0.7
 var burn_duration := 2.0
+## Cataclismo: the giant meteor gets a crimson marker and a bigger impact.
+var cataclysm := false
 var _age := 0.0
 var _landed := false
 
@@ -29,17 +31,20 @@ func _land() -> void:
 			if is_instance_valid(enemy) and not enemy.dead and global_position.distance_to(enemy.global_position) < radius:
 				enemy.apply_burn(burn_duration, maxi(2, damage / 8))
 				game_ref._apply_damage(enemy, damage, true, true, "meteor")
-		var fire := Color("ff8a3d")
+		var fire := Color("ff5a3a") if cataclysm else Color("ff8a3d")
 		game_ref.spawn_ring(global_position, fire, radius * 1.15, 0.4, 7.0, true)
 		game_ref.spawn_ring(global_position, Color("ffd38a"), radius * 0.6, 0.25, 4.0)
 		game_ref.spawn_sparks(global_position, fire, clampi(int(radius / 6.0), 8, 24), 260.0)
+		if cataclysm:
+			game_ref.spawn_ring(global_position, EmberfallFx.GOLD, radius * 1.4, 0.55, 4.0)
+			game_ref.spawn_sparks(global_position, EmberfallFx.GOLD, 16, 380.0)
 	queue_free()
 
 ## Same footprint as the damage (a circle of `radius`): a rune marker that
 ## fills toward the center, and the rock falling in with a fire trail.
 func _draw() -> void:
 	var progress := clampf(_age / telegraph, 0.0, 1.0)
-	var fire := Color(1.0, 0.55, 0.2)
+	var fire := Color(1.0, 0.32, 0.22) if cataclysm else Color(1.0, 0.55, 0.2)
 	draw_circle(Vector2.ZERO, radius, Color(fire, 0.08 + progress * 0.10))
 	draw_circle(Vector2.ZERO, radius * progress, Color(fire, 0.16))
 	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(1.0, 0.65, 0.3, 0.45 + progress * 0.5), 2.0)
@@ -48,6 +53,11 @@ func _draw() -> void:
 		var a := TAU * float(i) / 8.0 + _age * 1.5
 		var dir := Vector2.from_angle(a)
 		draw_line(dir * radius * 0.82, dir * radius * (0.82 - 0.12 * progress) , Color(1.0, 0.8, 0.45, 0.4 + 0.5 * progress), 2.0)
+	if cataclysm:
+		# Second rune ring outside, turning the other way.
+		for i in 12:
+			var a := TAU * float(i) / 12.0 - _age * 1.0
+			draw_arc(Vector2.ZERO, radius * 1.08, a, a + 0.28, 6, Color(EmberfallFx.GOLD, 0.25 + 0.5 * progress), 2.0)
 	# The rock: big trail of fire behind it, dark core with a hot rim.
 	var start := Vector2(-60.0, -220.0)
 	var rock := start * (1.0 - progress * progress)

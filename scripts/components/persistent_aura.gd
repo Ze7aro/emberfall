@@ -37,6 +37,12 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, radius, Color(_color, 0.06 * flicker))
 	draw_circle(Vector2.ZERO, radius * 0.5, Color(_color, 0.05 * flicker))
 	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(_color, 0.28 * flicker), 1.5)
+	if evolved:
+		# Corona Solar: short sun rays turning slowly around the edge.
+		for i in 12:
+			var dir := Vector2.from_angle(_time * 0.5 + TAU * float(i) / 12.0)
+			var reach := 1.1 + 0.05 * sin(_time * 4.0 + i)
+			draw_line(dir * radius * 0.94, dir * radius * reach, Color(EmberfallFx.GOLD, 0.35 * flicker), 2.0)
 	# Embers: rise a little, drift and fade, then start again lower down.
 	for ember in _embers:
 		var t := fposmod(_time * 0.8 + ember.z, 1.0)

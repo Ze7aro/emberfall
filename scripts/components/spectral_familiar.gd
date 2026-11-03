@@ -16,6 +16,8 @@ var damage := 10
 var fire_interval := 1.2
 var _clock := 0.0
 var _time := 0.0
+## Legión Espectral: gold halo and eyes.
+var evolved := false
 
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing" or not is_instance_valid(player_node):
@@ -51,7 +53,8 @@ func _fire(target: EmberfallEnemy) -> void:
 func _draw() -> void:
 	var bob := sin(_time * 5.0) * 2.0
 	var body := Color(0.80, 0.95, 0.92, 0.85)
-	EmberfallFx.glow(self, Vector2(0, bob), 16.0, Color("8ff0d0"), 0.35)
+	var eye := EmberfallFx.GOLD if evolved else Color("2de1d0")
+	EmberfallFx.glow(self, Vector2(0, bob), 16.0, EmberfallFx.GOLD if evolved else Color("8ff0d0"), 0.35)
 	var outline := PackedVector2Array()
 	# Head arc on top, then down the sides into a 3-point wavy tail.
 	for i in 9:
@@ -68,7 +71,7 @@ func _draw() -> void:
 	draw_colored_polygon(outline, body)
 	outline.append(outline[0])
 	draw_polyline(outline, Color("2b4f57"), 1.2)
-	draw_circle(Vector2(-2.6, bob - 2.0), 1.6, Color("2de1d0"))
-	draw_circle(Vector2(2.6, bob - 2.0), 1.6, Color("2de1d0"))
+	draw_circle(Vector2(-2.6, bob - 2.0), 1.6, eye)
+	draw_circle(Vector2(2.6, bob - 2.0), 1.6, eye)
 	draw_circle(Vector2(-2.6, bob - 2.4), 0.6, Color.WHITE)
 	draw_circle(Vector2(2.6, bob - 2.4), 0.6, Color.WHITE)

@@ -15,6 +15,8 @@ var lifetime := 7.0
 var tick_damage := 6
 var freeze_duration := 0.6
 var game_ref: Node
+## Invierno Perpetuo: snow crystals turn around the edge.
+var evolved := false
 var _elapsed := 0.0
 var _tick_clock := 0.0
 var _color := Color("8fd8ff")
@@ -63,6 +65,12 @@ func _draw() -> void:
 	for i in 6:
 		var a := spin + TAU * float(i) / 6.0
 		draw_arc(Vector2.ZERO, r * 0.82, a, a + 0.45, 8, Color(1, 1, 1, 0.18 * alpha), 1.2)
+	if evolved:
+		for i in 6:
+			var at := Vector2.from_angle(-spin * 0.7 + TAU * float(i) / 6.0) * r * 0.9
+			for arm in 3:
+				var d := Vector2.from_angle(spin * 2.0 + PI * float(arm) / 3.0) * 4.5
+				draw_line(at - d, at + d, Color(1, 1, 1, 0.55 * alpha), 1.2)
 	# Snow falling diagonally, wrapped inside the disc.
 	for flake in _flakes:
 		var y := fposmod(flake.y + _elapsed * 0.35 + flake.z, 2.0) - 1.0

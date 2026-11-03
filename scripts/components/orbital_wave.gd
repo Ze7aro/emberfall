@@ -41,6 +41,8 @@ var moon_count := MIN_MOONS:
 		_rebuild_moons()
 
 var _orbit_time := 0.0
+## Eclipse Eterno: draws the orbit and gives the moons a cyan halo.
+var evolved := false
 var _moons: Array[EmberfallOrbitalMoon] = []
 
 func _rebuild_moons() -> void:
@@ -81,7 +83,17 @@ func _physics_process(delta: float) -> void:
 		# worked there — moving in front of / behind the sprite in the tree.
 		if is_instance_valid(player_node):
 			player_node.move_child(moon, player_node.get_child_count() - 1 if moon.position.y >= 0.0 else 0)
+		moon.evolved = evolved
 		_check_hits(moon, i)
+	if evolved:
+		queue_redraw()
+
+func _draw() -> void:
+	if not evolved:
+		return
+	var orbit := EmberfallFx.ellipse(Vector2.ZERO, RADIUS_X * radius_scale, RADIUS_Y * radius_scale, 48)
+	orbit.append(orbit[0])
+	draw_polyline(orbit, Color(0.55, 0.9, 1.0, 0.14), 1.2)
 
 ## Cooldown state lives as metadata on the enemy itself (same trick
 ## spawn_projectile already uses for pierce tracking), keyed per moon, so it

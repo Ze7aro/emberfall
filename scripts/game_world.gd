@@ -278,7 +278,7 @@ func _update_powers_inner(delta: float, cd: float) -> void:
 			_cataclysm_clock += delta
 			if _cataclysm_clock >= 10.0 * cd:
 				_cataclysm_clock = 0.0
-				_spawn_meteor(_meteor_target(), METEOR_BASE_RADIUS * 2.8 * area_multiplier(), (28 + 10 * skill_level("meteor")) * 4, 1.1)
+				_spawn_meteor(_meteor_target(), METEOR_BASE_RADIUS * 2.8 * area_multiplier(), (28 + 10 * skill_level("meteor")) * 4, 1.1, true)
 	if skills.has("shard") and _due("shard", 2.6 * cd):
 		_fire_shards(skill_level("shard"))
 	if skills.has("aegis"):
@@ -472,7 +472,7 @@ func _meteor_target() -> Vector2:
 	var angle := randf_range(0.0, TAU)
 	return player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(60.0, 220.0)
 
-func _spawn_meteor(at: Vector2, radius: float, meteor_damage: int, telegraph: float) -> void:
+func _spawn_meteor(at: Vector2, radius: float, meteor_damage: int, telegraph: float, cataclysm: bool = false) -> void:
 	var meteor := EmberfallMeteorStrike.new()
 	meteor.game_ref = self
 	meteor.position = at
@@ -480,6 +480,7 @@ func _spawn_meteor(at: Vector2, radius: float, meteor_damage: int, telegraph: fl
 	meteor.damage = meteor_damage
 	meteor.telegraph = telegraph
 	meteor.burn_duration = 2.0 * duration_multiplier()
+	meteor.cataclysm = cataclysm
 	add_child(meteor)
 
 ## Esquirla Errante: launched in a random direction, ricochets off the
@@ -572,6 +573,7 @@ func _refresh_powers() -> void:
 		_orbital_wave.damage = int((6 + orbital_level * 3) * (1.5 if is_evolved("orbital") else 1.0))
 		_orbital_wave.radius_scale = area_multiplier()
 		_orbital_wave.knockback_force = 260.0 if is_evolved("orbital") else 0.0
+		_orbital_wave.evolved = is_evolved("orbital")
 	if skills.has("fire"):
 		if not is_instance_valid(_fire_aura):
 			_fire_aura = preload("res://scripts/components/persistent_aura.gd").new()
@@ -587,6 +589,7 @@ func _refresh_powers() -> void:
 		_perpetual_winter.freeze_duration = 1.2
 		_perpetual_winter.lifetime = INF
 		_perpetual_winter.game_ref = self
+		_perpetual_winter.evolved = true
 		player.add_child(_perpetual_winter)
 		player.move_child(_perpetual_winter, 0)
 	if skills.has("aegis"):
@@ -609,6 +612,7 @@ func _refresh_powers() -> void:
 			_familiars[i].slot = i
 			_familiars[i].slot_count = _familiars.size()
 			_familiars[i].damage = 8 + 4 * familiar_level
+			_familiars[i].evolved = is_evolved("familiar")
 			_familiars[i].fire_interval = (0.6 if is_evolved("familiar") else 1.2) * attack_speed_multiplier()
 
 # --- Shared combat helpers ---------------------------------------------------

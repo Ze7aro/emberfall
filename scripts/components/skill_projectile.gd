@@ -40,6 +40,7 @@ const TRAIL_LENGTH := {Style.DAGGER: 6, Style.AXE: 0, Style.SHARD: 5, Style.BOLT
 var _trail: Array[Vector2] = [] # global positions, oldest first
 
 var _age := 0.0
+var _hue_seed := randf()
 var _travelled := 0.0
 var _returning := false
 var _hits := 0
@@ -166,12 +167,14 @@ func _draw() -> void:
 			draw_line(Vector2.RIGHT.rotated(spin) * 6.0, Vector2.RIGHT.rotated(spin + PI) * 6.0, Color("cfc6dc"), 3.0)
 			draw_circle(Vector2.ZERO, 3.5, Color("3b2457"))
 		Style.SHARD:
+			# Prisma Infinito: the crystal cycles through the rainbow.
+			var tint := Color.from_hsv(fposmod(_age * 0.9 + _hue_seed, 1.0), 0.45, 1.0) if evolved else color
 			# Afterimages along the path instead of a line trail.
 			for i in local_trail.size():
 				var k := float(i + 1) / float(local_trail.size() + 1)
-				_draw_shard(local_trail[i], Color(color, 0.35 * k), 0.75 + 0.25 * k, false)
-			EmberfallFx.glow(self, Vector2.ZERO, 16.0 * visual_scale, color, 0.4)
-			_draw_shard(Vector2.ZERO, color, 1.0, true)
+				_draw_shard(local_trail[i], Color(tint, 0.35 * k), 0.75 + 0.25 * k, false)
+			EmberfallFx.glow(self, Vector2.ZERO, 16.0 * visual_scale, tint, 0.4)
+			_draw_shard(Vector2.ZERO, tint, 1.0, true)
 		Style.BOLT:
 			EmberfallFx.trail(self, local_trail, color, 6.0 * visual_scale)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
