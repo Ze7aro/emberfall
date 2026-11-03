@@ -20,6 +20,30 @@ var _buttons: Array[Button] = []
 const KIT_DIR := "res://assets/ui/pixel_simple_v1/"
 const SELECTED_NAV_TEXTURE := preload("res://assets/ui/pixel_simple_v1/frames/selection.png")
 const FOOTER_FRAME_TEXTURE := preload("res://assets/ui/pixel_simple_v1/frames/footer_frame.png")
+## Three-state art per destination (normal / selected / disabled) in
+## navigation/<name>_normal.png, <name>_hover[_seleccionado].png and
+## <name>_desactivado.png. Missing art falls back to the plain `icons`.
+const STATE_ART := {&"shop": "tienda", &"upgrades": "arbol", &"home": "casa", &"inventory": "mochila", &"dungeons": "portal"}
+## Height the normal state is drawn at; the other states keep their size
+## relative to it (the selected art is drawn a bit bigger on purpose).
+const STATE_ICON_HEIGHT := 50.0
+
+func _state_textures(id: StringName) -> Dictionary:
+	if not STATE_ART.has(id):
+		return {}
+	var base := KIT_DIR + "navigation/" + str(STATE_ART[id])
+	var normal_path := base + "_normal.png"
+	if not ResourceLoader.exists(normal_path):
+		return {}
+	var states := {"normal": load(normal_path) as Texture2D}
+	for candidate in [base + "_hover_seleccionado.png", base + "_hover.png"]:
+		if ResourceLoader.exists(candidate):
+			states["selected"] = load(candidate) as Texture2D
+			break
+	if ResourceLoader.exists(base + "_desactivado.png"):
+		states["disabled"] = load(base + "_desactivado.png") as Texture2D
+	return states
+
 func _kit_ready() -> bool:
 	return ResourceLoader.exists(KIT_DIR + "frames/footer_frame.png")
 
@@ -100,7 +124,18 @@ func _build(safe_bottom: float = 0.0) -> void:
 		selection.modulate = Color(1.0, 1.0, 1.0, 0.5)
 		selection.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(selection)
-		if index < icons.size() and icons[index] != null:
+		var states := _state_textures(StringName(entries[index].get("id", &"")))
+		if not states.is_empty():
+			var state_icon := TextureRect.new()
+			state_icon.name = "NavIcon"
+			state_icon.set_meta("states", states)
+			state_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			state_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			state_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			state_icon.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			state_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			button.add_child(state_icon)
+		elif index < icons.size() and icons[index] != null:
 			var icon := TextureRect.new()
 			icon.name = "NavIcon"
 			icon.texture = icons[index]
@@ -161,6 +196,17 @@ func _apply_button_styles(button: Button, selected: bool) -> void:
 	button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new() if _uses_kit_frame() else UiTheme.button_disabled())
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.modulate = Color(0.48, 0.48, 0.56) if button.disabled else (Color.WHITE if selected else Color(0.95, 0.92, 1.0))
+	var nav_icon := button.get_node_or_null("NavIcon") as TextureRect
+	if nav_icon and nav_icon.has_meta("states"):
+		# The art already carries its own disabled/selected look.
+		button.modulate = Color.WHITE
+		var states: Dictionary = nav_icon.get_meta("states")
+		var state := "disabled" if button.disabled else ("selected" if selected else "normal")
+		var texture: Texture2D = states.get(state, states["normal"])
+		var scale_factor := STATE_ICON_HEIGHT / float((states["normal"] as Texture2D).get_height())
+		nav_icon.texture = texture
+		nav_icon.size = texture.get_size() * scale_factor
+		_center_button_icon(button)
 	var selection := button.get_node_or_null("SelectionEffect") as TextureRect
 	if selection:
 		selection.visible = selected and not button.disabled and _uses_kit_frame()

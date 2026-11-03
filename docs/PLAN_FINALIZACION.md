@@ -271,6 +271,21 @@ Para probar: conectá el teléfono con depuración USB activada. Aparece el íco
 
 Ya resuelto en el código: el botón Atrás cierra ventanas, pausa la partida y vuelve a Inicio, y en Inicio sale del juego. La partida se pausa al perder el foco, el progreso se guarda al pasar a segundo plano y la barra superior y el menú respetan las áreas seguras.
 
+**Peso del paquete:** todo lo que el juego no carga está en `assets/quitar/` (con `.gdignore`, así que Godot no lo importa ni lo exporta): referencias, fuentes de la UI, kits viejos, sprites de efectos reemplazados por código, las hojas de íconos de otros juegos (no se pueden distribuir) y las dos pantallas de vista previa del kit. Los íconos de habilidades, los jefes, los personajes y el anillo de XP se importan con un límite de 256 px (`process/size_limit`; los PNG originales quedan intactos). El `.pck` pasó de 129 MB a 26 MB. Si algo de `quitar` vuelve a hacer falta, sacalo de ahí a su ruta original.
+
+### 7.1 Prueba en el teléfono
+
+| Qué mirar | Cómo | Bien si |
+|---|---|---|
+| Fluidez | Partida de 10 minutos, con JEFE y HORDA desde depuración | No baja de ~50 fps ni se traba al aparecer muchos enemigos o efectos |
+| Temperatura y batería | La misma partida | El teléfono no se pone muy caliente |
+| Toques | Footer, cartas de mejora, botón de pausa, RECLAMAR en misiones | Todo se toca al primer intento con el dedo |
+| Áreas seguras | Teléfono con notch o cámara en pantalla | La barra superior y el footer no quedan tapados |
+| Botón Atrás | En ventanas, en partida y en Inicio | Cierra la ventana, pausa y sale, en ese orden |
+| Segundo plano | Salir a otra app en plena partida y volver | La partida está en pausa y no se perdió progreso |
+| Texto | Todas las pantallas | Nada cortado ni encimado |
+| Sonido | Partida y menús | Se escucha y respeta el volumen del teléfono |
+
 ## 8. Mejora visual de las habilidades en combate
 
 ### 8.1 Diagnóstico

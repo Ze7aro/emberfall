@@ -148,8 +148,3 @@ func _update_hit_shake(delta: float) -> void:
 		_camera.offset = Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0))
 	else:
 		_camera.offset = Vector2.ZERO
-
-func _draw() -> void:
-	var heart_count := int(ceil(max_hp / 2.0))
-	var row_width := heart_count * 13.0 - 3.0
-	HeartsRow.draw_row(self, Vector2(-row_width / 2.0, -46), 10.0, 3.0, hp, max_hp, Color("e86958"), Color("29404a"))
