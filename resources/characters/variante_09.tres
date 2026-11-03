@@ -15,4 +15,3 @@ requirement = ""
 attack_name = "Hacha Arrojadiza"
 attack_color = Color(0.7255, 0.698, 0.6784, 1)
 attack_sprite_folder = "torvak_hacha"
-starting_power = "boomerang"

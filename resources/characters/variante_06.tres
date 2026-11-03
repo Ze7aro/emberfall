@@ -15,4 +15,3 @@ requirement = ""
 attack_name = "Disparo Rúnico"
 attack_color = Color(1, 0.8118, 0.3608, 1)
 attack_sprite_folder = "disparo_runico"
-starting_power = "chain"

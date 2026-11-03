@@ -15,4 +15,3 @@ requirement = "stage_09"
 attack_name = "Disparo Mágico"
 attack_color = Color(0.1255, 0.902, 0.7412, 1)
 attack_sprite_folder = "disparo_magico"
-starting_power = "familiar"

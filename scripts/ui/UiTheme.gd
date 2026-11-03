@@ -15,12 +15,41 @@ const PURPLE := Color("c747e0")
 const TEXT := Color("ecedf4")
 const TEXT_MUTED := Color("aaa3b8")
 const DANGER := Color("d96168")
+const GOLD := Color("f4c96a")
+const EMBER := Color("ff9a4a")
+## Light label on the dark turquoise primary art (dark text was unreadable).
+const PRIMARY_TEXT := Color("e9fdff")
+
+const TITLE_FONT := "res://assets/ui/fuentes/titulo.tres"
+const BOLD_FONT := "res://assets/ui/fuentes/texto_bold.tres"
 
 const CORNER := 12
 
 ## Slim top HUD height and the y where screen content may start under it.
 const HUD_HEIGHT := 100.0
 const CONTENT_TOP := 120.0
+
+static var _fonts := {}
+
+static func _font(path: String) -> Font:
+	if not _fonts.has(path):
+		_fonts[path] = load(path) as Font
+	return _fonts[path]
+
+## Engraved display face for screen and section titles.
+static func title_font() -> Font:
+	return _font(TITLE_FONT)
+
+static func bold_font() -> Font:
+	return _font(BOLD_FONT)
+
+## Applies the display face plus a dark outline so titles sit on any backdrop.
+static func style_title(label: Label, size: int, color: Color = TEXT) -> void:
+	label.add_theme_font_override("font", title_font())
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color("07060d"))
+	label.add_theme_constant_override("outline_size", 6)
 
 static func panel(border: Color = BORDER, radius: int = CORNER, border_width: int = 3) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -277,11 +306,19 @@ static func apply_primary(button: Button, h_margin: float = 12.0) -> void:
 	button.add_theme_stylebox_override("hover", _with_h(button_primary_hover(), h_margin))
 	button.add_theme_stylebox_override("pressed", _with_h(button_primary_pressed(), h_margin))
 	button.add_theme_stylebox_override("disabled", _with_h(button_primary_disabled(), h_margin))
-	button.add_theme_color_override("font_color", Color("102013"))
+	_primary_text(button)
 	install_press_feedback(button)
 
 ## A small scale response makes touch targets feel physical without adding
 ## particles or new art. The guard matters because some controls are restyled.
+static func _primary_text(button: Button) -> void:
+	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		button.add_theme_color_override(key, PRIMARY_TEXT)
+	button.add_theme_color_override("font_disabled_color", TEXT_MUTED)
+	button.add_theme_color_override("font_outline_color", Color("06232a"))
+	button.add_theme_constant_override("outline_size", 4)
+	button.add_theme_font_override("font", bold_font())
+
 static func install_press_feedback(button: Button) -> void:
 	if button.has_meta("press_feedback"):
 		return
@@ -344,36 +381,103 @@ static func button_pressed() -> StyleBox:
 static func header(title: String, subtitle: String = "", size: int = 30, banner: String = "") -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 2)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var title_label := Label.new()
 	title_label.text = title
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", size)
-	title_label.add_theme_color_override("font_color", TEXT)
+	style_title(title_label, size)
 	box.add_child(title_label)
+	box.add_child(ornament())
 	if subtitle != "":
 		var sub := Label.new()
-		sub.text = subtitle
+		# All-caps taglines read as shouting in the body face: sentence case.
+		sub.text = subtitle.substr(0, 1) + subtitle.substr(1).to_lower() if subtitle == subtitle.to_upper() else subtitle
 		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		sub.add_theme_font_size_override("font_size", 11)
+		sub.add_theme_font_size_override("font_size", 14)
 		sub.add_theme_color_override("font_color", TEXT_MUTED)
 		box.add_child(sub)
 	return box
 
+## Modal title bar: engraved title centred, a round close button on the
+## right and the gold ornament underneath.
+static func modal_header(title: String, on_close: Callable, size: int = 22) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	var bar := Control.new()
+	bar.custom_minimum_size = Vector2(0, 44)
+	box.add_child(bar)
+	var label := Label.new()
+	label.text = title
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	label.offset_left = 44.0
+	label.offset_right = -44.0
+	label.clip_text = true
+	# Long words in the engraved face don't fit beside the close button.
+	style_title(label, size if title.length() <= 9 else size - 4)
+	bar.add_child(label)
+	var close := close_button(on_close)
+	close.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	close.offset_left = -40.0
+	close.offset_right = 0.0
+	close.offset_top = -20.0
+	close.offset_bottom = 20.0
+	bar.add_child(close)
+	box.add_child(ornament(220.0))
+	return box
+
+## Round dark button with the kit's close icon.
+static func close_button(on_close: Callable) -> Button:
+	var button := Button.new()
+	button.icon = load(KIT_DIR + "icons/close.png") as Texture2D
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.add_theme_constant_override("icon_max_width", 18)
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(40, 40)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.04, 0.1, 0.9)
+	style.border_color = Color(GOLD, 0.5)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(20)
+	style.set_content_margin_all(9)
+	for state in ["normal", "hover", "pressed"]:
+		button.add_theme_stylebox_override(state, style)
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.pressed.connect(on_close)
+	install_press_feedback(button)
+	return button
+
+## Thin divider that fades out at both ends with a small diamond in the
+## middle; sits under titles.
+static func ornament(width: float = 180.0, color: Color = GOLD) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(0, 12)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.draw.connect(func():
+		var mid := Vector2(holder.size.x / 2.0, 6.0)
+		var half := minf(width / 2.0, holder.size.x / 2.0 - 4.0)
+		var steps := 12
+		for i in steps:
+			var t0 := float(i) / steps
+			var t1 := float(i + 1) / steps
+			var a := color.a * (1.0 - t0) * 0.85
+			holder.draw_line(mid + Vector2(10 + (half - 10) * t0, 0), mid + Vector2(10 + (half - 10) * t1, 0), Color(color, a), 1.5)
+			holder.draw_line(mid - Vector2(10 + (half - 10) * t0, 0), mid - Vector2(10 + (half - 10) * t1, 0), Color(color, a), 1.5)
+		var d := PackedVector2Array([mid + Vector2(0, -5), mid + Vector2(5, 0), mid + Vector2(0, 5), mid + Vector2(-5, 0)])
+		holder.draw_colored_polygon(d, color)
+		holder.draw_circle(mid, 1.6, Color("1a1028"))
+	)
+	return holder
+
 ## Illustrated full-screen backdrop with a dark veil so content stays legible.
 ## Returns null when the art is missing (callers keep their flat background).
-static func background(file_name: String, veil: float = 0.55, cover_top_only: bool = false) -> Control:
-	var rect := TextureRect.new()
-	rect.texture = load(KIT_DIR + "backgrounds/background.png") as Texture2D
-	if rect.texture == null:
-		return null
-	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	rect.stretch_mode = TextureRect.STRETCH_SCALE
-	rect.modulate = Color.WHITE
-	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rect
+## The arguments are kept for compatibility; every screen now shares the
+## code-drawn EmberBackdrop (gradient, glow, drifting embers).
+static func background(_file_name: String = "", _veil: float = 0.55, _cover_top_only: bool = false) -> Control:
+	return EmberBackdrop.new()
 
 ## "TITLE ———— note" row used to open a section.
 static func section_title(text: String, note: String = "", color: Color = TEXT) -> HBoxContainer:
@@ -381,11 +485,11 @@ static func section_title(text: String, note: String = "", color: Color = TEXT) 
 	row.add_theme_constant_override("separation", 8)
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 17)
-	label.add_theme_color_override("font_color", color)
+	style_title(label, 16, color)
+	label.add_theme_constant_override("outline_size", 4)
 	row.add_child(label)
 	var line := ColorRect.new()
-	line.color = BORDER
+	line.color = Color(color, 0.35)
 	line.custom_minimum_size = Vector2(0, 2)
 	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -394,7 +498,7 @@ static func section_title(text: String, note: String = "", color: Color = TEXT) 
 	if note != "":
 		var note_label := Label.new()
 		note_label.text = note
-		note_label.add_theme_font_size_override("font_size", 10)
+		note_label.add_theme_font_size_override("font_size", 13)
 		note_label.add_theme_color_override("font_color", TEXT_MUTED)
 		row.add_child(note_label)
 	return row
@@ -424,8 +528,8 @@ static func make_theme() -> Theme:
 	theme.set_stylebox("pressed", "CheckButton", button_pressed())
 	theme.set_stylebox("hover_pressed", "CheckButton", button_pressed())
 	theme.set_stylebox("focus", "CheckButton", StyleBoxEmpty.new())
-	var switch_off: Texture2D = null
-	var switch_on: Texture2D = null
+	var switch_off: Texture2D = _switch_texture(false)
+	var switch_on: Texture2D = _switch_texture(true)
 	if switch_off != null and switch_on != null:
 		for state in ["unchecked", "unchecked_disabled", "unchecked_mirrored", "unchecked_disabled_mirrored"]:
 			theme.set_icon(state, "CheckButton", switch_off)
@@ -434,6 +538,8 @@ static func make_theme() -> Theme:
 	theme.set_color("font_color", "CheckButton", TEXT)
 	theme.set_color("font_hover_color", "CheckButton", ACCENT)
 	theme.set_font_size("font_size", "CheckButton", 16)
+	theme.set_font("font", "Button", bold_font())
+	theme.set_font("font", "CheckButton", bold_font())
 	theme.set_stylebox("tab_selected", "TabContainer", slot(true, 8))
 	theme.set_stylebox("tab_unselected", "TabContainer", slot(false, 8))
 	theme.set_stylebox("tab_hovered", "TabContainer", slot(true, 8))
@@ -443,3 +549,81 @@ static func make_theme() -> Theme:
 	theme.set_color("font_unselected_color", "TabContainer", TEXT_MUTED)
 	theme.set_color("font_hovered_color", "TabContainer", ACCENT)
 	return theme
+
+## Pill switch for CheckButtons, rasterised once (anti-aliased by coverage):
+## dark track with the knob left when off, turquoise with the knob right when on.
+static func _switch_texture(on: bool) -> Texture2D:
+	var key := "switch:%s" % on
+	if _texture_cache.has(key):
+		return _texture_cache[key]
+	var w := 46
+	var h := 26
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var r := h / 2.0
+	var track := Color("1fb5c4") if on else Color("2a2340")
+	var rim := Color("8af3f7") if on else Color("5a4a78")
+	var knob := Color("f4fbff") if on else Color("9d92b3")
+	var knob_c := Vector2(w - r, r) if on else Vector2(r, r)
+	for y in h:
+		for x in w:
+			var p := Vector2(x + 0.5, y + 0.5)
+			var cx := clampf(p.x, r, w - r)
+			var dist := p.distance_to(Vector2(cx, r))
+			var cover := clampf(r - dist, 0.0, 1.0)
+			if cover <= 0.0:
+				continue
+			var col := rim if dist > r - 2.0 else track
+			var kd := p.distance_to(knob_c)
+			var kc := clampf(r - 4.0 - kd, 0.0, 1.0)
+			col = col.lerp(knob, kc)
+			img.set_pixel(x, y, Color(col, cover))
+	var tex := ImageTexture.create_from_image(img)
+	_texture_cache[key] = tex
+	return tex
+
+## --- Crisp pixel art -------------------------------------------------------
+## The small kit art (24–48 px pixel icons) looked jagged: on a phone it's
+## enlarged ~2.8× with nearest filtering, so pixels came out uneven. Here it is
+## enlarged in memory to ~128 px with even pixels, mipmapped, and reported at
+## its original size, so a linear filter draws it clean at any scale.
+const CRISP_MAX_SOURCE := 96
+const CRISP_TARGET := 128
+
+static func crisp(texture: Texture2D) -> Texture2D:
+	if texture == null or texture.has_meta("crisp"):
+		return texture
+	var w := texture.get_width()
+	var h := texture.get_height()
+	if maxi(w, h) > CRISP_MAX_SOURCE:
+		return texture
+	var key := "crisp:%s" % (texture.resource_path if texture.resource_path != "" else str(texture.get_instance_id()))
+	if _texture_cache.has(key):
+		return _texture_cache[key]
+	var image := texture.get_image()
+	if image == null:
+		return texture
+	if image.is_compressed():
+		image.decompress()
+	image.convert(Image.FORMAT_RGBA8)
+	var k := ceili(float(CRISP_TARGET) / maxi(w, h))
+	image.resize(w * k, h * k, Image.INTERPOLATE_NEAREST)
+	image.generate_mipmaps()
+	var out := ImageTexture.create_from_image(image)
+	out.set_size_override(Vector2i(w, h))
+	out.set_meta("crisp", true)
+	_texture_cache[key] = out
+	return out
+
+## Menu art pass: crisp small icons and draw everything with smooth filtering.
+static func smooth(node: Node) -> void:
+	if not is_instance_valid(node):
+		return
+	if node is TextureRect:
+		node.texture = crisp(node.texture)
+		node.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	elif node is Button:
+		if node.icon != null:
+			node.icon = crisp(node.icon)
+		node.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	elif node is AnimatedSprite2D or node is Sprite2D:
+		node.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS

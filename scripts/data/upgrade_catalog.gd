@@ -23,6 +23,7 @@ const UPGRADES := [
 	{"id": "cooldown", "name": "Enfriamiento", "desc": "-3% de enfriamiento de las habilidades por nivel.", "icon": "cooldown.png", "max": 3, "base": 150, "step": 150},
 	{"id": "duration", "name": "Duración", "desc": "+8% de duración de efectos y estados por nivel.", "icon": "duracion.png", "max": 3, "base": 100, "step": 100},
 	{"id": "amount", "name": "Cantidad", "desc": "+1 proyectil o efecto en las habilidades que disparan varios.", "icon": "proyectiles.png", "max": 1, "base": 600, "step": 0},
+	{"id": "bounce", "name": "Rebote", "desc": "+1 salto de Cadena Eléctrica y +1 rebote de Esquirla Errante por nivel.", "icon": "rebote_de_proyectiles.png", "max": 3, "base": 100, "step": 100},
 	{"id": "proj_speed", "name": "Velocidad de proyectil", "desc": "+8% de velocidad de proyectiles por nivel.", "icon": "velocidad_de_proyectil.png", "max": 3, "base": 80, "step": 80},
 	{"id": "crit", "name": "Crítico", "desc": "+3% de probabilidad de crítico por nivel.", "icon": "probabilidad_de_critico.png", "max": 3, "base": 120, "step": 120},
 	{"id": "magnet", "name": "Imán", "desc": "+20 de radio para recoger experiencia y oro por nivel.", "icon": "area_recoleccion_experiencia.png", "max": 3, "base": 60, "step": 60},

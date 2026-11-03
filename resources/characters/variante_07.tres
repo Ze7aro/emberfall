@@ -19,4 +19,3 @@ attack_range_scale = 0.35
 attack_alt_frame_names = PackedStringArray("u_slash_right_to_left.png", "u_slash_left_to_right.png")
 damage_modifier = 1.15
 attack_speed_modifier = 1.1
-starting_power = "slash"

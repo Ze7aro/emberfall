@@ -310,7 +310,10 @@ func _build_power_card(option: String) -> Control:
 	var current_level: int = 0 if is_evolution else world.ability_level(option)
 	var kind_text := "EVOLUCIÓN"
 	if not is_evolution:
-		kind_text = "ACTIVA" if AbilityCatalog.is_active(option) else "PASIVA"
+		if AbilityCatalog.is_weapon(option):
+			kind_text = "ARMA"
+		else:
+			kind_text = "ACTIVA" if AbilityCatalog.is_active(option) else "PASIVA"
 		if current_level == 0:
 			kind_text += " · NUEVA"
 	stack.add_child(_card_label(kind_text, 9, GOLD if is_evolution else UiTheme.TEXT_MUTED))
@@ -323,7 +326,10 @@ func _build_power_card(option: String) -> Control:
 		stack.add_child(_card_label("%s + %s" % [AbilityCatalog.display_name(base_id), AbilityCatalog.display_name(paired)], 8, UiTheme.PURPLE))
 	else:
 		stack.add_child(_card_label("NV. %d → %d" % [current_level, current_level + 1], 11, UiTheme.PURPLE))
-	var desc := _card_label(AbilityCatalog.description(option), 10, UiTheme.TEXT_MUTED)
+	var desc_text := AbilityCatalog.description(option)
+	if AbilityCatalog.is_weapon(option):
+		desc_text = AbilityCatalog.weapon_level_text(current_level + 1)
+	var desc := _card_label(desc_text, 10, UiTheme.TEXT_MUTED)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stack.add_child(desc)
 	# Every active card names its evolution partner, so the player learns
@@ -576,6 +582,10 @@ func _build_row(id: String) -> Control:
 	var title := _card_label("%s  NV.%d" % [AbilityCatalog.display_name(id, evolved), world.ability_level(id)], 11, GOLD if evolved else UiTheme.TEXT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	text.add_child(title)
+	if AbilityCatalog.is_weapon(id):
+		var weapon_hint := _card_label("Arma · %s" % AbilityCatalog.description(id), 9, Color("8a7d9c"))
+		weapon_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		text.add_child(weapon_hint)
 	if AbilityCatalog.is_active(id) and not evolved:
 		var partner := str(AbilityCatalog.ACTIVES[id]["evolution"]["passive"])
 		var ready_level: bool = world.ability_level(id) >= AbilityCatalog.MAX_LEVEL

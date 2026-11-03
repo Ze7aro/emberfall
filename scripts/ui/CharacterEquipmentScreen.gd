@@ -45,6 +45,7 @@ var _inventory_grid: GridContainer
 var _carousel_area: Control
 var _carousel_indicators: HBoxContainer
 var _selected_hero_name: Label
+var _hero_name_label: Label
 var _select_button: Button
 var _back_button: Button
 
@@ -160,6 +161,15 @@ func _build_equipment_state() -> Control:
 	hero_preview.size = Vector2(150, 190)
 	hero_wrap.add_child(hero_preview)
 	hero_row.add_child(hero_wrap)
+	# Name above the hero, basic attack under the feet.
+	_hero_name_label = Label.new()
+	_hero_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hero_name_label.position = Vector2(-20, 36)
+	_hero_name_label.size = Vector2(190, 30)
+	_hero_name_label.clip_text = true
+	UiTheme.style_title(_hero_name_label, 20, UiTheme.GOLD)
+	_hero_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hero_wrap.add_child(_hero_name_label)
 
 	var right_wrap := Control.new()
 	right_wrap.custom_minimum_size = Vector2(SLOT_COLUMN_WIDTH, 244)
@@ -171,8 +181,14 @@ func _build_equipment_state() -> Control:
 
 	_hero_attack_label = Label.new()
 	_hero_attack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hero_attack_label.add_theme_font_size_override("font_size", 12)
-	col.add_child(_hero_attack_label)
+	_hero_attack_label.position = Vector2(-20, 240)
+	_hero_attack_label.size = Vector2(190, 24)
+	_hero_attack_label.add_theme_font_override("font", UiTheme.bold_font())
+	_hero_attack_label.add_theme_font_size_override("font_size", 15)
+	_hero_attack_label.add_theme_color_override("font_outline_color", Color("07060d"))
+	_hero_attack_label.add_theme_constant_override("outline_size", 4)
+	_hero_attack_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hero_wrap.add_child(_hero_attack_label)
 
 	_change_hero_button = Button.new()
 	_change_hero_button.text = "CAMBIAR HÉROE"
@@ -243,25 +259,27 @@ func _build_hero_preview() -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(150, 190)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var hero_frame := Panel.new()
-	hero_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	hero_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hero_frame.add_theme_stylebox_override("panel", UiTheme.kit("hero_card", UiTheme.slot(false, 0), 0.0))
-	holder.add_child(hero_frame)
+	# No frame: the hero stands on the rune circle, laid flat like a floor
+	# seal and centred under the feet (sprite origin at 75, 165).
 	var rune := RuneBackdrop.new()
-	rune.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rune.position = Vector2(0, 90)
+	rune.size = Vector2(150, 150)
+	rune.pivot_offset = Vector2(75, 75)
+	rune.scale = Vector2(1.0, 0.36)
 	holder.add_child(rune)
 	_hero_sprite = AnimatedSprite2D.new()
-	_hero_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_hero_sprite.position = Vector2(75, 115)
-	_hero_sprite.scale = Vector2(0.5, 0.5)
+	_hero_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	# Origin near the feet (offset in texture pixels) so breathing grows
+	# upward from the ground instead of from the middle of the body.
+	_hero_sprite.offset = Vector2(0, -100)
+	_hero_sprite.position = Vector2(75, 165)
+	_hero_sprite.scale = Vector2(0.62, 0.62)
 	holder.add_child(_hero_sprite)
-	# Subtle idle bob — the pack only has one idle frame, so a gentle float
-	# is what stands in for "idle animation" here.
-	var bob := create_tween()
-	bob.set_loops()
-	bob.tween_property(_hero_sprite, "position:y", 111.0, 1.3).set_trans(Tween.TRANS_SINE)
-	bob.tween_property(_hero_sprite, "position:y", 119.0, 1.3).set_trans(Tween.TRANS_SINE)
+	# Standing still, just breathing: a 1.5 % stretch of the chest, no float.
+	var breath := create_tween()
+	breath.set_loops()
+	breath.tween_property(_hero_sprite, "scale", Vector2(0.62, 0.629), 1.6).set_trans(Tween.TRANS_SINE)
+	breath.tween_property(_hero_sprite, "scale", Vector2(0.62, 0.62), 1.6).set_trans(Tween.TRANS_SINE)
 	return holder
 
 func _build_inventory_panel() -> Control:
@@ -398,6 +416,7 @@ func _refresh_hero_area() -> void:
 	if folder != "" and is_instance_valid(_hero_sprite):
 		_hero_sprite.sprite_frames = CharacterAnimations.build_sprite_frames(folder)
 		_hero_sprite.play("idle_right")
+	_hero_name_label.text = str(hero.get("name", ""))
 	var attack_name := str(hero.get("attack_name", ""))
 	_hero_attack_label.text = attack_name
 	_hero_attack_label.visible = attack_name != ""

@@ -18,6 +18,7 @@ que Godot ignora (tiene `.gdignore`): no se importa ni entra al APK.
 | `mundo/suelos/` | Losetas de suelo por capítulo (`capN_<bioma>.png`, repetibles) | `game_world.gd` (`FLOOR_ART`) |
 | `mundo/decorados/capN/` | Decorados del mapa; los de `DECOR_SOLID` son sólidos | `game_world.gd` |
 | `mundo/recolectables/` | XP (`xp_chica/mediana/grande`), `moneda(s)`, `pocion`, `iman`, `bomba`, `cofre`, `cofre_epico` | `xp_orb.gd`, `pickup.gd` |
+| `ui/fuentes/` | Cinzel Decorative (títulos) y Alegreya Sans (texto), licencia OFL (`OFL_*.txt`). `texto.tres` es la fuente global del proyecto; `titulo.tres` y `texto_bold.tres` las usa `UiTheme` | `project.godot`, `UiTheme.title_font()` / `bold_font()` |
 | `ui/` | Kit de interfaz: `backgrounds`, `bars`, `buttons`, `equipment`, `frames`, `hud` (corazones, nivel), `icons`, `navigation` (footer en 3 estados), `shop`, `escenarios` (vistas de mapa), `logo` | `UiTheme`, `TopHud`, `NavigationFooter`, pantallas |
 
 ## Reglas

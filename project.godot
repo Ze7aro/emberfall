@@ -12,8 +12,8 @@ config_version=5
 
 config/name="Emberfall"
 run/main_scene="res://scenes/MainLayout.tscn"
-config/features=PackedStringArray("4.7")
 config/quit_on_go_back=false
+config/features=PackedStringArray("4.7")
 
 [audio]
 
@@ -37,10 +37,11 @@ window/handheld/orientation=1
 [gui]
 
 theme/default_font_multichannel_signed_distance_field=true
+theme/custom_font="res://assets/ui/fuentes/texto.tres"
 
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
-textures/vram_compression/import_etc2_astc=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

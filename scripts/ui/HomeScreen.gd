@@ -7,7 +7,12 @@ const STAGE_NAMES := [
 	"CAVERNAS ROTAS", "TORRE OLVIDADA", "PANTANO NEGRO", "CUMBRE HELADA",
 	"FOSA DE MAGMA", "TRONO DE EMBERFALL",
 ]
-const STAGE_PREVIEWS := ["res://assets/ui/escenarios/game_bg.png", "res://assets/ui/escenarios/world_map.png"]
+## Stage card art: the chapter's own floor, so the card shows where you'll fight.
+const CHAPTER_PREVIEWS := {
+	1: "res://assets/mundo/suelos/cap1_criptas.png",
+	2: "res://assets/mundo/suelos/cap2_cavernas.png",
+	3: "res://assets/mundo/suelos/cap3_forja.png",
+}
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -16,9 +21,13 @@ func _ready() -> void:
 	if backdrop != null:
 		add_child(backdrop)
 		move_child(backdrop, 0)
-	map_selection.start_label = "COMENZAR AVENTURA"
-	map_selection.start_subtitle = "Explora, lucha, progresa"
+	map_selection.start_label = "JUGAR"
+	map_selection.start_subtitle = ""
 	map_selection.show_rewards = false
+	map_selection.energy_cost = GameState.ENERGY_COST
+	map_selection.enable_hero()
+	# Room for the shortcut row under the HUD.
+	map_selection.add_theme_constant_override("margin_top", int(UiTheme.CONTENT_TOP) + 76)
 	map_selection.unlock_check = func(data: Dictionary) -> bool:
 		return GameState.is_stage_unlocked(int(data.get("index", 1)))
 	map_selection.set_maps(_build_stages())
@@ -33,34 +42,57 @@ func _ready() -> void:
 ## the top HUD) above Misiones, each with its "something new" indicator.
 func _build_missions_side() -> void:
 	var top := UiTheme.CONTENT_TOP + 8.0
-	_side_button(top + 12.0, "res://assets/ui/icons/mail.png", "Avisos", func():
+	_side_button(Vector2(12, top + 76.0), "res://assets/ui/icons/mail.png", "Avisos", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"notifications")
 			GameState.mark_notifications_read()
 	, func() -> bool: return GameState.unread_notification_count() > 0, GameState.notifications_changed)
-	_side_button(top + 76.0, "res://assets/ui/icons/missions.png", "Misiones", func():
+	_side_button(Vector2(12, top), "res://assets/ui/icons/missions.png", "Misiones", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"missions")
 	, func() -> bool: return GameState.has_claimable_missions(), GameState.missions_changed)
 
-func _side_button(y: float, icon_path: String, caption_text: String, on_press: Callable, has_news: Callable, changed: Signal) -> void:
+func _side_button(at: Vector2, icon_path: String, caption_text: String, on_press: Callable, has_news: Callable, changed: Signal) -> void:
 	var side := Control.new()
 	side.name = caption_text + "Side"
-	side.position = Vector2(6, y)
-	side.size = Vector2(48, 48)
+	side.position = at
+	side.size = Vector2(50, 50)
 	add_child(side)
+	var ring := Panel.new()
+	var ring_style := StyleBoxFlat.new()
+	ring_style.bg_color = Color(0.06, 0.04, 0.12, 0.85)
+	ring_style.border_color = Color(UiTheme.GOLD, 0.6)
+	ring_style.set_border_width_all(2)
+	ring_style.set_corner_radius_all(25)
+	ring_style.shadow_color = Color(0, 0, 0, 0.5)
+	ring_style.shadow_size = 4
+	ring.add_theme_stylebox_override("panel", ring_style)
+	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	side.add_child(ring)
+	var caption := Label.new()
+	caption.text = caption_text
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.position = Vector2(-10, 50)
+	caption.size = Vector2(70, 18)
+	caption.add_theme_font_size_override("font_size", 13)
+	caption.add_theme_color_override("font_color", UiTheme.TEXT)
+	caption.add_theme_color_override("font_outline_color", Color("07060d"))
+	caption.add_theme_constant_override("outline_size", 4)
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	side.add_child(caption)
 	var icon := TextureRect.new()
 	icon.texture = load(icon_path) as Texture2D
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	icon.offset_left = 4
-	icon.offset_right = -4
-	icon.offset_top = 4
-	icon.offset_bottom = -4
+	icon.offset_left = 10
+	icon.offset_right = -10
+	icon.offset_top = 10
+	icon.offset_bottom = -10
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side.add_child(icon)
 	# "Something new" marker: a plain red dot on the shortcut's corner.
@@ -72,7 +104,7 @@ func _side_button(y: float, icon_path: String, caption_text: String, on_press: C
 	dot.set_corner_radius_all(8)
 	badge.add_theme_stylebox_override("panel", dot)
 	badge.size = Vector2(14, 14)
-	badge.position = Vector2(side.size.x - 12.0, -2.0)
+	badge.position = Vector2(side.size.x - 13.0, 0.0)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side.add_child(badge)
 	badge.visible = has_news.call()
@@ -112,7 +144,7 @@ func _build_stages() -> Array[Dictionary]:
 			"name": STAGE_NAMES[i],
 			"chapter": 1 + (i / 4),
 			"level": index,
-			"preview": STAGE_PREVIEWS[i % STAGE_PREVIEWS.size()],
+			"preview": CHAPTER_PREVIEWS.get(1 + (i / 4), CHAPTER_PREVIEWS[3]),
 			"gold_reward": 40 + index * 20,
 			"gems_reward": 1 + index / 2,
 		})

@@ -30,8 +30,6 @@ const DROP_MAGNET := 0.004
 const DROP_BOMB := 0.003
 const POTION_HEAL := 2 # 1 full heart
 const MAX_ABILITY_LEVEL := AbilityCatalog.MAX_LEVEL
-## Used when a hero has no starting_power set in its CharacterData.
-const DEFAULT_STARTING_POWER := "daggers"
 
 ## STAGE-01: each of the 10 campaign stages (keyed by HomeScreen's 1-based
 ## index, matching its STAGE_NAMES order) gets its own enemy mix instead of
@@ -81,7 +79,6 @@ var _kills_by_type := {}
 var _run_reported := false
 var _revives_left := 0
 var _events_fired: Array[int] = []
-var _attack_count := 0
 ## Owned actives and passives, id -> level (see AbilityCatalog). Insertion
 ## order is pick order, which the build bar shows as-is.
 var skills: Dictionary = {}
@@ -296,7 +293,7 @@ func _ready() -> void:
 	banishes = 2 + _up("banish")
 	_revives_left = _up("revival")
 	_gold_at_start = GameState.gold
-	_grant_starting_power()
+	_grant_hero_weapon()
 	for i in 4:
 		spawn_enemy()
 
@@ -336,15 +333,14 @@ static func make_light(radius: float, color: Color, energy: float) -> PointLight
 	light.blend_mode = Light2D.BLEND_MODE_ADD
 	return light
 
-## Each hero starts with the active that defines them (CharacterData's
-## starting_power), so their element shows from the first second.
-func _grant_starting_power() -> void:
-	var hero_data := GameState.get_character_data(GameState.selected_character_id)
-	var start := DEFAULT_STARTING_POWER
-	if hero_data != null and AbilityCatalog.is_active(hero_data.starting_power):
-		start = hero_data.starting_power
-	skills[start] = 1
+## Each hero starts with only their own weapon (their basic attack) at
+## level 1; everything else comes from level-ups.
+func _grant_hero_weapon() -> void:
+	skills[own_weapon_id()] = 1
 	_refresh_powers()
+
+func own_weapon_id() -> String:
+	return AbilityCatalog.weapon_id(GameState.selected_character_id)
 
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":
@@ -404,6 +400,9 @@ func update_powers(delta: float) -> void:
 	damage_source = "basic"
 
 func _update_powers_inner(delta: float, cd: float) -> void:
+	for id: String in skills:
+		if AbilityCatalog.is_weapon(id):
+			_tick_weapon(id)
 	if skills.has("daggers"):
 		var interval := (0.3 if is_evolved("daggers") else 1.1) * attack_speed_multiplier()
 		if _due("daggers", interval):
@@ -493,7 +492,7 @@ func _fire_chain(lvl: int) -> void:
 	SfxPlayer.play("abilities/chain_lightning.wav")
 	var remaining := enemies.duplicate()
 	var origin := player.global_position
-	var jumps := 20 if is_evolved("chain") else 2 + lvl + amount_bonus()
+	var jumps := 20 if is_evolved("chain") else 2 + lvl + amount_bonus() + bounce_bonus()
 	var jump_range := CHAIN_JUMP_RANGE * area_multiplier()
 	for i in mini(jumps, remaining.size()):
 		var target: EmberfallEnemy = nearest_from(remaining, origin, jump_range)
@@ -638,7 +637,7 @@ func _spawn_meteor(at: Vector2, radius: float, meteor_damage: int, telegraph: fl
 func _fire_shards(lvl: int) -> void:
 	for i in 1 + amount_bonus():
 		var angle := randf_range(0.0, TAU)
-		_spawn_shard(player.global_position, Vector2(cos(angle), sin(angle)), 12 + 5 * lvl, 1 + lvl, 3.5 * duration_multiplier(), true)
+		_spawn_shard(player.global_position, Vector2(cos(angle), sin(angle)), 12 + 5 * lvl, 1 + lvl + bounce_bonus(), 3.5 * duration_multiplier(), true)
 
 func _spawn_shard(at: Vector2, dir: Vector2, shard_damage: int, bounce_count: int, life: float, can_split: bool) -> void:
 	var shard := _make_skill_projectile(EmberfallSkillProjectile.Style.SHARD, "shard")
@@ -1205,78 +1204,99 @@ const PROJECTILE_SPEED := 520.0
 const PROJECTILE_BASE_LIFETIME := 1.0
 const BASIC_ATTACK_BASE_DAMAGE := 20
 
-## Effective reach of the current hero's basic attack — same speed/lifetime
-## math spawn_projectile uses, exposed for the temporary debug range overlay.
+## Effective reach of the hero's own weapon — same speed/lifetime math
+## _fire_weapon uses, exposed for the temporary debug range overlay.
 func player_attack_range() -> float:
-	var hero_data := GameState.get_character_data(GameState.selected_character_id)
-	var range_scale := hero_data.attack_range_scale if hero_data != null else 1.0
-	return PROJECTILE_SPEED * PROJECTILE_BASE_LIFETIME * range_scale
+	return weapon_range(own_weapon_id())
 
-## The hero's own attack is no longer an ability slot: it grows only with
-## passives (Fuerza, Celeridad, Amplitud, Velocidad de proyectil, Crítico)
-## and permanent upgrades/equipment.
-func spawn_projectile(_from: EmberfallPlayer) -> void:
+func weapon_range(id: String) -> float:
+	var hero_data := AbilityCatalog.weapon_hero(id)
+	var range_scale := hero_data.attack_range_scale if hero_data != null else 1.0
+	var stats := AbilityCatalog.weapon_stats(skill_level(id))
+	return PROJECTILE_SPEED * PROJECTILE_BASE_LIFETIME * range_scale * float(stats["range"])
+
+## Attacks per weapon, for every-Nth effects and alternating swing frames.
+var _weapon_attack_counts := {}
+
+## A weapon fires once its interval has passed and an enemy is in range;
+## with nobody in range it stays ready and fires as soon as one shows up.
+func _tick_weapon(id: String) -> void:
+	var hero_data := AbilityCatalog.weapon_hero(id)
+	if hero_data == null:
+		return
+	var stats := AbilityCatalog.weapon_stats(skill_level(id))
+	var interval := maxf(0.25, EmberfallPlayer.BASE_ATTACK_INTERVAL * attack_speed_multiplier() * hero_data.attack_speed_modifier * float(stats["interval"]))
+	if float(skill_timers.get(id, 0.0)) < interval:
+		return
+	skill_timers[id] = interval
+	if _fire_weapon(id, hero_data, stats):
+		skill_timers[id] = 0.0
+		if id == own_weapon_id():
+			player.play_attack()
+
+## Hero weapon: aimed at the nearest enemies in range. Grows with its own
+## level plus passives (Fuerza, Celeridad, Amplitud, Velocidad de
+## proyectil, Crítico) and permanent upgrades/equipment.
+func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bool:
 	# Gate candidates by the real attack range instead of just picking the
 	# globally nearest, which read as infinite range.
-	var attack_range := player_attack_range()
+	var attack_range := weapon_range(id)
 	var living_enemies := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and e.global_position.distance_to(player.global_position) <= attack_range)
 	if living_enemies.is_empty():
-		return
+		return false
 	living_enemies.sort_custom(func(a, b):
 		return player.global_position.distance_squared_to(a.global_position) < player.global_position.distance_squared_to(b.global_position)
 	)
 	var bonus_damage := GameState.permanent_damage + GameState.get_equipped_bonus("damage")
-	var base_damage := BASIC_ATTACK_BASE_DAMAGE + bonus_damage * 2
-	var hero_data := GameState.get_character_data(GameState.selected_character_id)
-	var hero_damage_mod := hero_data.damage_modifier if hero_data != null else 1.0
-	var final_damage := int(round(base_damage * damage_multiplier() * hero_damage_mod))
-	_attack_count += 1
+	var base_damage := (BASIC_ATTACK_BASE_DAMAGE + bonus_damage * 2) * float(stats["damage"])
+	var final_damage := int(round(base_damage * damage_multiplier() * hero_data.damage_modifier))
+	var attack_count := int(_weapon_attack_counts.get(id, 0)) + 1
+	_weapon_attack_counts[id] = attack_count
 
 	# Some melee heroes (e.g. Theron) land an area hit instead of a
 	# single-target one every Nth swing — that replaces this attack entirely.
-	if hero_data != null and hero_data.attack_aoe_every > 0 and _attack_count % hero_data.attack_aoe_every == 0:
-		_trigger_melee_aoe(hero_data, final_damage)
-		return
+	if hero_data.attack_aoe_every > 0 and attack_count % hero_data.attack_aoe_every == 0:
+		_trigger_melee_aoe(id, hero_data, final_damage)
+		return true
 
-	var shot_range_scale := hero_data.attack_range_scale if hero_data != null else 1.0
-	SfxPlayer.play("combat/basic_melee.wav" if shot_range_scale < 1.0 else "combat/basic_projectile.wav")
-	var shot_count := 1 + amount_bonus()
-	var shot_color := hero_data.attack_color if hero_data != null else Color(0.2, 0.95, 0.85)
-	var shot_sprite_folder := hero_data.attack_sprite_folder if hero_data != null else ""
-	var shot_frame_names := _shot_frame_names(hero_data)
+	var shot_range_scale := hero_data.attack_range_scale * float(stats["range"])
+	SfxPlayer.play("combat/basic_melee.wav" if hero_data.attack_range_scale < 1.0 else "combat/basic_projectile.wav")
+	var shot_count := 1 + amount_bonus() + int(stats["shots"])
+	var shot_frame_names := _shot_frame_names(hero_data, attack_count)
 	var origin_pos := player.projectile_origin.global_position if is_instance_valid(player.projectile_origin) else player.position
 	for i in mini(shot_count, living_enemies.size()):
 		var target: EmberfallEnemy = living_enemies[i]
 		var projectile := EmberfallProjectile.new()
 		projectile.position = origin_pos
-		projectile.setup(target.position, final_damage, shot_color, shot_sprite_folder, shot_range_scale, shot_frame_names)
+		projectile.setup(target.position, final_damage, hero_data.attack_color, hero_data.attack_sprite_folder, shot_range_scale, shot_frame_names)
 		projectile.speed = PROJECTILE_SPEED * proj_speed_multiplier()
 		projectile.set_meta("hit_enemies", [])
-		projectile.set_meta("max_pierces", 0)
+		projectile.set_meta("max_pierces", int(stats["pierce"]))
+		projectile.set_meta("source", id)
+		projectile.set_meta("hero", hero_data)
 		projectile.tree_exiting.connect(_on_projectile_removed.bind(projectile))
 		add_child(projectile)
 		projectiles.append(projectile)
+	return true
 
 ## Heroes with explicit frames (melee packs like Darven/Kaelgor) just use
 ## them. Heroes with alternating variants (Mordrak's two swing directions)
 ## get a single frame that flips each attack instead of looping both.
-func _shot_frame_names(hero_data: CharacterData) -> PackedStringArray:
-	if hero_data == null:
-		return PackedStringArray()
+func _shot_frame_names(hero_data: CharacterData, attack_count: int) -> PackedStringArray:
 	var alt_names := hero_data.attack_alt_frame_names
 	if alt_names.size() >= 2:
-		return PackedStringArray([alt_names[_attack_count % alt_names.size()]])
+		return PackedStringArray([alt_names[attack_count % alt_names.size()]])
 	return hero_data.attack_frame_names
 
 ## Theron-style every-Nth-attack burst: hits every enemy in range at once
 ## instead of the usual single target, with its own (bigger) visual cue.
-func _trigger_melee_aoe(hero_data: CharacterData, hit_damage: int) -> void:
+func _trigger_melee_aoe(id: String, hero_data: CharacterData, hit_damage: int) -> void:
 	SfxPlayer.play("combat/basic_melee.wav")
-	var radius := hero_data.attack_aoe_radius
+	var radius := hero_data.attack_aoe_radius * float(AbilityCatalog.weapon_stats(skill_level(id))["range"])
 	for enemy in enemies:
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
-			if not _apply_damage(enemy, hit_damage, false):
-				_apply_hero_guaranteed_status(enemy)
+			if not _apply_damage(enemy, hit_damage, false, true, id):
+				_apply_hero_guaranteed_status(enemy, hero_data)
 	var fx := EmberfallProjectile.new()
 	fx.position = player.position
 	fx.setup(player.position, 0, hero_data.attack_color, hero_data.attack_sprite_folder, 0.4, hero_data.attack_aoe_frame_names, 0.5)
@@ -1295,20 +1315,19 @@ func _process(_delta: float) -> void:
 				hit_enemies.append(enemy)
 				projectile.set_meta("hit_enemies", hit_enemies)
 				var hit_pos: Vector2 = enemy.global_position
-				if not _apply_damage(enemy, projectile.damage_amount, false):
-					_apply_hero_guaranteed_status(enemy)
+				if not _apply_damage(enemy, projectile.damage_amount, false, true, str(projectile.get_meta("source", "basic"))):
+					_apply_hero_guaranteed_status(enemy, projectile.get_meta("hero", null))
 				_spawn_impact_flash(hit_pos, projectile.color)
 				if hit_enemies.size() > max_pierces:
 					projectile.queue_free()
 				break
 
-## HERO-01: ties each mage's element to their own identity instead of luck
+## HERO-01: ties each mage's element to their weapon instead of luck
 ## (AUD-05) — Vaelor's fire always burns, Azyren's ice always briefly
-## freezes, Orven's poison always poisons.
-func _apply_hero_guaranteed_status(enemy: EmberfallEnemy) -> void:
+## freezes, Orven's poison always poisons, whoever wields it.
+func _apply_hero_guaranteed_status(enemy: EmberfallEnemy, hero_data: CharacterData) -> void:
 	if not is_instance_valid(enemy) or enemy.dead:
 		return
-	var hero_data := GameState.get_character_data(GameState.selected_character_id)
 	if hero_data == null:
 		return
 	match hero_data.guaranteed_status:
@@ -1453,6 +1472,11 @@ func duration_multiplier() -> float:
 func amount_bonus() -> int:
 	return passive_level("amount") + _up("amount")
 
+## Rebote (permanent): extra jumps for Cadena Eléctrica, extra wall bounces
+## for Esquirla Errante.
+func bounce_bonus() -> int:
+	return _up("bounce")
+
 func proj_speed_multiplier() -> float:
 	return 1.0 + passive_level("proj_speed") * 0.15 + _up("proj_speed") * 0.08
 
@@ -1493,6 +1517,8 @@ func ability_level(id: String) -> int:
 	return passive_level(id) if AbilityCatalog.is_passive(id) else skill_level(id)
 
 func can_evolve(active_id: String) -> bool:
+	if not AbilityCatalog.has_evolution(active_id):
+		return false
 	if skill_level(active_id) < MAX_ABILITY_LEVEL or is_evolved(active_id):
 		return false
 	var paired := str(AbilityCatalog.ACTIVES[active_id]["evolution"]["passive"])
@@ -1503,6 +1529,9 @@ func can_evolve(active_id: String) -> bool:
 ## new, so builds come together instead of spreading thin.
 func _upgrade_candidates(exclude: Array[String] = []) -> Dictionary:
 	var result := {}
+	for id: String in skills:
+		if AbilityCatalog.is_weapon(id) and id not in banished and id not in exclude and skill_level(id) < MAX_ABILITY_LEVEL:
+			result[id] = 3.0
 	for id in AbilityCatalog.ACTIVES:
 		if id in banished or id in exclude:
 			continue
@@ -1570,7 +1599,7 @@ func choose_power(option_id: String) -> void:
 
 ## Shared by the level-up cards and the chests. Callers run _refresh_powers().
 func _apply_upgrade(id: String) -> void:
-	if AbilityCatalog.is_active(id):
+	if AbilityCatalog.takes_active_slot(id):
 		skills[id] = skill_level(id) + 1
 	else:
 		passives[id] = passive_level(id) + 1
@@ -1664,7 +1693,7 @@ func end_run(victory: bool) -> void:
 		var newly := GameState.record_run({
 			"victory": victory, "kills": kills, "level": level, "time": int(elapsed),
 			"chests": _chests_opened, "evolutions": _evolutions_done,
-			"abilities": skills.keys() + passives.keys(), "evolved": evolved.duplicate(),
+			"abilities": skills.keys().filter(func(id): return not AbilityCatalog.is_weapon(id)) + passives.keys(), "evolved": evolved.duplicate(),
 			"kills_by_type": _kills_by_type,
 		})
 		for id in newly:

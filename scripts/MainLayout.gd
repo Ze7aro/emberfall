@@ -29,7 +29,7 @@ func _ready() -> void:
 		GameState.save()
 	# Shared dark backdrop: screens without their own background (Inicio,
 	# Mazmorras) would otherwise show the engine's default gray.
-	var backdrop := TextureRect.new(); backdrop.name = "Backdrop"; backdrop.texture = load("res://assets/ui/backgrounds/background.png"); backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; backdrop.stretch_mode = TextureRect.STRETCH_SCALE; backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE; backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(backdrop)
+	var backdrop := EmberBackdrop.new(); backdrop.name = "Backdrop"; add_child(backdrop)
 	content_host = Control.new(); content_host.name = "ContentHost"; content_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(content_host)
 
 	hud_layer = CanvasLayer.new(); hud_layer.name = "HudLayer"; hud_layer.layer = 10; add_child(hud_layer)
@@ -47,6 +47,7 @@ func _ready() -> void:
 	modal_host = Control.new(); modal_host.name = "ModalHost"; modal_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); modal_host.mouse_filter = Control.MOUSE_FILTER_IGNORE; modal_layer.add_child(modal_host)
 
 	GameState.screen_changed.connect(_on_game_screen_changed)
+	get_tree().node_added.connect(_on_node_added)
 	navigate_to(&"home")
 
 ## Auto-pauses combat when the app loses focus or the OS suspends it (phone
@@ -110,6 +111,19 @@ func _wire_top_hud() -> void:
 	top_hud.profile_pressed.connect(func(): open_modal(&"profile"))
 	top_hud.settings_pressed.connect(func(): open_modal(&"settings"))
 
+## Every icon or sprite that appears in the menus (not in a run) gets the
+## smooth/crisp treatment once its owner has finished setting it up.
+func _on_node_added(node: Node) -> void:
+	if not (node is TextureRect or node is Button or node is AnimatedSprite2D or node is Sprite2D):
+		return
+	if is_instance_valid(_active_game) and _active_game.is_ancestor_of(node):
+		return
+	if is_instance_valid(_active_game_ui) and _active_game_ui.is_ancestor_of(node):
+		return
+	if not is_ancestor_of(node):
+		return
+	UiTheme.smooth.call_deferred(node)
+
 func navigate_to(route_id: StringName) -> void:
 	if route_id == current_route and is_instance_valid(current_screen): return
 	close_active_modal()
@@ -154,6 +168,7 @@ func open_modal(modal_id: StringName, payload: Variant = null) -> void:
 	var content := _modal_for(modal_id)
 	if content:
 		modal_host.add_child(content)
+		_animate_modal_in(content, blocker)
 		if content.has_signal("closed"): content.closed.connect(close_active_modal)
 		if content.has_signal("settings_requested"):
 			content.settings_requested.connect(func():
@@ -163,6 +178,29 @@ func open_modal(modal_id: StringName, payload: Variant = null) -> void:
 	active_modal = blocker
 	_active_modal_content = content
 	modal_opened.emit(modal_id)
+
+## Short pop-in: the veil fades and the panel grows from 92 % with a soft
+## overshoot, so modals feel like they open instead of just appearing.
+func _animate_modal_in(content: Control, blocker: Control) -> void:
+	if GameState.reduce_motion:
+		return
+	blocker.modulate.a = 0.0
+	content.modulate.a = 0.0
+	await get_tree().process_frame
+	if not is_instance_valid(content):
+		return
+	var target := content
+	# Full-rect wrappers (Misiones) animate their panel, not the whole screen.
+	if content.get_child_count() > 0 and content.size == modal_host.size and content.get_child(0) is Control:
+		var first := content.get_child(0) as Control
+		if first is PanelContainer:
+			target = first
+	target.pivot_offset = target.size * 0.5
+	target.scale = Vector2(0.92, 0.92)
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(blocker, "modulate:a", 1.0, 0.14)
+	tween.tween_property(content, "modulate:a", 1.0, 0.14)
+	tween.tween_property(target, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _modal_for(modal_id: StringName) -> Control:
 	match modal_id:
@@ -209,6 +247,9 @@ func start_run(map_data: Dictionary) -> void:
 	close_active_modal()
 	if is_instance_valid(current_screen): current_screen.queue_free(); current_screen = null
 	hud_layer.visible = false
+	# The menu backdrop shares the world's canvas: the run camera would shift
+	# it over a quarter of the floor, so it's hidden for the whole run.
+	$Backdrop.visible = false
 	# Warm the run's real resources through the threaded loader; the loading
 	# screen only becomes visible if something is actually still loading.
 	_starting_run = true
@@ -272,6 +313,7 @@ func _end_run(victory: bool) -> void:
 	if is_instance_valid(_active_game_ui): _active_game_ui.queue_free()
 	_active_game = null; _active_game_ui = null
 	hud_layer.visible = true
+	$Backdrop.visible = true
 	current_screen = _result_screen(victory)
 	content_host.add_child(current_screen)
 	current_route = &"result"

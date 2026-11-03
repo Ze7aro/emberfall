@@ -5,13 +5,12 @@ signal died
 const BASE_MAX_HP := 6 # 3 hearts, 2 half-heart units each
 const DEFAULT_SPRITE_FOLDER := "variante_01_baculo (Vaelor)"
 const SPRITE_SCALE := 0.2 # 256px source frames down to ~50px on screen
-const BASE_ATTACK_INTERVAL := 1.1 # seconds; Celeridad and the hero's modifier scale it
+const BASE_ATTACK_INTERVAL := 1.1 # seconds between weapon attacks; game_world scales it (Celeridad, hero, weapon level)
 
 var hp := BASE_MAX_HP
 var max_hp := BASE_MAX_HP
 var speed := 220.0
 var invulnerable := 0.0
-var attack_clock := 0.0
 var game: Node
 var touch_direction := Vector2.ZERO
 var _regen_accum := 0.0
@@ -25,7 +24,7 @@ var _hit_shake_time := 0.0
 ## whenever the player actually moves, and read as a fallback by anything
 ## that wants "the direction the player is oriented" when there's no live
 ## target to aim at (the basic attack itself always has one, since it only
-## fires when an enemy exists — see game_world.spawn_projectile).
+## fires when an enemy exists — see game_world._fire_weapon).
 var facing_direction := Vector2.RIGHT
 
 ## Where shots/effects originate — a fixed offset toward the front of the
@@ -86,15 +85,6 @@ func _physics_process(delta: float) -> void:
 	_update_hit_shake(delta)
 	_tick_regen(delta)
 	_update_animation(input, delta)
-	attack_clock += delta
-	var base_interval := BASE_ATTACK_INTERVAL
-	var hero_data := GameState.get_character_data(GameState.selected_character_id)
-	var hero_attack_speed_mod := hero_data.attack_speed_modifier if hero_data != null else 1.0
-	var attack_interval := maxf(0.25, base_interval * game.attack_speed_multiplier() * hero_attack_speed_mod)
-	if attack_clock >= attack_interval:
-		attack_clock = 0.0
-		game.spawn_projectile(self)
-		_play_attack()
 	queue_redraw()
 
 ## Walk while moving, idle on the last frame faced otherwise; an attack in
@@ -111,7 +101,8 @@ func _update_animation(input: Vector2, delta: float) -> void:
 	if _sprite.animation != target:
 		_sprite.play(target)
 
-func _play_attack() -> void:
+## Called by game_world when the hero's own weapon fires.
+func play_attack() -> void:
 	_attack_anim_time = 2.0 / CharacterAnimations.ATTACK_FPS
 	_sprite.play("attack")
 

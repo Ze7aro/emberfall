@@ -18,4 +18,3 @@ attack_sprite_folder = "disparo_fuego"
 hp_modifier = -2
 damage_modifier = 1.15
 guaranteed_status = "burn"
-starting_power = "fire"

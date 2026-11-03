@@ -15,4 +15,3 @@ requirement = ""
 attack_name = "Disparo Lunar"
 attack_color = Color(0.7059, 0.549, 1, 1)
 attack_sprite_folder = "disparo_lunar"
-starting_power = "orbital"

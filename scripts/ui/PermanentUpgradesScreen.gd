@@ -9,7 +9,7 @@ const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 
 const GOLD := Color("e8b84a")
 const COLUMNS := 4
-const TILE_SIZE := Vector2(82, 104)
+const TILE_SIZE := Vector2(82, 114)
 
 var _gold_label: Label
 var _upgrade_grid: GridContainer
@@ -182,21 +182,23 @@ func _tile(key: String, icon: Texture2D, title: String, footer: String, border: 
 	button.add_child(box)
 	var icon_holder := CenterContainer.new()
 	icon_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon_holder.add_child(_icon_node(icon, title, 42.0, locked))
+	icon_holder.add_child(_icon_node(icon, title, 54.0, locked))
 	box.add_child(icon_holder)
 	var name_label := Label.new()
 	name_label.text = title
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.custom_minimum_size = Vector2(TILE_SIZE.x - 8, 0)
-	name_label.add_theme_font_size_override("font_size", 9)
+	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_constant_override("line_spacing", -3)
 	name_label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED if locked else UiTheme.TEXT)
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(name_label)
 	var footer_label := Label.new()
 	footer_label.text = footer
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer_label.add_theme_font_size_override("font_size", 10)
+	footer_label.add_theme_font_size_override("font_size", 12)
+	footer_label.add_theme_font_override("font", UiTheme.bold_font())
 	footer_label.add_theme_color_override("font_color", GOLD if footer == "MÁX" else UiTheme.ACCENT)
 	footer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(footer_label)

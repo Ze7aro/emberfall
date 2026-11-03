@@ -104,12 +104,14 @@ func _build() -> void:
 	settings.tooltip_text = "Configuración"
 	settings.accessibility_name = "Abrir configuración"
 	settings.icon = load(ART_DIR + "icons/settings.png") as Texture2D
-	settings.add_theme_constant_override("icon_max_width", 22)
+	settings.add_theme_constant_override("icon_max_width", 26)
+	settings.expand_icon = true
+	settings.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	settings.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	settings.offset_left = -44
-	settings.offset_right = -4
+	settings.offset_left = -50
+	settings.offset_right = -6
 	settings.offset_top = 64
-	settings.offset_bottom = 100
+	settings.offset_bottom = 106
 	settings.focus_mode = Control.FOCUS_ALL
 	UiTheme.apply_secondary(settings, 4.0)
 	settings.pressed.connect(func(): settings_pressed.emit())
@@ -174,15 +176,15 @@ func _resource_tile(icon_file: String, kind: String, width: float) -> Control:
 		tile.add_child(track)
 	var icon := _art(icon_file)
 	icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	icon.offset_left = 8
-	icon.offset_right = 30
-	icon.offset_top = -12
-	icon.offset_bottom = 12
+	icon.offset_left = 5
+	icon.offset_right = 35
+	icon.offset_top = -15
+	icon.offset_bottom = 15
 	tile.add_child(icon)
-	var amount := _label(14)
+	var amount := _label(16)
 	amount.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	amount.offset_left = 31
-	amount.offset_right = -34
+	amount.offset_left = 34
+	amount.offset_right = -32
 	tile.add_child(amount)
 	match kind:
 		"energy": _energy_label = amount

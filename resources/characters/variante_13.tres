@@ -16,4 +16,3 @@ attack_name = "Onda de Puño"
 attack_color = Color(0.9098, 0.898, 0.9333, 1)
 attack_sprite_folder = "raiken_onda_de_puno"
 attack_range_scale = 0.35
-starting_power = "chain"

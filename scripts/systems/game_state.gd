@@ -518,7 +518,7 @@ const ENERGY_OFFERS := [
 	{"id": "recarga_energia_grande", "amount": 120, "cost": -1, "usd": "1,99", "art": "BOTTLES"},
 ]
 const CHEST_TIERS := [
-	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["NORMAL", "POCO COMÚN", "RARO"], "art": "COMMON"},
+	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["COMÚN", "RARO"], "art": "COMMON"},
 	{"id": "baul_epico", "title": "BAÚL ÉPICO", "cost": 400, "rarities": ["RARO", "ÉPICO"], "art": "EPIC"},
 ]
 ## One-time "GRATIS" (cost 0) offers — without this they had no claimed-once

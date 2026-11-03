@@ -78,18 +78,10 @@ func _ready() -> void:
 
 func _build_content(root: VBoxContainer) -> void:
 
-	var header := HBoxContainer.new()
-	root.add_child(header)
-	var title := UiTheme.header("MISIONES", "PEQUEÑAS ACCIONES, GRANDES LEYENDAS", 34 if not modal_mode else 24, "misiones_header.png")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
 	if modal_mode:
-		var close := Button.new()
-		close.text = "×"
-		close.custom_minimum_size = Vector2(42, 42)
-		close.add_theme_font_size_override("font_size", 26)
-		close.pressed.connect(func(): closed.emit())
-		header.add_child(close)
+		root.add_child(UiTheme.modal_header("MISIONES", func(): closed.emit()))
+	else:
+		root.add_child(UiTheme.header("MISIONES", "Pequeñas acciones, grandes leyendas", 32))
 
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
@@ -102,7 +94,7 @@ func _build_content(root: VBoxContainer) -> void:
 	# Own row under the tabs so it never pushes them past the panel edge.
 	_timer_label = Label.new()
 	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_timer_label.add_theme_font_size_override("font_size", 10)
+	_timer_label.add_theme_font_size_override("font_size", 13)
 	_timer_label.add_theme_color_override("font_color", TEXT_MUTED)
 	root.add_child(_timer_label)
 
@@ -269,14 +261,15 @@ func _build_mission_card(mission: Dictionary) -> Control:
 	title.text = str(mission.get("name", ""))
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title.add_theme_font_size_override("font_size", 15)
-	title.add_theme_color_override("font_color", TURQ if not claimed else Color("6a5f7a"))
+	title.add_theme_font_override("font", UiTheme.bold_font())
+	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_color_override("font_color", UiTheme.GOLD if not claimed else Color("6a5f7a"))
 	box.add_child(title)
 
 	var desc := Label.new()
 	desc.text = str(mission.get("description", ""))
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 12)
+	desc.add_theme_font_size_override("font_size", 14)
 	desc.add_theme_color_override("font_color", Color("d8c9ed") if not claimed else TEXT_MUTED)
 	box.add_child(desc)
 
@@ -291,7 +284,7 @@ func _build_mission_card(mission: Dictionary) -> Control:
 	# than the card on weekly missions and pushed it past the panel.
 	var progress_label := Label.new()
 	progress_label.text = "%d / %d" % [mini(progress, target), target]
-	progress_label.add_theme_font_size_override("font_size", 11)
+	progress_label.add_theme_font_size_override("font_size", 13)
 	progress_label.add_theme_color_override("font_color", TEXT_MUTED)
 	box.add_child(progress_label)
 
@@ -303,7 +296,7 @@ func _build_mission_card(mission: Dictionary) -> Control:
 	var reward_label := Label.new()
 	reward_label.text = " · ".join(reward_bits)
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	reward_label.add_theme_font_size_override("font_size", 11)
+	reward_label.add_theme_font_size_override("font_size", 13)
 	reward_label.add_theme_color_override("font_color", GOLD if not claimed else TEXT_MUTED)
 	box.add_child(reward_label)
 

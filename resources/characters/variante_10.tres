@@ -22,4 +22,3 @@ attack_aoe_frame_names = PackedStringArray("shield_aoe_00.png", "shield_aoe_01.p
 attack_aoe_radius = 140.0
 hp_modifier = 2
 move_speed_modifier = 0.9
-starting_power = "aegis"

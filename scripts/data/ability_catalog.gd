@@ -5,21 +5,20 @@ extends RefCounted
 ## icons and evolution recipes, shared by game_world (rules) and ui.gd
 ## (cards, build bar, pause). See docs/PLAN_FINALIZACION.md §2 for the design.
 ##
-## Rules in short: 4 active slots + 4 passive slots, max level 5 each. An
+## Rules in short: 6 active slots + 6 passive slots, max level 5 each. An
 ## active at max level whose paired passive is owned (any level) offers its
 ## evolution as a golden card on the next level-up.
 
 const MAX_LEVEL := 5
-const ACTIVE_SLOTS := 4
-const PASSIVE_SLOTS := 4
+const ACTIVE_SLOTS := 6
+const PASSIVE_SLOTS := 6
 const EVOLUTION_PREFIX := "evo:"
 
 ## Generated icons go here as `<id>.png` (and `evo_<id>.png` for
 ## evolutions); until they exist the UI falls back to `fallback_icon`, then
 ## to a drawn placeholder.
 ## Locked actives and what unlocks them (lifetime stats in GameState). The
-## other 6 are available from the start, and a hero's own starting active is
-## always available in their runs even while still locked.
+## other 6 are available from the start.
 const UNLOCKS := {
 	"boomerang": {"stat": "lifetime_kills", "target": 1000, "text": "Eliminá 1000 enemigos en total"},
 	"slash": {"stat": "bosses_defeated", "target": 1, "text": "Derrotá a un jefe"},
@@ -66,7 +65,7 @@ const ACTIVES := {
 	"fire": {
 		"name": "AURA ÍGNEA",
 		"desc": "Quema constantemente a los enemigos cercanos",
-		"fallback_icon": "dano_de_fuego.png",
+		"fallback_icon": "",
 		"color": Color("ff9f4a"),
 		"evolution": {"passive": "vitality", "name": "CORONA SOLAR", "desc": "Aura más grande que te cura mientras quema"},
 	},
@@ -80,7 +79,7 @@ const ACTIVES := {
 	"poison_bomb": {
 		"name": "FRASCO TÓXICO",
 		"desc": "Lanza un frasco que deja un charco venenoso",
-		"fallback_icon": "dano_de_veneno.png",
+		"fallback_icon": "",
 		"color": Color("7ddc4a"),
 		"evolution": {"passive": "area", "name": "PLAGA ABISAL", "desc": "Dos frascos; los charcos persiguen a los enemigos"},
 	},
@@ -139,7 +138,7 @@ const PASSIVES := {
 	"might": {"name": "FUERZA", "desc": "+10% de daño de todo", "fallback_icon": "dano.png"},
 	"vitality": {"name": "VITALIDAD", "desc": "+1 corazón y te cura", "fallback_icon": "corazon_extra.png"},
 	"regen": {"name": "REGENERACIÓN", "desc": "Recuperás vida con el tiempo", "fallback_icon": "corazon_extra_II.png"},
-	"armor": {"name": "ARMADURA", "desc": "+8% de probabilidad de bloquear un golpe", "fallback_icon": ""},
+	"armor": {"name": "ARMADURA", "desc": "+8% de probabilidad de bloquear un golpe", "fallback_icon": "mejora_armadura.png"},
 	"haste": {"name": "CELERIDAD", "desc": "+8% de velocidad de ataque", "fallback_icon": "velocidad_de_ataque.png"},
 	"cooldown": {"name": "ENFRIAMIENTO", "desc": "-8% de tiempo de reutilización", "fallback_icon": "cooldown.png"},
 	"area": {"name": "ÁREA", "desc": "+10% de tamaño de las habilidades", "fallback_icon": "area.png"},
@@ -149,6 +148,57 @@ const PASSIVES := {
 	"crit": {"name": "CRÍTICO", "desc": "+8% de probabilidad y +20% de daño crítico", "fallback_icon": "probabilidad_de_critico.png"},
 	"magnet": {"name": "MAGNETISMO", "desc": "Recogés orbes desde más lejos", "fallback_icon": "area_recoleccion_experiencia.png"},
 }
+
+## Hero weapons: each hero's basic attack is an active with id
+## "arma:<hero id>", levels 1-5, sharing the active slots. Name, colour and
+## art come from the hero's CharacterData. No evolution yet.
+const WEAPON_PREFIX := "arma:"
+const PROJECTILE_DIR := "res://assets/habilidades/proyectiles"
+## What each weapon level adds on top of the previous one.
+const WEAPON_LEVEL_TEXT := {
+	1: "Ataque básico del héroe",
+	2: "+30% de daño",
+	3: "+1 proyectil",
+	4: "Atraviesa 1 enemigo más y +20% de alcance",
+	5: "+30% de daño y ataca 20% más rápido",
+}
+
+static func is_weapon(id: String) -> bool:
+	return id.begins_with(WEAPON_PREFIX)
+
+static func weapon_id(hero_id: StringName) -> String:
+	return WEAPON_PREFIX + str(hero_id)
+
+## Not through GameState: GameState itself depends on this catalog.
+static func weapon_hero(id: String) -> CharacterData:
+	var path := "res://resources/characters/%s.tres" % id.trim_prefix(WEAPON_PREFIX)
+	return load(path) as CharacterData if ResourceLoader.exists(path) else null
+
+## Totals for a weapon at `level`: damage and range multipliers, extra
+## shots, extra enemies pierced and the attack-interval multiplier.
+static func weapon_stats(level: int) -> Dictionary:
+	var damage := 1.0
+	if level >= 2:
+		damage += 0.3
+	if level >= 5:
+		damage += 0.3
+	return {
+		"damage": damage,
+		"shots": 1 if level >= 3 else 0,
+		"pierce": 1 if level >= 4 else 0,
+		"range": 1.2 if level >= 4 else 1.0,
+		"interval": 0.8 if level >= 5 else 1.0,
+	}
+
+static func weapon_level_text(level: int) -> String:
+	return str(WEAPON_LEVEL_TEXT.get(level, ""))
+
+## Actives and weapons both take an active slot.
+static func takes_active_slot(id: String) -> bool:
+	return ACTIVES.has(id) or is_weapon(id)
+
+static func has_evolution(id: String) -> bool:
+	return ACTIVES.has(id)
 
 static func is_active(id: String) -> bool:
 	return ACTIVES.has(id)
@@ -173,14 +223,23 @@ static func _entry(id: String) -> Dictionary:
 	return PASSIVES.get(id, {})
 
 static func display_name(id: String, evolved: bool = false) -> String:
+	if is_weapon(id):
+		var hero := weapon_hero(id)
+		return hero.attack_name.to_upper() if hero != null else "ARMA"
 	if evolved and ACTIVES.has(id):
 		return str(ACTIVES[id]["evolution"]["name"])
 	return str(_entry(id).get("name", id))
 
 static func description(id: String) -> String:
+	if is_weapon(id):
+		var hero := weapon_hero(id)
+		return "Ataque básico de %s" % hero.display_name.capitalize() if hero != null else ""
 	return str(_entry(id).get("desc", ""))
 
 static func color(id: String) -> Color:
+	if is_weapon(id):
+		var hero := weapon_hero(id)
+		return hero.attack_color if hero != null else Color("8a7d9c")
 	var base := evolution_source(id) if is_evolution(id) else id
 	return ACTIVES.get(base, {}).get("color", Color("8a7d9c"))
 
@@ -188,6 +247,8 @@ static func color(id: String) -> Color:
 ## then draws a placeholder). Evolutions try their own art first, then
 ## their source active's.
 static func icon(id: String, evolved: bool = false) -> Texture2D:
+	if is_weapon(id):
+		return _weapon_icon(id)
 	var base := evolution_source(id) if is_evolution(id) else id
 	var candidates: Array[String] = []
 	if is_evolution(id) or evolved:
@@ -200,8 +261,84 @@ static func icon(id: String, evolved: bool = false) -> Texture2D:
 		candidates.append("%s/%s" % [LEGACY_ICON_DIR, fallback])
 	for path in candidates:
 		if ResourceLoader.exists(path):
-			return load(path) as Texture2D
+			var texture := load(path) as Texture2D
+			if ACTIVES.has(base):
+				return _badge(texture, path, color(base), is_evolution(id) or evolved)
+			return texture
 	return null
+
+## Actives and evolutions are shown on a round badge: dark disc, rim in the
+## ability's colour (gold for evolutions). The art itself has no frame.
+## Built once per icon and cached.
+const BADGE_SIZE := 256
+const GOLD_RIM := Color("f2c25a")
+static var _badge_cache := {}
+
+static func _badge(texture: Texture2D, key: String, tint: Color, evolved: bool, trim: bool = false) -> Texture2D:
+	var cache_key := "%s|%s" % [key, evolved]
+	if _badge_cache.has(cache_key):
+		return _badge_cache[cache_key]
+	var art := texture.get_image()
+	if art == null:
+		return texture
+	if art.is_compressed():
+		art.decompress()
+	art.convert(Image.FORMAT_RGBA8)
+	var n := BADGE_SIZE
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c := Vector2(n / 2.0, n / 2.0)
+	var r := n / 2.0 - 2.0
+	var rim_w := 12.0 if evolved else 8.0
+	var rim := GOLD_RIM if evolved else tint
+	var disc_center := Color("1d1530")
+	var disc_edge := Color("0c0916")
+	for y in n:
+		for x in n:
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+			var cover := clampf(r - d + 0.5, 0.0, 1.0)
+			if cover <= 0.0:
+				continue
+			var col := disc_center.lerp(disc_edge, clampf(d / r, 0.0, 1.0))
+			# Soft inner glow in the ability colour just inside the rim.
+			var glow := clampf(1.0 - (r - rim_w - d) / 26.0, 0.0, 1.0)
+			col = col.lerp(tint.darkened(0.35), glow * 0.45)
+			if d > r - rim_w:
+				col = rim
+				if evolved and d < r - rim_w + 3.0:
+					col = tint
+			elif d > r - rim_w - 2.0:
+				col = Color("07060d")
+			img.set_pixel(x, y, Color(col, cover))
+	var inner := (r - rim_w) * 2.0 * 0.82
+	# Keep the art's proportions (projectile frames are often wide).
+	var used := art.get_used_rect()
+	if trim and used.size.x > 0 and used.size.y > 0 and used.size != art.get_size():
+		art = art.get_region(used)
+	var fit := inner / float(maxi(art.get_width(), art.get_height()))
+	var art_size := Vector2i(maxi(1, int(art.get_width() * fit)), maxi(1, int(art.get_height() * fit)))
+	art.resize(art_size.x, art_size.y, Image.INTERPOLATE_LANCZOS)
+	var offset := (Vector2i(n, n) - art_size) / 2
+	img.blend_rect(art, Rect2i(Vector2i.ZERO, art.get_size()), offset)
+	img.generate_mipmaps()
+	var out := ImageTexture.create_from_image(img)
+	_badge_cache[cache_key] = out
+	return out
+
+## Until weapons get their own art: the hero's first projectile frame on a
+## badge in the hero's attack colour.
+static func _weapon_icon(id: String) -> Texture2D:
+	var hero := weapon_hero(id)
+	if hero == null or hero.attack_sprite_folder == "":
+		return null
+	var frame := "projectile_00.png"
+	if hero.attack_alt_frame_names.size() > 0:
+		frame = hero.attack_alt_frame_names[0]
+	elif hero.attack_frame_names.size() > 0:
+		frame = hero.attack_frame_names[0]
+	var path := "%s/%s/%s" % [PROJECTILE_DIR, hero.attack_sprite_folder, frame]
+	if not ResourceLoader.exists(path):
+		return null
+	return _badge(load(path) as Texture2D, path, hero.attack_color, false, true)
 
 static func _fallback_entry(id: String) -> Dictionary:
 	return ACTIVES[id] if ACTIVES.has(id) else PASSIVES.get(id, {})
