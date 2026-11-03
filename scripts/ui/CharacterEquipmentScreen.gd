@@ -82,9 +82,9 @@ func _show_character_section_immediately() -> void:
 
 func _load_type_icons() -> void:
 	for t in GameState.EQUIPMENT_TYPES:
-		var path := "res://assets/ui/pixel_simple_v1/equipment/%s.png" % str(t)
+		var path := "res://assets/ui/equipment/%s.png" % str(t)
 		if not ResourceLoader.exists(path):
-			path = "res://assets/ui/pixel_simple_v1/equipment/armor.png"
+			path = "res://assets/ui/equipment/armor.png"
 		_type_icons[t] = load(path) as Texture2D
 
 func _icon_for_type(t: String) -> Texture2D:

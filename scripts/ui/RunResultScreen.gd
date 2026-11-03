@@ -198,7 +198,7 @@ func _buttons() -> HBoxContainer:
 	buttons.add_child(home)
 	_retry = Button.new()
 	_retry.text = "REINTENTAR\n%d ENERGÍA" % GameState.ENERGY_COST
-	_retry.icon = load("res://assets/ui/pixel_simple_v1/icons/refresh.png") as Texture2D
+	_retry.icon = load("res://assets/ui/icons/refresh.png") as Texture2D
 	_retry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UiTheme.apply_primary(_retry)
 	_retry.custom_minimum_size = Vector2(0, 52)

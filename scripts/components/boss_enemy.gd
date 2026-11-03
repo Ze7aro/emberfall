@@ -20,7 +20,7 @@ enum Pattern { CHARGE, SLAM, SWEEP, RUNE_FAN, FIRE_CONE, ZONES }
 ## STANDARD = Coloso, HEAVY = Guardián, AGGRESSIVE = Matriarca.
 enum Variant { STANDARD, HEAVY, AGGRESSIVE }
 
-const ART_DIR := "res://assets/Emberfall_Jefes_Simplificados/"
+const ART_DIR := "res://assets/personajes/jefes/"
 const VARIANT_INFO := {
 	Variant.STANDARD: {
 		"name": "Coloso Rúnico", "folder": "01_coloso_runico",

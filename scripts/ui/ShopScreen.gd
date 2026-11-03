@@ -41,7 +41,7 @@ func _add_section(text_value: String) -> void:
 	row.custom_minimum_size = Vector2(0, 38)
 	content.add_child(row)
 
-const ART_DIR := "res://assets/ui/pixel_simple_v1/"
+const ART_DIR := "res://assets/ui/"
 ## Stable offer ids select art independently from catalogue order.
 ## Exact amounts and prices remain dynamic text from GameState.
 const OFFER_ART := {

@@ -300,7 +300,7 @@ func _init() -> void:
 ## walk_00..02.png (cropped to the character, so they align by the feet).
 ## A chapter missing its art borrows another chapter's; no art at all falls
 ## back to the shared tinted sprite.
-const ENEMY_ART_DIR := "res://assets/enemigos/"
+const ENEMY_ART_DIR := "res://assets/personajes/enemigos/"
 const ARCHETYPE_FOLDERS := {
 	Archetype.CHASER: "chaser", Archetype.FAST: "fast", Archetype.TANK: "tank",
 	Archetype.SHOOTER: "shooter", Archetype.CHARGER: "charger",
@@ -336,7 +336,7 @@ func death_texture() -> Texture2D:
 	if not frames.is_empty():
 		return frames[0]
 	if _shared_texture == null:
-		_shared_texture = load("res://assets/characters/enemy.png") as Texture2D
+		_shared_texture = load("res://assets/personajes/enemigos/generico.png") as Texture2D
 	return _shared_texture
 
 func uses_own_art() -> bool:
@@ -399,7 +399,7 @@ func _draw() -> void:
 	if not frames.is_empty():
 		top = _draw_walk(frames, size)
 	elif _shared_texture == null:
-		_shared_texture = load("res://assets/characters/enemy.png") as Texture2D
+		_shared_texture = load("res://assets/personajes/enemigos/generico.png") as Texture2D
 	if frames.is_empty() and _shared_texture:
 		var tint := visual_tint()
 		if freeze_timer > 0.0:

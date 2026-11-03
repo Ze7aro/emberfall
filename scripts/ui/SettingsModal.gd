@@ -74,7 +74,7 @@ func _build() -> void:
 
 	var close := Button.new()
 	close.text = "CERRAR"
-	close.icon = load("res://assets/ui/pixel_simple_v1/icons/close.png") as Texture2D
+	close.icon = load("res://assets/ui/icons/close.png") as Texture2D
 	close.custom_minimum_size = Vector2(0, 48)
 	close.pressed.connect(func(): closed.emit())
 	box.add_child(close)

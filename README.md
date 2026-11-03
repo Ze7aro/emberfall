@@ -16,7 +16,7 @@ Roguelike de supervivencia 2D vertical para Godot 4.7, pensado primero para Andr
 - `game_world.gd` contiene el loop de una partida (spawn de enemigos, XP, poderes activos, jefe) y `ui.gd` genera su HUD (nivel, selección de poderes/mejoras).
 - `components/` agrupa jugador, enemigo, proyectil, orbes, joystick táctil y los efectos visuales reutilizables de habilidades/ataques.
 - `resources/characters/*.tres` (`CharacterData`) define cada héroe de forma data-driven: sprite, arma, costo/requisito de desbloqueo y su ataque básico (nombre, color, sprite propio si lo tiene).
-- Los sprites de personajes, disparos y habilidades activas viven bajo `assets/emberfall_sprites_2d_simple`, `assets/emberfall_poderes` y `assets/emberfall_habilidades_sprites`.
+- Los assets están ordenados por tema: `audio`, `personajes`, `habilidades`, `mejoras`, `mundo` y `ui`. El detalle de cada carpeta está en `assets/README.md`.
 
 ## Implementado
 

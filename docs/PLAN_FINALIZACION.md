@@ -6,8 +6,8 @@ Fecha: 30 de octubre de 2026. Basado en la lectura del código y de los assets d
 
 El esqueleto del juego está completo: menú, metaprogresión, misiones, equipo, campaña de 10 escenarios, 5 arquetipos de enemigo, jefe con 3 patrones, audio y fusiones con efecto real. Lo que lo separa de un juego terminado es esto:
 
-1. **El combate se ve como un prototipo.** Hay un solo sprite de enemigo (`assets/characters/enemy.png`) teñido de 5 colores. El suelo es un `ColorRect` plano. Los orbes, los proyectiles del jefe y los estados alterados son círculos dibujados con `draw_circle`.
-2. **Hay arte terminado que no se usa.** Los 3 jefes de `assets/Emberfall_Jefes_Simplificados/` (Coloso Rúnico, Guardián Hueco y Matriarca de Ceniza) no se cargan en ningún lado: el jefe es `enemy.png` con tinte. Tampoco se usan en combate `assets/environment/game_bg.png`, `assets/fusions/*` ni `assets/powers/*`. Entre los iconos de `cuadros_habilidades_emberfall/` también hay varios sin usar: dash, revivir, rerolls, daño a jefes, probabilidad de oro/poción, experiencia ganada, invencible tras daño y velocidad de proyectil.
+1. **El combate se ve como un prototipo.** Hay un solo sprite de enemigo (`assets/personajes/enemigos/generico.png`) teñido de 5 colores. El suelo es un `ColorRect` plano. Los orbes, los proyectiles del jefe y los estados alterados son círculos dibujados con `draw_circle`.
+2. **Hay arte terminado que no se usa.** Los 3 jefes de `assets/personajes/jefes/` (Coloso Rúnico, Guardián Hueco y Matriarca de Ceniza) no se cargan en ningún lado: el jefe es `enemy.png` con tinte. Tampoco se usan en combate `assets/ui/escenarios/game_bg.png`, `assets/fusions/*` ni `assets/powers/*`. Entre los iconos de `cuadros_habilidades_emberfall/` también hay varios sin usar: dash, revivir, rerolls, daño a jefes, probabilidad de oro/poción, experiencia ganada, invencible tras daño y velocidad de proyectil.
 3. **El sistema de habilidades no obliga a decidir.** No hay límite de espacios: con suficiente nivel tenés todo. Las pasivas son en su mayoría +X% genéricos. Las fusiones piden dos activas a nivel 5, algo difícil de alcanzar con la alternancia activa/pasiva. Encima, tres activas (Ventisca, Bomba Venenosa y Congelamiento) no tienen icono, y Onda Orbital reutiliza el icono de Área.
 4. **El jugador no ve su build.** El HUD solo muestra nivel, XP, corazones y tiempo. Las habilidades aparecen únicamente en la pausa, y solo como fusiones.
 
@@ -55,7 +55,7 @@ La Explosión de Área actual pasa a ser la nova de Égida/Bastión y el estalli
 
 ### 2.4 Pasivas (12)
 
-Todas tienen ya un icono en `assets/cuadros_habilidades_emberfall/`, salvo Armadura.
+Todas tienen ya un icono en `assets/mejoras/`, salvo Armadura.
 
 | Pasiva | Efecto por nivel | Icono existente | Evoluciona a |
 |---|---|---|---|
@@ -140,9 +140,9 @@ Usar el sprite de Vaelor (`variante_01_baculo (Vaelor)/walk_right_00.png`) y el 
 
 ### 6.1 Iconos de habilidades (24 activas y evoluciones + 1 pasiva)
 
-**Estado:** integrados las 12 activas, Armadura y 10 evoluciones. Faltan **Invierno Perpetuo** (`assets/habilidades_iconos/evo_invierno_perpetuo.png`) y **Legión Espectral** (`evo_legion_espectral.png`); mientras tanto usan el ícono de su activa.
+**Estado:** integrados las 12 activas, Armadura y 10 evoluciones. Faltan **Invierno Perpetuo** (`assets/habilidades/iconos/evo_invierno_perpetuo.png`) y **Legión Espectral** (`evo_legion_espectral.png`); mientras tanto usan el ícono de su activa.
 
-**Dónde van:** `assets/habilidades_iconos/<id>.png` y `evo_<id>.png` (ids en `scripts/data/ability_catalog.gd`: daggers, orbital, fire, chain, poison_bomb, blizzard, boomerang, slash, meteor, shard, familiar, aegis, armor…). El juego los toma solos; mientras falten, usa el icono anterior o una ficha con la inicial.
+**Dónde van:** `assets/habilidades/iconos/<id>.png` y `evo_<id>.png` (ids en `scripts/data/ability_catalog.gd`: daggers, orbital, fire, chain, poison_bomb, blizzard, boomerang, slash, meteor, shard, familiar, aegis, armor…). El juego los toma solos; mientras falten, usa el icono anterior o una ficha con la inicial.
 
 Mismo marco que `cuadros_habilidades_emberfall/daño_critico.png`. Lo ideal es generar 1 icono por imagen o una lámina de 4×4 y recortarla con `tools/extract_icon_sheets.py`.
 
@@ -167,7 +167,7 @@ Mismo marco que `cuadros_habilidades_emberfall/daño_critico.png`. Lo ideal es g
 
 ### 6.2 Enemigos (5 arquetipos × 3 frames de caminata)
 
-**Dónde van:** `assets/enemigos/<arquetipo>/walk_00.png`, `walk_01.png`, `walk_02.png` (cuadros sueltos, fondo transparente, mismo tamaño y el personaje en la misma posición en los tres). Carpetas: `chaser`, `fast`, `tank`, `shooter`, `charger` y, opcional, `elite`. Si sale una tira de 3, guardala como `sheet.png` en la misma carpeta y la corto yo.
+**Dónde van:** `assets/personajes/enemigos/<arquetipo>/walk_00.png`, `walk_01.png`, `walk_02.png` (cuadros sueltos, fondo transparente, mismo tamaño y el personaje en la misma posición en los tres). Carpetas: `chaser`, `fast`, `tank`, `shooter`, `charger` y, opcional, `elite`. Si sale una tira de 3, guardala como `sheet.png` en la misma carpeta y la corto yo.
 
 > [ESTILO] Sprite sheet, 3 frames in a single row, each frame 256×256, of a **{ENEMIGO}** walking toward the camera (slight 3/4 down view). Same character in every frame, only legs/arms shift for a walk cycle. Silhouette must read clearly at 56 px. Glowing cyan rune accents.
 
@@ -184,7 +184,7 @@ Variantes de bioma: repetir el mismo prompt cambiando a "verdant moss and roots"
 
 ### 6.3 Suelo y decorados (3 biomas)
 
-**Dónde van:** `assets/suelo/cap1_criptas.png`, `cap2_cavernas.png` y `cap3_forja.png`. Los decorados sueltos en `assets/suelo/decorados/` (`pilar.png`, `calaveras.png`, `cristal.png`, `lapida.png`, `brasero.png`, `huesos.png`, `roca.png`, `circulo_runico.png`); si sale una lámina, `decorados/lamina.png`.
+**Dónde van:** `assets/mundo/suelos/cap1_criptas.png`, `cap2_cavernas.png` y `cap3_forja.png`. Los decorados sueltos en `assets/mundo/decorados/` (`pilar.png`, `calaveras.png`, `cristal.png`, `lapida.png`, `brasero.png`, `huesos.png`, `roca.png`, `circulo_runico.png`); si sale una lámina, `decorados/lamina.png`.
 
 > [ESTILO] Seamless tileable top-down floor texture, 256×256, edges must tile perfectly on all four sides. **{BIOMA}**. Low contrast and dark (it's a background — characters must pop on top of it), subtle variation, no large landmarks.
 
@@ -198,7 +198,7 @@ Decorados (lámina de 8, 128×128 cada uno, fondo transparente): "broken rune pi
 
 **Estado:** integrados (`recolectable_01`–`10`): gemas de XP en 3 tamaños según el valor, moneda y pila de monedas, poción, imán, bomba y cofre. El cofre épico usa el mismo cofre teñido de violeta; si querés uno propio, guardalo como `recolectable_19.png` (hoy es una copia del cofre). El juego 11–20 está duplicado y no se usa salvo el 19.
 
-**Dónde van:** recortar cada objeto a su propio PNG en `assets/pickups/`: `chest.png`, `chest_epic.png`, `potion.png`, `magnet.png`, `bomb.png` (el juego los toma solos). Mientras falten, el cofre y la poción usan íconos de la UI y el imán y la bomba se dibujan por código. El cofre épico es el mismo cofre con herrajes dorados y gemas violetas: agregarlo como celda (11) del prompt.
+**Dónde van:** `assets/mundo/recolectables/` (`xp_chica`, `xp_mediana`, `xp_grande`, `moneda`, `monedas`, `pocion`, `iman`, `bomba`, `cofre`, `cofre_epico`). Ya integrados.
 
 > [ESTILO] Sprite sheet, single row, each cell 64×64, small game pickups: (1) small cyan XP gem, (2) medium teal XP gem, (3) large violet XP gem with sparkle, (4) gold coin, (5) stack of 3 gold coins, (6) red health potion bottle, (7) horseshoe magnet with cyan glow, (8) round black bomb with lit fuse, (9) closed wooden-and-iron treasure chest with rune lock, (10) same chest opened with golden light.
 
@@ -234,7 +234,7 @@ Evoluciones: reutilizar la tira de su activa con un recoloreado dorado/blanco y 
 
 Con el mismo marco que 6.1: **Armadura** (pecho de armadura), **Suerte** (trébol rúnico de 4 hojas), **Descartar** (carta tachada con una X). El resto ya existe en `cuadros_habilidades_emberfall/`.
 
-**Dónde van:** `assets/cuadros_habilidades_emberfall/armadura.png`, `suerte.png` y `descartar.png` (la pantalla de Progreso los toma solos; mientras falten muestra la inicial).
+**Dónde van:** `assets/mejoras/armadura.png`, `suerte.png` y `descartar.png` (la pantalla de Progreso los toma solos; mientras falten muestra la inicial).
 
 | Icono | {SÍMBOLO} | {COLOR} |
 |---|---|---|
@@ -248,7 +248,7 @@ Reemplaza al botón de personaje (que ahora vive solo dentro de la mochila). Mie
 
 **Estado:** hecho con el set completo de tres estados (`tienda`, `arbol`, `casa`, `mochila`, `portal` + `_normal`, `_hover`/`_hover_seleccionado`, `_desactivado`). Los corazones del HUD usan `hud/heart_full/half/empty.png`.
 
-**Dónde va:** `assets/ui/pixel_simple_v1/navigation/upgrades.png` (mismo tamaño y estilo que `home.png`, `shop.png`, etc.).
+**Dónde va:** `assets/ui/navigation/upgrades.png` (mismo tamaño y estilo que `home.png`, `shop.png`, etc.).
 
 > Pixel art game UI navigation icon, 64x64, transparent background, chunky dark purple outline, same style as a set of icons (shop stall, house, backpack, purple portal). Subject: a glowing upward arrow rising out of a small rune anvil, with tiny ember sparks. Palette: dark violet base, turquoise cyan glow (#3fe0d0), small gold highlights. Centered, readable at 48px, no text, no frame.
 
@@ -344,15 +344,15 @@ Ya resuelto en el código: el botón Atrás cierra ventanas, pausa la partida y 
 
 ### 8.5 Arte opcional (solo si querés reemplazar el dibujo por código)
 
-**Estado:** en uso desde `assets/vfx/`: `hacha/` (girada por código), `familiar/` (3 cuadros), `muerte/` (disolución sobre el sprite del enemigo) y `estados/` (fuego, veneno y hielo; la electrocución sigue dibujada). El resto de las láminas de VFX quedó en `assets/quitar/vfx_sin_usar/`.
+**Estado:** en uso desde `assets/habilidades/efectos/`: `hacha/` (girada por código), `familiar/` (3 cuadros), `muerte/` (disolución sobre el sprite del enemigo) y `estados/` (fuego, veneno y hielo; la electrocución sigue dibujada). El resto de las láminas de VFX quedó en `assets/quitar/vfx_sin_usar/`.
 
 El resto se ve mejor dibujado por código. Estas tres piezas son objetos con forma, donde una imagen sí suma. Usar el bloque de estilo §6.0, PNG con fondo transparente, sin texto.
 
 | Pieza | Archivo | Tamaño | Prompt |
 |---|---|---|---|
-| Hacha bumerán | `assets/emberfall_habilidades_sprites/hacha/axe.png` | 1 imagen, 128×128 | "a double-bladed throwing axe seen from above, blades pointing left and right, dark steel with thin glowing cyan rune edges, short wrapped handle in the center, centered, symmetric" (el código la hace girar y le agrega la estela) |
-| Familiar espectral | `assets/emberfall_habilidades_sprites/familiar/frame_00.png` a `frame_02.png` | 3 imágenes, 96×96 | "small hooded ghost spirit floating, pale teal translucent body that ends in a wavy wispy tail, two glowing cyan eyes, no arms; 3 frames of an idle bob where only the tail waves" |
-| Roca del meteoro | `assets/emberfall_habilidades_sprites/meteoro/rock.png` | 1 imagen, 96×96 | "a burning meteor rock, dark cracked basalt with glowing orange-yellow lava cracks, round chunky shape, no trail, centered" (la estela de fuego la pone el código) |
+| Hacha bumerán | `assets/habilidades/efectos/hacha/frame_00.png` (hecho) | 1 imagen, 128×128 | "a double-bladed throwing axe seen from above, blades pointing left and right, dark steel with thin glowing cyan rune edges, short wrapped handle in the center, centered, symmetric" (el código la hace girar y le agrega la estela) |
+| Familiar espectral | `assets/habilidades/efectos/familiar/frame_00.png` a `frame_02.png` (hecho) | 3 imágenes, 96×96 | "small hooded ghost spirit floating, pale teal translucent body that ends in a wavy wispy tail, two glowing cyan eyes, no arms; 3 frames of an idle bob where only the tail waves" |
+| Roca del meteoro | `assets/habilidades/efectos/meteoro/rock.png` (pendiente, hay que conectarlo) | 1 imagen, 96×96 | "a burning meteor rock, dark cracked basalt with glowing orange-yellow lava cracks, round chunky shape, no trail, centered" (la estela de fuego la pone el código) |
 
 Avisame cuando estén y los conecto.
 

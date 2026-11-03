@@ -29,8 +29,8 @@ const UNLOCKS := {
 	"aegis": {"stat": "best_time", "target": 600, "text": "Sobreviví 10 minutos en una partida"},
 }
 
-const ICON_DIR := "res://assets/habilidades_iconos"
-const LEGACY_ICON_DIR := "res://assets/cuadros_habilidades_emberfall"
+const ICON_DIR := "res://assets/habilidades/iconos"
+const LEGACY_ICON_DIR := "res://assets/mejoras"
 ## Evolution art is named after the evolution, not the active. Missing ones
 ## (blizzard, familiar) fall back to the active's own icon.
 const EVOLUTION_ICONS := {
@@ -40,7 +40,7 @@ const EVOLUTION_ICONS := {
 	"chain": "evo_tormenta_viva.png",
 	"poison_bomb": "evo_plaga_abisal.png",
 	"boomerang": "evo_torbellino_de_acero.png",
-	"slash": "evo_guadana_del_ vacio.png",
+	"slash": "evo_guadana_del_vacio.png",
 	"meteor": "evo_cataclismo.png",
 	"shard": "evo_prisma_infinito.png",
 	"aegis": "evo_bastion.png",
@@ -64,21 +64,21 @@ const ACTIVES := {
 	"fire": {
 		"name": "AURA ÍGNEA",
 		"desc": "Quema constantemente a los enemigos cercanos",
-		"fallback_icon": "daño_de_fuego.png",
+		"fallback_icon": "dano_de_fuego.png",
 		"color": Color("ff9f4a"),
 		"evolution": {"passive": "vitality", "name": "CORONA SOLAR", "desc": "Aura más grande que te cura mientras quema"},
 	},
 	"chain": {
 		"name": "CADENA ELÉCTRICA",
 		"desc": "Rayo que salta entre enemigos y los electrocuta",
-		"fallback_icon": "rebote_De_proyextiles.png",
+		"fallback_icon": "rebote_de_proyectiles.png",
 		"color": Color("7ff5ea"),
 		"evolution": {"passive": "amount", "name": "TORMENTA VIVA", "desc": "Rayos más seguidos que saltan sin límite"},
 	},
 	"poison_bomb": {
 		"name": "FRASCO TÓXICO",
 		"desc": "Lanza un frasco que deja un charco venenoso",
-		"fallback_icon": "daño_de_veneno.png",
+		"fallback_icon": "dano_de_veneno.png",
 		"color": Color("7ddc4a"),
 		"evolution": {"passive": "area", "name": "PLAGA ABISAL", "desc": "Dos frascos; los charcos persiguen a los enemigos"},
 	},
@@ -127,14 +127,14 @@ const ACTIVES := {
 	"aegis": {
 		"name": "ÉGIDA RÚNICA",
 		"desc": "Escudo que bloquea un golpe y se recarga",
-		"fallback_icon": "invencible_tras_daño.png",
+		"fallback_icon": "invencible_tras_dano.png",
 		"color": Color("4fd6ff"),
 		"evolution": {"passive": "regen", "name": "BASTIÓN", "desc": "Dos cargas; al romperse lanza una nova que empuja"},
 	},
 }
 
 const PASSIVES := {
-	"might": {"name": "FUERZA", "desc": "+10% de daño de todo", "fallback_icon": "daño.png"},
+	"might": {"name": "FUERZA", "desc": "+10% de daño de todo", "fallback_icon": "dano.png"},
 	"vitality": {"name": "VITALIDAD", "desc": "+1 corazón y te cura", "fallback_icon": "corazon_extra.png"},
 	"regen": {"name": "REGENERACIÓN", "desc": "Recuperás vida con el tiempo", "fallback_icon": "corazon_extra_II.png"},
 	"armor": {"name": "ARMADURA", "desc": "+8% de probabilidad de bloquear un golpe", "fallback_icon": ""},

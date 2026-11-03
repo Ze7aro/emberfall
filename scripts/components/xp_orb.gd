@@ -31,11 +31,11 @@ func tick(player: Node2D, pickup_radius: float, delta: float) -> void:
 
 ## Gem / coin art from assets/pickups (PLAN_FINALIZACION §6.4). The tier
 ## follows the orb's value, so élite drops and merged piles look richer.
-const XP_SMALL := preload("res://assets/pickups/recolectable_01.png")
-const XP_MEDIUM := preload("res://assets/pickups/recolectable_02.png")
-const XP_LARGE := preload("res://assets/pickups/recolectable_03.png")
-const GOLD_COIN := preload("res://assets/pickups/recolectable_04.png")
-const GOLD_STACK := preload("res://assets/pickups/recolectable_05.png")
+const XP_SMALL := preload("res://assets/mundo/recolectables/xp_chica.png")
+const XP_MEDIUM := preload("res://assets/mundo/recolectables/xp_mediana.png")
+const XP_LARGE := preload("res://assets/mundo/recolectables/xp_grande.png")
+const GOLD_COIN := preload("res://assets/mundo/recolectables/moneda.png")
+const GOLD_STACK := preload("res://assets/mundo/recolectables/monedas.png")
 
 func _draw() -> void:
 	var texture: Texture2D

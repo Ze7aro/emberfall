@@ -6,7 +6,7 @@ extends Node
 ## one per hazard, and a pool instead of a single player so overlapping hits
 ## don't cut each other off).
 
-const SFX_DIR := "res://assets/Emberfall_SFX"
+const SFX_DIR := "res://assets/audio/sfx"
 const POOL_SIZE := 12
 const IMPACT_PITCH_RANGE := Vector2(0.94, 1.06)
 

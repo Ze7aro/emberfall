@@ -72,7 +72,7 @@ func _build() -> void:
 	box.add_child(condition_label)
 
 	lock_icon = TextureRect.new()
-	lock_icon.texture = load("res://assets/ui/pixel_simple_v1/icons/lock.png")
+	lock_icon.texture = load("res://assets/ui/icons/lock.png")
 	lock_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	lock_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	lock_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

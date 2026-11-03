@@ -19,13 +19,13 @@ const TEXT_MUTED := UiTheme.TEXT_MUTED
 const TEXT_BRIGHT := UiTheme.TEXT
 
 const ICON_BY_TYPE := {
-	"daily_kills": "res://assets/ui/pixel_simple_v1/equipment/weapon.png",
-	"weekly_kills": "res://assets/ui/pixel_simple_v1/equipment/weapon.png",
-	"daily_gold": "res://assets/ui/pixel_simple_v1/icons/target.png",
-	"weekly_gold": "res://assets/ui/pixel_simple_v1/icons/target.png",
-	"daily_runs": "res://assets/ui/pixel_simple_v1/navigation/dungeons.png",
-	"weekly_runs": "res://assets/ui/pixel_simple_v1/navigation/dungeons.png",
-	"weekly_chests": "res://assets/ui/pixel_simple_v1/shop/chest_epic.png",
+	"daily_kills": "res://assets/ui/equipment/weapon.png",
+	"weekly_kills": "res://assets/ui/equipment/weapon.png",
+	"daily_gold": "res://assets/ui/icons/target.png",
+	"weekly_gold": "res://assets/ui/icons/target.png",
+	"daily_runs": "res://assets/ui/navigation/dungeons.png",
+	"weekly_runs": "res://assets/ui/navigation/dungeons.png",
+	"weekly_chests": "res://assets/ui/shop/chest_epic.png",
 }
 
 signal closed
@@ -250,7 +250,7 @@ func _build_mission_card(mission: Dictionary) -> Control:
 	var icon_frame := PanelContainer.new()
 	icon_frame.custom_minimum_size = Vector2(56, 56)
 	icon_frame.add_theme_stylebox_override("panel", _icon_frame_style())
-	var icon_path: String = ICON_BY_TYPE.get(str(mission.get("type", "")), "res://assets/ui/pixel_simple_v1/icons/target.png")
+	var icon_path: String = ICON_BY_TYPE.get(str(mission.get("type", "")), "res://assets/ui/icons/target.png")
 	var icon := TextureRect.new()
 	icon.texture = load(icon_path)
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

@@ -122,9 +122,9 @@ const BIOME_TINTS := {
 ## chunk around the player (same chunk, same decor) and dropped behind.
 ## Cavernas is mirrored because its tile shows a seam at the edges.
 const FLOOR_ART := {
-	1: ["res://assets/suelo/cap1_criptas.png", false],
-	2: ["res://assets/suelo/cap2_cavernas.png", true],
-	3: ["res://assets/suelo/cap3_forja.png", false],
+	1: ["res://assets/mundo/suelos/cap1_criptas.png", false],
+	2: ["res://assets/mundo/suelos/cap2_cavernas.png", true],
+	3: ["res://assets/mundo/suelos/cap3_forja.png", false],
 }
 const FLOOR_TILE_WORLD := 420.0 # on-screen height of one tile
 const FLOOR_VIEW_HALF := Vector2(700.0, 900.0) # covers a 390x844 screen plus shake and margin
@@ -191,12 +191,12 @@ func _follow_floor(center: Vector2) -> void:
 func _load_decor_textures(chapter: int) -> Array:
 	var found: Array = []
 	for decor_name: String in DECOR_NAMES:
-		var path := "res://assets/suelo/decorados/cap%d/%s.png" % [chapter, decor_name]
+		var path := "res://assets/mundo/decorados/cap%d/%s.png" % [chapter, decor_name]
 		if ResourceLoader.exists(path):
 			found.append([decor_name, load(path)])
 	if found.is_empty():
 		for decor_name: String in DECOR_FALLBACK.get(chapter, []):
-			var path := "res://assets/suelo/decorados/cap1/%s.png" % decor_name
+			var path := "res://assets/mundo/decorados/cap1/%s.png" % decor_name
 			if ResourceLoader.exists(path):
 				found.append([decor_name, load(path)])
 	return found

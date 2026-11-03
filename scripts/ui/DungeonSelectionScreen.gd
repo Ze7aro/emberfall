@@ -6,9 +6,9 @@ const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 ## _dungeon_modifier()/_difficulty_multiplier()/_boss_time()), not flavor
 ## text — each dungeon plays differently, not just pays out differently.
 const DUNGEONS: Array[Dictionary] = [
-	{"id": &"crimson_catacombs", "type": "dungeon", "index": 1, "name": "CATACUMBAS CARMESÍ", "chapter": 1, "level": 1, "preview": "res://assets/environment/game_bg.png", "gold_reward": 150, "gems_reward": 5, "modifier": "swarm", "modifier_label": "Enjambre: oleadas 30% más frecuentes"},
-	{"id": &"obsidian_depths", "type": "dungeon", "index": 2, "name": "PROFUNDIDADES DE OBSIDIANA", "chapter": 2, "level": 1, "preview": "res://assets/environment/world_map.png", "gold_reward": 220, "gems_reward": 7, "modifier": "hardened", "modifier_label": "Endurecidos: +30% de vida enemiga"},
-	{"id": &"withered_sanctum", "type": "dungeon", "index": 3, "name": "SANTUARIO MARCHITO", "chapter": 3, "level": 1, "preview": "res://assets/environment/game_bg.png", "gold_reward": 300, "gems_reward": 9, "modifier": "reckoning", "modifier_label": "Ajuste de cuentas: el jefe llega a los 8 minutos"},
+	{"id": &"crimson_catacombs", "type": "dungeon", "index": 1, "name": "CATACUMBAS CARMESÍ", "chapter": 1, "level": 1, "preview": "res://assets/ui/escenarios/game_bg.png", "gold_reward": 150, "gems_reward": 5, "modifier": "swarm", "modifier_label": "Enjambre: oleadas 30% más frecuentes"},
+	{"id": &"obsidian_depths", "type": "dungeon", "index": 2, "name": "PROFUNDIDADES DE OBSIDIANA", "chapter": 2, "level": 1, "preview": "res://assets/ui/escenarios/world_map.png", "gold_reward": 220, "gems_reward": 7, "modifier": "hardened", "modifier_label": "Endurecidos: +30% de vida enemiga"},
+	{"id": &"withered_sanctum", "type": "dungeon", "index": 3, "name": "SANTUARIO MARCHITO", "chapter": 3, "level": 1, "preview": "res://assets/ui/escenarios/game_bg.png", "gold_reward": 300, "gems_reward": 9, "modifier": "reckoning", "modifier_label": "Ajuste de cuentas: el jefe llega a los 8 minutos"},
 ]
 
 var _locked_box: VBoxContainer
@@ -39,7 +39,7 @@ func _ready() -> void:
 	add_child(_locked_box)
 
 	var lock_icon := TextureRect.new()
-	lock_icon.texture = load("res://assets/ui/pixel_simple_v1/icons/lock.png")
+	lock_icon.texture = load("res://assets/ui/icons/lock.png")
 	lock_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	lock_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	lock_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

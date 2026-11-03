@@ -29,7 +29,7 @@ func _ready() -> void:
 		GameState.save()
 	# Shared dark backdrop: screens without their own background (Inicio,
 	# Mazmorras) would otherwise show the engine's default gray.
-	var backdrop := TextureRect.new(); backdrop.name = "Backdrop"; backdrop.texture = load("res://assets/ui/pixel_simple_v1/backgrounds/background.png"); backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; backdrop.stretch_mode = TextureRect.STRETCH_SCALE; backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE; backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(backdrop)
+	var backdrop := TextureRect.new(); backdrop.name = "Backdrop"; backdrop.texture = load("res://assets/ui/backgrounds/background.png"); backdrop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; backdrop.stretch_mode = TextureRect.STRETCH_SCALE; backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE; backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(backdrop)
 	content_host = Control.new(); content_host.name = "ContentHost"; content_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(content_host)
 
 	hud_layer = CanvasLayer.new(); hud_layer.name = "HudLayer"; hud_layer.layer = 10; add_child(hud_layer)
@@ -38,14 +38,8 @@ func _ready() -> void:
 	_wire_top_hud()
 
 	navigation_footer = preload("res://scenes/ui/NavigationFooter.tscn").instantiate(); navigation_footer.name = "NavigationFooter"; navigation_footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); navigation_footer.offset_top = -112
-	# Five footer destinations; missions open from the home shortcut.
-	navigation_footer.icons = [
-		load("res://assets/ui/pixel_simple_v1/navigation/shop.png"),
-		_upgrades_nav_icon(),
-		load("res://assets/ui/pixel_simple_v1/navigation/home.png"),
-		load("res://assets/ui/pixel_simple_v1/navigation/inventory.png"),
-		load("res://assets/ui/pixel_simple_v1/navigation/dungeons.png"),
-	]
+	# Five footer destinations; missions open from the home shortcut. Each
+	# button loads its own three-state art (see NavigationFooter.STATE_ART).
 	hud_layer.add_child(navigation_footer)
 	navigation_footer.navigation_requested.connect(func(_index: int, route_id: StringName): navigate_to(route_id))
 
@@ -96,14 +90,6 @@ func _handle_back() -> bool:
 		navigate_to(&"home")
 		return true
 	return false
-
-## Footer icon for Progreso: the dedicated art if it exists (see
-## PLAN_FINALIZACION §6), otherwise the kit's green "mejora" arrow.
-func _upgrades_nav_icon() -> Texture2D:
-	var dedicated := "res://assets/ui/pixel_simple_v1/navigation/upgrades.png"
-	if ResourceLoader.exists(dedicated):
-		return load(dedicated)
-	return load("res://assets/ui/kit/UI_KIT_04_individual/indicador_mejora.png")
 
 func _wire_top_hud() -> void:
 	top_hud.set_level(GameState.level)
@@ -158,7 +144,7 @@ func _character_equipment_screen(section: StringName) -> Control:
 func _placeholder_screen(route_id: StringName) -> Control:
 	var screen := Control.new()
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := TextureRect.new(); bg.texture = load("res://assets/ui/pixel_simple_v1/backgrounds/background.png"); bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; bg.stretch_mode = TextureRect.STRETCH_SCALE; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
+	var bg := TextureRect.new(); bg.texture = load("res://assets/ui/backgrounds/background.png"); bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; bg.stretch_mode = TextureRect.STRETCH_SCALE; bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); screen.add_child(bg)
 	var label := Label.new(); label.text = str(route_id).to_upper(); label.set_anchors_and_offsets_preset(Control.PRESET_CENTER); label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; label.add_theme_font_size_override("font_size", 28); label.add_theme_color_override("font_color", UiTheme.ACCENT); screen.add_child(label)
 	return screen
 
@@ -265,7 +251,7 @@ func _show_toast(text: String) -> void:
 func _run_resource_paths() -> Array[String]:
 	var paths: Array[String] = [
 		"res://scripts/game_world.gd", "res://scripts/ui.gd", "res://scripts/components/player.gd",
-		"res://assets/characters/enemy.png", "res://assets/environment/game_bg.png",
+		"res://assets/personajes/enemigos/generico.png", "res://assets/ui/escenarios/game_bg.png",
 	]
 	var folder := str(GameState.selected_character_sprite_folder)
 	if folder != "":

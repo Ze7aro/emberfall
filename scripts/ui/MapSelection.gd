@@ -20,9 +20,9 @@ var _lock_icon: TextureRect
 var _rewards: Label
 var _modifier: Label
 var _maps: Array[Dictionary] = [
-	{"id": &"void_crypts", "name": "CRIPTAS DEL VACÍO", "chapter": 1, "level": 1, "rewards": "Oro · Gema · Cofre", "preview": "res://assets/environment/game_bg.png", "required": 0},
-	{"id": &"verdant_ruins", "name": "RUINAS VERDANTES", "chapter": 1, "level": 2, "rewards": "Oro · Cofre · Reliquia", "preview": "res://assets/environment/world_map.png", "required": 1},
-	{"id": &"ember_forge", "name": "FORJA DE EMBER", "chapter": 2, "level": 1, "rewards": "Oro · Gema · Núcleo", "preview": "res://assets/environment/game_bg.png", "required": 3}
+	{"id": &"void_crypts", "name": "CRIPTAS DEL VACÍO", "chapter": 1, "level": 1, "rewards": "Oro · Gema · Cofre", "preview": "res://assets/ui/escenarios/game_bg.png", "required": 0},
+	{"id": &"verdant_ruins", "name": "RUINAS VERDANTES", "chapter": 1, "level": 2, "rewards": "Oro · Cofre · Reliquia", "preview": "res://assets/ui/escenarios/world_map.png", "required": 1},
+	{"id": &"ember_forge", "name": "FORJA DE EMBER", "chapter": 2, "level": 1, "rewards": "Oro · Gema · Núcleo", "preview": "res://assets/ui/escenarios/game_bg.png", "required": 3}
 ]
 var _map_index := 0
 var _start_button: Button
@@ -113,7 +113,7 @@ func _build() -> void:
 	lock_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(lock_holder)
 	_lock_icon = TextureRect.new()
-	_lock_icon.texture = load("res://assets/ui/pixel_simple_v1/icons/lock.png")
+	_lock_icon.texture = load("res://assets/ui/icons/lock.png")
 	_lock_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_lock_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_lock_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -222,7 +222,7 @@ func set_map(data: Dictionary) -> void:
 	_modifier.text = modifier_label
 	_modifier.visible = modifier_label != ""
 	_info_panel.visible = show_rewards or _modifier.visible
-	var texture = load(str(data.get("preview", "res://assets/environment/game_bg.png")))
+	var texture = load(str(data.get("preview", "res://assets/ui/escenarios/game_bg.png")))
 	if texture is Texture2D:
 		_preview.texture = texture
 	var unlocked: bool = unlock_check.call(data)

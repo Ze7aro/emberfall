@@ -10,10 +10,10 @@ class_name UpgradeCatalog
 ## Icons live in assets/cuadros_habilidades_emberfall/; a missing one falls
 ## back to a tile with the initial.
 
-const ICON_DIR := "res://assets/cuadros_habilidades_emberfall/"
+const ICON_DIR := "res://assets/mejoras/"
 
 const UPGRADES := [
-	{"id": "damage", "name": "Poder", "desc": "+2 de daño al ataque básico y +3% de daño total por nivel.", "icon": "daño.png", "max": 10, "base": 40, "step": 35},
+	{"id": "damage", "name": "Poder", "desc": "+2 de daño al ataque básico y +3% de daño total por nivel.", "icon": "dano.png", "max": 10, "base": 40, "step": 35},
 	{"id": "health", "name": "Vitalidad", "desc": "+½ corazón de vida máxima por nivel.", "icon": "corazon_extra.png", "max": 10, "base": 40, "step": 35},
 	{"id": "speed", "name": "Movilidad", "desc": "+5% de velocidad de movimiento por nivel.", "icon": "velocidad_de_movimiento.png", "max": 10, "base": 40, "step": 35},
 	{"id": "armor", "name": "Armadura", "desc": "+3% de probabilidad de bloquear un golpe por nivel.", "icon": "mejora_armadura.png", "max": 3, "base": 120, "step": 120},
@@ -29,8 +29,8 @@ const UPGRADES := [
 	{"id": "growth", "name": "Crecimiento", "desc": "+4% de experiencia ganada por nivel.", "icon": "experiencia_ganada.png", "max": 5, "base": 100, "step": 80},
 	{"id": "greed", "name": "Codicia", "desc": "+10% de oro recogido por nivel.", "icon": "probabilidad_oro.png", "max": 5, "base": 80, "step": 60},
 	{"id": "luck", "name": "Suerte", "desc": "+25% de probabilidad de pociones, imanes y bombas por nivel.", "icon": "mejora_suerte.png", "max": 3, "base": 120, "step": 120},
-	{"id": "boss_damage", "name": "Cazajefes", "desc": "+10% de daño a jefes y élites por nivel.", "icon": "daño_a_jefes.png", "max": 3, "base": 150, "step": 150},
-	{"id": "invuln", "name": "Resguardo", "desc": "+0,15 s de invencibilidad después de recibir daño por nivel.", "icon": "invencible_tras_daño.png", "max": 3, "base": 120, "step": 120},
+	{"id": "boss_damage", "name": "Cazajefes", "desc": "+10% de daño a jefes y élites por nivel.", "icon": "dano_a_jefes.png", "max": 3, "base": 150, "step": 150},
+	{"id": "invuln", "name": "Resguardo", "desc": "+0,15 s de invencibilidad después de recibir daño por nivel.", "icon": "invencible_tras_dano.png", "max": 3, "base": 120, "step": 120},
 	{"id": "reroll", "name": "Cambiar", "desc": "+1 uso de Cambiar por partida por nivel.", "icon": "rerolls.png", "max": 3, "base": 150, "step": 150},
 	{"id": "banish", "name": "Descartar", "desc": "+1 uso de Descartar por partida por nivel.", "icon": "mejora_bloqueada.png", "max": 3, "base": 150, "step": 150},
 	{"id": "revival", "name": "Revivir", "desc": "Una vez por partida, al caer revivís con media vida.", "icon": "revivir.png", "max": 1, "base": 1000, "step": 0},

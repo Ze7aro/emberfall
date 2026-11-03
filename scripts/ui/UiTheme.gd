@@ -60,7 +60,7 @@ static func bar(color: Color) -> StyleBoxFlat:
 ## (margins in texture pixels). While a file is missing (or not imported) the
 ## flat style is used instead, so nothing changes until the art is dropped in.
 ## Full list, sizes and target screens: docs/RECURSOS_UI_PENDIENTES.md
-const KIT_DIR := "res://assets/ui/pixel_simple_v1/"
+const KIT_DIR := "res://assets/ui/"
 ## Optional 6th element `true`: the frame's interior is transparent, so it is
 ## composited over a solid dark fill (built at runtime, no extra file).
 const KIT := {

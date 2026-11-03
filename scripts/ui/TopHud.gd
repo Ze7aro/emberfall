@@ -3,7 +3,7 @@ extends PanelContainer
 
 const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 const FillBar := preload("res://scripts/ui/HudFillBar.gd")
-const ART_DIR := "res://assets/ui/pixel_simple_v1/"
+const ART_DIR := "res://assets/ui/"
 const DESIGN_WIDTH := 390.0
 
 signal profile_pressed

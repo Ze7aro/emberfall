@@ -17,9 +17,9 @@ signal navigation_requested(index: int, id: StringName)
 
 var _buttons: Array[Button] = []
 
-const KIT_DIR := "res://assets/ui/pixel_simple_v1/"
-const SELECTED_NAV_TEXTURE := preload("res://assets/ui/pixel_simple_v1/frames/selection.png")
-const FOOTER_FRAME_TEXTURE := preload("res://assets/ui/pixel_simple_v1/frames/footer_frame.png")
+const KIT_DIR := "res://assets/ui/"
+const SELECTED_NAV_TEXTURE := preload("res://assets/ui/frames/selection.png")
+const FOOTER_FRAME_TEXTURE := preload("res://assets/ui/frames/footer_frame.png")
 ## Three-state art per destination (normal / selected / disabled) in
 ## navigation/<name>_normal.png, <name>_hover[_seleccionado].png and
 ## <name>_desactivado.png. Missing art falls back to the plain `icons`.

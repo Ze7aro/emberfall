@@ -9,7 +9,7 @@ signal pressed
 
 enum Shape { CIRCLE, DIAMOND, HEX }
 
-const LOCK_TEXTURE := preload("res://assets/ui/pixel_simple_v1/icons/lock.png")
+const LOCK_TEXTURE := preload("res://assets/ui/icons/lock.png")
 
 const STATE_LOCKED := "locked"
 const STATE_AVAILABLE := "available"

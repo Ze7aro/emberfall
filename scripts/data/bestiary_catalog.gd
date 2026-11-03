@@ -5,8 +5,8 @@ extends RefCounted
 ## regular enemies by archetype, élites and mini-bosses apart, and each boss
 ## by variant. An entry is "discovered" once it has at least one kill.
 
-const ENEMY_TEXTURE := "res://assets/characters/enemy.png"
-const BOSS_DIR := "res://assets/Emberfall_Jefes_Simplificados/"
+const ENEMY_TEXTURE := "res://assets/personajes/enemigos/generico.png"
+const BOSS_DIR := "res://assets/personajes/jefes/"
 
 const ENTRIES := [
 	{"key": "chaser", "name": "ACECHADOR", "desc": "Te persigue sin descanso. El enemigo más común.", "archetype": 0},

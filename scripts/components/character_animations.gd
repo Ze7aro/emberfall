@@ -5,7 +5,7 @@ extends RefCounted
 ## walk_right/walk_left (3 frames, looping) and attack (2 frames, one-shot).
 ## Idle just reuses the first walk frame of whichever way the player last
 ## faced, per the pack's own README.
-const BASE_DIR := "res://assets/emberfall_sprites_2d_simple"
+const BASE_DIR := "res://assets/personajes/heroes"
 const WALK_FPS := 7.0
 const ATTACK_FPS := 9.0
 

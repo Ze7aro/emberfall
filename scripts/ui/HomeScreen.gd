@@ -7,7 +7,7 @@ const STAGE_NAMES := [
 	"CAVERNAS ROTAS", "TORRE OLVIDADA", "PANTANO NEGRO", "CUMBRE HELADA",
 	"FOSA DE MAGMA", "TRONO DE EMBERFALL",
 ]
-const STAGE_PREVIEWS := ["res://assets/environment/game_bg.png", "res://assets/environment/world_map.png"]
+const STAGE_PREVIEWS := ["res://assets/ui/escenarios/game_bg.png", "res://assets/ui/escenarios/world_map.png"]
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -33,13 +33,13 @@ func _ready() -> void:
 ## the top HUD) above Misiones, each with its "something new" indicator.
 func _build_missions_side() -> void:
 	var top := UiTheme.CONTENT_TOP + 8.0
-	_side_button(top + 12.0, "res://assets/ui/pixel_simple_v1/icons/mail.png", "Avisos", func():
+	_side_button(top + 12.0, "res://assets/ui/icons/mail.png", "Avisos", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"notifications")
 			GameState.mark_notifications_read()
 	, func() -> bool: return GameState.unread_notification_count() > 0, GameState.notifications_changed)
-	_side_button(top + 76.0, "res://assets/ui/pixel_simple_v1/icons/missions.png", "Misiones", func():
+	_side_button(top + 76.0, "res://assets/ui/icons/missions.png", "Misiones", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"missions")

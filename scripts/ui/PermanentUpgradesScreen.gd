@@ -235,7 +235,7 @@ func _icon_node(icon: Texture2D, title: String, side: float, locked: bool) -> Co
 		holder.add_child(initial)
 	if locked:
 		var lock := TextureRect.new()
-		lock.texture = load("res://assets/ui/pixel_simple_v1/icons/lock.png") as Texture2D
+		lock.texture = load("res://assets/ui/icons/lock.png") as Texture2D
 		lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		lock.set_anchors_and_offsets_preset(Control.PRESET_CENTER)

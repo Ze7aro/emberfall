@@ -70,7 +70,7 @@ func _build() -> void:
 	box.add_theme_constant_override("separation", 12)
 	add_child(box)
 
-	var logo_path := "res://assets/ui/kit/UI_KIT_05_individual/logo_emberfall.png"
+	var logo_path := "res://assets/ui/logo/logo_emberfall.png"
 	if ResourceLoader.exists(logo_path):
 		var logo := TextureRect.new()
 		logo.texture = load(logo_path) as Texture2D

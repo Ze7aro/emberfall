@@ -7,7 +7,7 @@ extends Node
 ## a track ending mid-pool picks another for variety within the same mood.
 ## Respects GameState.music_enabled at all times.
 
-const MUSIC_DIR := "res://assets/Musica"
+const MUSIC_DIR := "res://assets/audio/musica"
 const INTRO_TRACKS := ["Intro_01.mp3", "Intro_02.mp3", "Intro_03.mp3"]
 const COMBAT_TRACKS := ["Combat_01.mp3", "Combat_02.mp3"]
 const BOSS_TRACKS := ["Boss_01.mp3", "Boss_02.mp3"]

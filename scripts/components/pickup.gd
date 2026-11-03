@@ -11,17 +11,12 @@ class_name EmberfallPickup
 
 enum Kind { CHEST, EPIC_CHEST, POTION, MAGNET, BOMB }
 
-const ART_DIR := "res://assets/pickups/"
+const ART_DIR := "res://assets/mundo/recolectables/"
 const ART_NAMES := {
-	Kind.CHEST: "recolectable_09", Kind.EPIC_CHEST: "recolectable_19", Kind.POTION: "recolectable_06",
-	Kind.MAGNET: "recolectable_07", Kind.BOMB: "recolectable_08",
+	Kind.CHEST: "cofre", Kind.EPIC_CHEST: "cofre_epico", Kind.POTION: "pocion",
+	Kind.MAGNET: "iman", Kind.BOMB: "bomba",
 }
 const EPIC_TINT := Color(0.86, 0.66, 1.0)
-const FALLBACK_ART := {
-	Kind.CHEST: "res://assets/ui/icon_exports_2026-09-24/19_chest_common.png",
-	Kind.EPIC_CHEST: "res://assets/ui/icon_exports_2026-09-24/22_chest_epic.png",
-	Kind.POTION: "res://assets/ui/kit/UI_KIT_01_individual/icono_pocion.png",
-}
 const GLOW := {
 	Kind.CHEST: Color("e8b84a"), Kind.EPIC_CHEST: Color("b07cff"),
 	Kind.POTION: Color("5a8cff"), Kind.MAGNET: Color("e86958"), Kind.BOMB: Color("ff9a3c"),
@@ -40,8 +35,6 @@ func setup(new_kind: int) -> void:
 	var custom := ART_DIR + str(ART_NAMES.get(kind, "")) + ".png"
 	if ResourceLoader.exists(custom):
 		_texture = load(custom) as Texture2D
-	elif FALLBACK_ART.has(kind):
-		_texture = load(str(FALLBACK_ART[kind])) as Texture2D
 
 func is_chest() -> bool:
 	return kind == Kind.CHEST or kind == Kind.EPIC_CHEST

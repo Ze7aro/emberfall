@@ -1,10 +1,10 @@
 extends Control
 class_name HeartsRow
 
-const HEART_TEXTURE := preload("res://assets/ui/pixel_simple_v1/icons/heart.png")
+const HEART_TEXTURE := preload("res://assets/ui/icons/heart.png")
 ## Dedicated art for the three states; when present it is drawn as-is (no
 ## tint, no outline pass). Otherwise the single heart is clipped and tinted.
-const HEART_ART_DIR := "res://assets/ui/pixel_simple_v1/hud/"
+const HEART_ART_DIR := "res://assets/ui/hud/"
 static var _art := {}
 
 ## Renders a row of heart icons from an HP value expressed in half-heart

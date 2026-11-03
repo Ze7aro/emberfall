@@ -1,7 +1,7 @@
 extends Area2D
 class_name EmberfallProjectile
 
-const SPRITE_DIR := "res://assets/emberfall_poderes"
+const SPRITE_DIR := "res://assets/habilidades/proyectiles"
 const SPRITE_FPS := 10.0
 const SPRITE_SCALE := 0.16 # 256px source frames down to ~41px on screen
 const DEFAULT_FRAME_NAMES: PackedStringArray = ["projectile_00.png", "projectile_01.png"]

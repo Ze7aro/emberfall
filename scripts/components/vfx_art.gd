@@ -5,7 +5,7 @@ extends RefCounted
 ## status badges, the familiar and the axe. Everything else is drawn in code.
 ## Missing files just return empty, so callers keep their drawn fallback.
 
-const DIR := "res://assets/vfx/"
+const DIR := "res://assets/habilidades/efectos/"
 static var _cache := {}
 
 ## frame_00.png, frame_01.png… of one folder, in order.
