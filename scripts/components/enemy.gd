@@ -58,6 +58,7 @@ func setup(player: Node2D, difficulty: float, boss: bool = false, new_archetype:
 	target = player
 	is_boss = boss
 	archetype = new_archetype
+	_add_feet_collision()
 	if is_boss:
 		hp = int(600.0 * difficulty)
 		move_speed = 52.0
@@ -89,6 +90,42 @@ func setup(player: Node2D, difficulty: float, boss: bool = false, new_archetype:
 		xp_value = 10
 		gold_value = 6
 	max_hp = hp
+
+## move_and_slide plus a simple detour: after bumping into a prop the enemy
+## walks along its edge for a moment (toward the side nearer the player)
+## instead of pushing into it forever.
+var _detour := Vector2.ZERO
+var _detour_time := 0.0
+func _move() -> void:
+	if _detour_time > 0.0:
+		_detour_time -= get_physics_process_delta_time()
+		var speed := velocity.length()
+		if speed > 1.0:
+			velocity = (velocity / speed * 0.35 + _detour).normalized() * speed
+	move_and_slide()
+	if collision_mask != 0 and get_slide_collision_count() > 0 and is_instance_valid(target):
+		var normal := get_slide_collision(0).get_normal()
+		var along := normal.orthogonal()
+		if along.dot(target.global_position - global_position) < 0.0:
+			along = -along
+		_detour = along
+		_detour_time = 0.5
+
+## Enemies bump into solid decor (layer 1) but not into each other or the
+## player, as before. Bosses ignore decor so their charges and patterns
+## never get stuck on a rock.
+func _add_feet_collision() -> void:
+	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+	collision_layer = 4
+	collision_mask = 0 if is_boss else 1
+	if is_boss:
+		return
+	var feet := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = 9.0
+	feet.shape = circle
+	feet.position = Vector2(0, 12)
+	add_child(feet)
 
 ## Élite / mini-jefe: same archetype behavior, much tougher, bigger and with
 ## a golden aura so it reads as "worth chasing" from across the screen.
@@ -151,7 +188,7 @@ func _process_chase(delta: float) -> void:
 	var direction := global_position.direction_to(target.global_position)
 	var speed_scale := 0.35 if freeze_timer > 0.0 else 1.0
 	velocity = direction * move_speed * speed_scale
-	move_and_slide()
+	_move()
 	_check_contact(delta)
 
 func _check_contact(delta: float) -> void:
@@ -172,7 +209,7 @@ func _process_shooter(delta: float) -> void:
 		velocity = -direction * move_speed * speed_scale * 0.6
 	else:
 		velocity = Vector2.ZERO
-	move_and_slide()
+	_move()
 	_check_contact(delta)
 	_shoot_clock += delta
 	if _shoot_clock >= SHOOTER_FIRE_INTERVAL and distance < SHOOTER_PREFERRED_RANGE * 1.3:
@@ -196,7 +233,7 @@ func _fire_at_player() -> void:
 func _process_charger(delta: float) -> void:
 	if _charging:
 		velocity = _charger_direction * move_speed * CHARGER_SPEED_MULT
-		move_and_slide()
+		_move()
 		_check_contact(delta)
 		_charger_elapsed += delta
 		if _charger_elapsed >= CHARGER_DURATION:
@@ -206,7 +243,7 @@ func _process_charger(delta: float) -> void:
 	var direction := global_position.direction_to(target.global_position)
 	var speed_scale := 0.35 if freeze_timer > 0.0 else 1.0
 	velocity = direction * move_speed * speed_scale
-	move_and_slide()
+	_move()
 	_check_contact(delta)
 	_charge_clock += delta
 	if _charge_clock >= CHARGER_INTERVAL:

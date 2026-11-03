@@ -130,6 +130,10 @@ const FLOOR_TILE_WORLD := 420.0 # on-screen height of one tile
 const FLOOR_VIEW_HALF := Vector2(700.0, 900.0) # covers a 390x844 screen plus shake and margin
 const FLOOR_SHADE := Color(0.82, 0.82, 0.86)
 const DECOR_NAMES := ["pilar", "calaveras", "cristal", "lapida", "brasero", "huesos", "roca", "circulo_runico"]
+## Solid props block the player and enemies; the radius is a share of the
+## drawn size, at the base of the prop. Flat ones (bones, rune circle) are
+## walked over.
+const DECOR_SOLID := {"pilar": 0.26, "calaveras": 0.3, "cristal": 0.3, "lapida": 0.28, "brasero": 0.28, "roca": 0.36}
 ## A chapter without its own props borrows these neutral ones from chapter 1.
 const DECOR_FALLBACK := {2: ["roca", "cristal", "huesos", "circulo_runico"], 3: ["roca", "huesos", "calaveras", "circulo_runico"]}
 const DECOR_CHUNK := 700.0
@@ -141,7 +145,7 @@ const ENEMY_RECYCLE_DISTANCE := 950.0
 var _floor_bg: ColorRect
 var _floor_sprite: Sprite2D
 var _floor_period := Vector2.ZERO
-var _decor_textures: Array[Texture2D] = []
+var _decor_textures: Array = [] # [name, Texture2D]
 var _decor_chunks := {} # Vector2i -> Array[Sprite2D]
 var _chapter := 1
 
@@ -184,17 +188,17 @@ func _follow_floor(center: Vector2) -> void:
 		_floor_sprite.position = (corner / _floor_period).floor() * _floor_period
 	_update_decor_chunks(center)
 
-func _load_decor_textures(chapter: int) -> Array[Texture2D]:
-	var found: Array[Texture2D] = []
+func _load_decor_textures(chapter: int) -> Array:
+	var found: Array = []
 	for decor_name: String in DECOR_NAMES:
 		var path := "res://assets/suelo/decorados/cap%d/%s.png" % [chapter, decor_name]
 		if ResourceLoader.exists(path):
-			found.append(load(path) as Texture2D)
+			found.append([decor_name, load(path)])
 	if found.is_empty():
 		for decor_name: String in DECOR_FALLBACK.get(chapter, []):
 			var path := "res://assets/suelo/decorados/cap1/%s.png" % decor_name
 			if ResourceLoader.exists(path):
-				found.append(load(path) as Texture2D)
+				found.append([decor_name, load(path)])
 	return found
 
 func _update_decor_chunks(center: Vector2) -> void:
@@ -207,22 +211,24 @@ func _update_decor_chunks(center: Vector2) -> void:
 			wanted[here + Vector2i(dx, dy)] = true
 	for chunk: Vector2i in _decor_chunks.keys():
 		if not wanted.has(chunk):
-			for sprite: Sprite2D in _decor_chunks[chunk]:
-				if is_instance_valid(sprite):
-					sprite.queue_free()
+			for prop: Node2D in _decor_chunks[chunk]:
+				if is_instance_valid(prop):
+					prop.queue_free()
 			_decor_chunks.erase(chunk)
 	for chunk: Vector2i in wanted.keys():
 		if not _decor_chunks.has(chunk):
 			_decor_chunks[chunk] = _spawn_decor_chunk(chunk)
 
 ## Same chunk always gets the same decor (seeded by chunk and chapter).
-func _spawn_decor_chunk(chunk: Vector2i) -> Array[Sprite2D]:
-	var made: Array[Sprite2D] = []
+func _spawn_decor_chunk(chunk: Vector2i) -> Array[Node2D]:
+	var made: Array[Node2D] = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(Vector3i(chunk.x, chunk.y, _chapter))
 	for i in DECOR_PER_CHUNK:
 		var at := (Vector2(chunk) + Vector2(rng.randf(), rng.randf())) * DECOR_CHUNK
-		var tex: Texture2D = _decor_textures[rng.randi() % _decor_textures.size()]
+		var pick: Array = _decor_textures[rng.randi() % _decor_textures.size()]
+		var decor_name: String = pick[0]
+		var tex: Texture2D = pick[1]
 		if at.length() < 160.0:
 			continue # keep the starting spot clear
 		var decor := Sprite2D.new()
@@ -235,6 +241,20 @@ func _spawn_decor_chunk(chunk: Vector2i) -> Array[Sprite2D]:
 		decor.z_index = -98
 		add_child(decor)
 		made.append(decor)
+		if DECOR_SOLID.has(decor_name):
+			var drawn := tex.get_size() * absf(k)
+			var body := StaticBody2D.new()
+			body.collision_layer = 1
+			body.collision_mask = 0
+			var shape := CollisionShape2D.new()
+			var circle := CircleShape2D.new()
+			circle.radius = maxf(drawn.x, drawn.y) * float(DECOR_SOLID[decor_name])
+			shape.shape = circle
+			body.add_child(shape)
+			# At the base of the prop, where it meets the floor.
+			body.position = at + Vector2(0, drawn.y * 0.5 - circle.radius * 0.8)
+			add_child(body)
+			made.append(body)
 	return made
 
 ## Infinite map: regular enemies the player outran reappear ahead of them

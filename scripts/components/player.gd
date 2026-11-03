@@ -35,6 +35,17 @@ var projectile_origin: Marker2D
 
 func setup(owner: Node) -> void:
 	game = owner
+	# Collides only with solid decor (layer 1); a small circle at the feet so
+	# the hero can squeeze past props without snagging.
+	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+	collision_layer = 2
+	collision_mask = 1
+	var feet := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = 9.0
+	feet.shape = circle
+	feet.position = Vector2(0, 10)
+	add_child(feet)
 	var hero_data := GameState.get_character_data(GameState.selected_character_id)
 	max_hp += GameState.permanent_health + GameState.get_equipped_bonus("health")
 	if hero_data != null:
