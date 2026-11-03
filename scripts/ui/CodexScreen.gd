@@ -142,7 +142,7 @@ func _picture(texture: Texture2D, size: float, tint: Color, fallback_text: Strin
 	rect.custom_minimum_size = Vector2(size, size)
 	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	rect.modulate = tint
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return rect

@@ -255,6 +255,47 @@ func damage(amount: int) -> bool:
 
 static var _shared_texture: Texture2D
 
+func _init() -> void:
+	# The walk art is big and drawn small: smooth it so it doesn't shimmer.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+
+## Walk frames per archetype and chapter: assets/enemigos/<type>/cap<N>/
+## walk_00..02.png (cropped to the character, so they align by the feet).
+## A chapter missing its art borrows another chapter's; no art at all falls
+## back to the shared tinted sprite.
+const ENEMY_ART_DIR := "res://assets/enemigos/"
+const ARCHETYPE_FOLDERS := {
+	Archetype.CHASER: "chaser", Archetype.FAST: "fast", Archetype.TANK: "tank",
+	Archetype.SHOOTER: "shooter", Archetype.CHARGER: "charger",
+}
+## Which way each art faces (-1 left, 1 right, 0 front): it is flipped when
+## the enemy walks the other way.
+const ART_FACING := {"fast": -1, "charger": 1}
+const WALK_FPS := 7.0
+const WALK_CYCLE := [0, 1, 2, 1]
+static var _walk_cache := {}
+var _walk_phase := randf() * 10.0
+var _face_left := false
+
+static func walk_frames(folder: String, chapter: int) -> Array:
+	var key := "%s/%d" % [folder, chapter]
+	if _walk_cache.has(key):
+		return _walk_cache[key]
+	var frames: Array = []
+	for cap in [chapter, 1, 2, 3]:
+		var base := "%s%s/cap%d/" % [ENEMY_ART_DIR, folder, cap]
+		if ResourceLoader.exists(base + "walk_00.png"):
+			for i in 3:
+				var path := base + "walk_%02d.png" % i
+				if ResourceLoader.exists(path):
+					frames.append(load(path))
+			break
+	_walk_cache[key] = frames
+	return frames
+
+func _art_folder() -> String:
+	return "elite" if elite_tier > 0 else str(ARCHETYPE_FOLDERS.get(archetype, "chaser"))
+
 ## Archetypes share the one enemy sprite (no new art) — a distinct tint and
 ## size per type is enough to read as a different threat at a glance.
 const ARCHETYPE_TINTS := {
@@ -300,9 +341,13 @@ func _draw() -> void:
 	draw_set_transform(Vector2(0, size * 0.42), 0.0, Vector2(1.0, 0.35))
 	draw_circle(Vector2.ZERO, size * 0.36, Color(0, 0, 0, 0.28))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	if _shared_texture == null:
+	var frames: Array = [] if is_boss else walk_frames(_art_folder(), int(GameState.current_stage_context.get("chapter", 1)))
+	var top := -size / 2.0
+	if not frames.is_empty():
+		top = _draw_walk(frames, size)
+	elif _shared_texture == null:
 		_shared_texture = load("res://assets/characters/enemy.png") as Texture2D
-	if _shared_texture:
+	if frames.is_empty() and _shared_texture:
 		var tint := visual_tint()
 		if freeze_timer > 0.0:
 			tint = tint * Color(0.7, 0.9, 1.3)
@@ -313,9 +358,37 @@ func _draw() -> void:
 		tint = Color(tint.r + flash, tint.g + flash, tint.b + flash, tint.a)
 		draw_texture_rect(_shared_texture, Rect2(-size / 2, -size / 2, size, size), false, tint)
 	var bar_width := 90.0 if is_boss else (70.0 if elite_tier > 0 else 50.0)
-	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width, 4), Color(0.04, 0.08, 0.10, 0.85))
-	draw_rect(Rect2(-bar_width / 2, -size / 2 - 9, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 4), Color(0.95, 0.68, 0.25) if is_boss or elite_tier > 0 else Color(0.91, 0.30, 0.29))
-	draw_status_icons(Vector2(0, -size / 2 - 19))
+	draw_rect(Rect2(-bar_width / 2, top - 9, bar_width, 4), Color(0.04, 0.08, 0.10, 0.85))
+	draw_rect(Rect2(-bar_width / 2, top - 9, bar_width * clampf(float(hp) / float(max_hp), 0.0, 1.0), 4), Color(0.95, 0.68, 0.25) if is_boss or elite_tier > 0 else Color(0.91, 0.30, 0.29))
+	draw_status_icons(Vector2(0, top - 19))
+
+## Own art: one scale for all frames (from the biggest), bottom-aligned at
+## the shadow so the walk cycle doesn't bob in size or slide.
+func _draw_walk(frames: Array, size: float) -> float:
+	var biggest := 1.0
+	for f: Texture2D in frames:
+		biggest = maxf(biggest, maxf(f.get_width(), f.get_height()))
+	var k := size * 1.15 / biggest
+	var t := Time.get_ticks_msec() / 1000.0 + _walk_phase
+	var moving := velocity.length() > 5.0
+	var index: int = WALK_CYCLE[int(t * WALK_FPS) % WALK_CYCLE.size()] if moving else 0
+	var tex: Texture2D = frames[mini(index, frames.size() - 1)]
+	if absf(velocity.x) > 5.0:
+		_face_left = velocity.x < 0.0
+	var facing: int = ART_FACING.get(_art_folder(), 0)
+	var flip := facing != 0 and ((_face_left and facing > 0) or (not _face_left and facing < 0))
+	var drawn := tex.get_size() * k
+	var tint := Color.WHITE
+	if freeze_timer > 0.0:
+		tint = Color(0.7, 0.9, 1.3)
+	elif burn_timer > 0.0:
+		tint = Color(1.2, 0.85, 0.7)
+	var flash := hit_flash * (0.6 if GameState.reduce_motion else 2.5)
+	tint = Color(tint.r + flash, tint.g + flash, tint.b + flash)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0 if flip else 1.0, 1.0))
+	draw_texture_rect(tex, Rect2(-drawn.x / 2.0, size * 0.45 - drawn.y, drawn.x, drawn.y), false, tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return size * 0.45 - biggest * k
 
 ## Small glyphs above the health bar, one per active status, so the player
 ## can read at a glance what their build is doing to each enemy.

@@ -14,8 +14,8 @@ const ENTRIES := [
 	{"key": "tank", "name": "BRUTO", "desc": "Lento y resistente; casi no retrocede al golpearlo.", "archetype": 2},
 	{"key": "shooter", "name": "LANZADOR", "desc": "Mantiene la distancia y dispara proyectiles.", "archetype": 3},
 	{"key": "charger", "name": "EMBESTIDOR", "desc": "Se detiene, apunta y embiste en línea recta.", "archetype": 4},
-	{"key": "elite", "name": "ÉLITE", "desc": "Aura dorada y mucha vida. Suelta un cofre.", "archetype": 0, "tint": Color(1.0, 0.85, 0.45)},
-	{"key": "miniboss", "name": "MINI-JEFE", "desc": "Aura violeta, aparece a los 6 minutos. Suelta un cofre épico.", "archetype": 2, "tint": Color(0.8, 0.6, 1.0)},
+	{"key": "elite", "name": "ÉLITE", "desc": "Aura dorada y mucha vida. Suelta un cofre.", "archetype": 0, "art": "elite"},
+	{"key": "miniboss", "name": "MINI-JEFE", "desc": "Aura violeta, aparece a los 6 minutos. Suelta un cofre épico.", "archetype": 2, "art": "elite", "tint": Color(0.8, 0.6, 1.0)},
 	{"key": "boss_0", "name": "COLOSO RÚNICO", "desc": "Embiste y golpea el suelo con ondas de choque.", "boss_folder": "01_coloso_runico"},
 	{"key": "boss_1", "name": "GUARDIÁN HUECO", "desc": "Barre a su alrededor y lanza abanicos de runas.", "boss_folder": "02_guardian_hueco"},
 	{"key": "boss_2", "name": "MATRIARCA DE CENIZA", "desc": "Conos de fuego y zonas rúnicas que estallan.", "boss_folder": "03_matriarca_ceniza"},
@@ -44,11 +44,22 @@ static func texture(entry: Dictionary) -> Texture2D:
 		var path := "%s%s/idle.png" % [BOSS_DIR, entry["boss_folder"]]
 		if ResourceLoader.exists(path):
 			return load(path) as Texture2D
+	# Regular enemies: their own walk art (chapter 1 pose).
+	var folder := str(entry.get("art", entry["key"]))
+	var frames := EmberfallEnemy.walk_frames(folder, 1)
+	if not frames.is_empty():
+		return frames[0]
 	return load(ENEMY_TEXTURE) as Texture2D
+
+## True when the entry shows its own art (no archetype tint needed).
+static func has_own_art(entry: Dictionary) -> bool:
+	return not entry.has("boss_folder") and not EmberfallEnemy.walk_frames(str(entry.get("art", entry["key"])), 1).is_empty()
 
 static func tint(entry: Dictionary) -> Color:
 	if entry.has("tint"):
 		return entry["tint"]
+	if has_own_art(entry):
+		return Color.WHITE
 	if entry.has("archetype"):
 		return EmberfallEnemy.ARCHETYPE_TINTS.get(int(entry["archetype"]), Color.WHITE)
 	return Color.WHITE

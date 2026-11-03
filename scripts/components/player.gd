@@ -71,8 +71,6 @@ func _physics_process(delta: float) -> void:
 		facing_direction = input.normalized()
 	velocity = input * speed * game.speed_multiplier()
 	move_and_slide()
-	position.x = clampf(position.x, -760.0, 760.0)
-	position.y = clampf(position.y, -760.0, 760.0)
 	invulnerable = maxf(0.0, invulnerable - delta)
 	_update_hit_shake(delta)
 	_tick_regen(delta)

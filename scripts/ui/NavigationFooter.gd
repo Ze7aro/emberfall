@@ -27,6 +27,7 @@ const STATE_ART := {&"shop": "tienda", &"upgrades": "arbol", &"home": "casa", &"
 ## Height the normal state is drawn at; the other states keep their size
 ## relative to it (the selected art is drawn a bit bigger on purpose).
 const STATE_ICON_HEIGHT := 50.0
+const SELECTED_ZOOM := 1.12
 
 func _state_textures(id: StringName) -> Dictionary:
 	if not STATE_ART.has(id):
@@ -207,9 +208,20 @@ func _apply_button_styles(button: Button, selected: bool) -> void:
 		nav_icon.texture = texture
 		nav_icon.size = texture.get_size() * scale_factor
 		_center_button_icon(button)
+		# The art marks the selection itself: no turquoise frame or glow,
+		# just a small zoom on the selected icon.
+		for style_name in ["normal", "hover", "pressed"]:
+			button.add_theme_stylebox_override(style_name, StyleBoxEmpty.new())
+		nav_icon.pivot_offset = nav_icon.size * 0.5
+		var zoom := Vector2.ONE * (SELECTED_ZOOM if selected and not button.disabled else 1.0)
+		if nav_icon.is_inside_tree() and not GameState.reduce_motion:
+			nav_icon.create_tween().tween_property(nav_icon, "scale", zoom, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		else:
+			nav_icon.scale = zoom
 	var selection := button.get_node_or_null("SelectionEffect") as TextureRect
 	if selection:
-		selection.visible = selected and not button.disabled and _uses_kit_frame()
+		var own_art := nav_icon != null and nav_icon.has_meta("states")
+		selection.visible = selected and not button.disabled and _uses_kit_frame() and not own_art
 	for child in button.get_children():
 		if child is Label:
 			child.add_theme_color_override("font_color", UiTheme.ACCENT if selected else UiTheme.TEXT_MUTED)

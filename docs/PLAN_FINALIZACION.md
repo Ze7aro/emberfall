@@ -140,7 +140,7 @@ Usar el sprite de Vaelor (`variante_01_baculo (Vaelor)/walk_right_00.png`) y el 
 
 ### 6.1 Iconos de habilidades (24 activas y evoluciones + 1 pasiva)
 
-**Estado:** integrados las 12 activas, Armadura y 10 evoluciones. Faltan **Invierno Perpetuo** (`evo_blizzard.png`) y **Legión Espectral** (`evo_familiar.png`); mientras tanto usan el ícono de su activa.
+**Estado:** integrados las 12 activas, Armadura y 10 evoluciones. Faltan **Invierno Perpetuo** (`assets/habilidades_iconos/evo_invierno_perpetuo.png`) y **Legión Espectral** (`evo_legion_espectral.png`); mientras tanto usan el ícono de su activa.
 
 **Dónde van:** `assets/habilidades_iconos/<id>.png` y `evo_<id>.png` (ids en `scripts/data/ability_catalog.gd`: daggers, orbital, fire, chain, poison_bomb, blizzard, boomerang, slash, meteor, shard, familiar, aegis, armor…). El juego los toma solos; mientras falten, usa el icono anterior o una ficha con la inicial.
 
@@ -167,6 +167,8 @@ Mismo marco que `cuadros_habilidades_emberfall/daño_critico.png`. Lo ideal es g
 
 ### 6.2 Enemigos (5 arquetipos × 3 frames de caminata)
 
+**Dónde van:** `assets/enemigos/<arquetipo>/walk_00.png`, `walk_01.png`, `walk_02.png` (cuadros sueltos, fondo transparente, mismo tamaño y el personaje en la misma posición en los tres). Carpetas: `chaser`, `fast`, `tank`, `shooter`, `charger` y, opcional, `elite`. Si sale una tira de 3, guardala como `sheet.png` en la misma carpeta y la corto yo.
+
 > [ESTILO] Sprite sheet, 3 frames in a single row, each frame 256×256, of a **{ENEMIGO}** walking toward the camera (slight 3/4 down view). Same character in every frame, only legs/arms shift for a walk cycle. Silhouette must read clearly at 56 px. Glowing cyan rune accents.
 
 | Arquetipo | {ENEMIGO} |
@@ -181,6 +183,8 @@ Mismo marco que `cuadros_habilidades_emberfall/daño_critico.png`. Lo ideal es g
 Variantes de bioma: repetir el mismo prompt cambiando a "verdant moss and roots" (capítulo 2) o "ember cracks and ash" (capítulo 3).
 
 ### 6.3 Suelo y decorados (3 biomas)
+
+**Dónde van:** `assets/suelo/cap1_criptas.png`, `cap2_cavernas.png` y `cap3_forja.png`. Los decorados sueltos en `assets/suelo/decorados/` (`pilar.png`, `calaveras.png`, `cristal.png`, `lapida.png`, `brasero.png`, `huesos.png`, `roca.png`, `circulo_runico.png`); si sale una lámina, `decorados/lamina.png`.
 
 > [ESTILO] Seamless tileable top-down floor texture, 256×256, edges must tile perfectly on all four sides. **{BIOMA}**. Low contrast and dark (it's a background — characters must pop on top of it), subtle variation, no large landmarks.
 

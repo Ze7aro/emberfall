@@ -109,26 +109,144 @@ var _cataclysm_clock := 0.0
 ## Set by _apply_damage so callers (Guadaña del Vacío) know if the hit crit.
 var _last_hit_crit := false
 
-## STAGE-01: no per-biome background art exists yet, so a flat tint stands in
-## for "bioma" — chapter 1 (Criptas/Ruinas/Forja/Bosque) reads cold violet,
-## chapter 2 (Cavernas/Torre/Pantano/Cumbre) reads icy teal, chapter 3 (Fosa
-## de Magma/Trono, the finale) reads ember red. Swap this for real art later
-## without touching anything else — it's just one ColorRect.
+## Flat color per chapter: under the floor art, and the whole floor if a
+## chapter's tile is missing.
 const BIOME_TINTS := {
 	1: Color("17232a"),
 	2: Color("18302d"),
 	3: Color("34231d"),
 }
 
+## Infinite map: the floor is one repeating sprite that follows the player,
+## snapped to the tile so the pattern never slides. Decor is generated per
+## chunk around the player (same chunk, same decor) and dropped behind.
+## Cavernas is mirrored because its tile shows a seam at the edges.
+const FLOOR_ART := {
+	1: ["res://assets/suelo/cap1_criptas.png", false],
+	2: ["res://assets/suelo/cap2_cavernas.png", true],
+	3: ["res://assets/suelo/cap3_forja.png", false],
+}
+const FLOOR_TILE_WORLD := 420.0 # on-screen height of one tile
+const FLOOR_VIEW_HALF := Vector2(700.0, 900.0) # covers a 390x844 screen plus shake and margin
+const FLOOR_SHADE := Color(0.82, 0.82, 0.86)
+const DECOR_NAMES := ["pilar", "calaveras", "cristal", "lapida", "brasero", "huesos", "roca", "circulo_runico"]
+## A chapter without its own props borrows these neutral ones from chapter 1.
+const DECOR_FALLBACK := {2: ["roca", "cristal", "huesos", "circulo_runico"], 3: ["roca", "huesos", "calaveras", "circulo_runico"]}
+const DECOR_CHUNK := 700.0
+const DECOR_PER_CHUNK := 5
+const DECOR_SIZE := 54.0
+## Regular enemies left this far behind are moved back in front of the player.
+const ENEMY_RECYCLE_DISTANCE := 950.0
+
+var _floor_bg: ColorRect
+var _floor_sprite: Sprite2D
+var _floor_period := Vector2.ZERO
+var _decor_textures: Array[Texture2D] = []
+var _decor_chunks := {} # Vector2i -> Array[Sprite2D]
+var _chapter := 1
+
 func _build_biome_background() -> void:
-	var chapter := int(GameState.current_stage_context.get("chapter", 1))
-	var bg := ColorRect.new()
-	bg.color = BIOME_TINTS.get(chapter, Color("101a2b"))
-	bg.size = Vector2(2000, 2000)
-	bg.position = Vector2(-1000, -1000)
-	bg.z_index = -100
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	_chapter = int(GameState.current_stage_context.get("chapter", 1))
+	_floor_bg = ColorRect.new()
+	_floor_bg.color = BIOME_TINTS.get(_chapter, Color("101a2b"))
+	_floor_bg.size = FLOOR_VIEW_HALF * 2.0
+	_floor_bg.z_index = -100
+	_floor_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_floor_bg)
+	var art: Array = FLOOR_ART.get(_chapter, FLOOR_ART[1])
+	if ResourceLoader.exists(str(art[0])):
+		var tile := load(str(art[0])) as Texture2D
+		var mirrored := bool(art[1])
+		_floor_sprite = Sprite2D.new()
+		_floor_sprite.texture = tile
+		_floor_sprite.centered = false
+		_floor_sprite.texture_repeat = CanvasItem.TEXTURE_REPEAT_MIRROR if mirrored else CanvasItem.TEXTURE_REPEAT_ENABLED
+		_floor_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var k := FLOOR_TILE_WORLD / float(tile.get_height())
+		_floor_sprite.scale = Vector2(k, k)
+		# One full period of the pattern, in world units (mirroring doubles it).
+		_floor_period = tile.get_size() * k * (2.0 if mirrored else 1.0)
+		var cells := (FLOOR_VIEW_HALF * 2.0 / _floor_period).ceil() + Vector2.ONE
+		_floor_sprite.region_enabled = true
+		_floor_sprite.region_rect = Rect2(Vector2.ZERO, cells * _floor_period / k)
+		_floor_sprite.modulate = FLOOR_SHADE
+		_floor_sprite.z_index = -99
+		add_child(_floor_sprite)
+	_decor_textures = _load_decor_textures(_chapter)
+	_follow_floor(Vector2.ZERO)
+
+## Called every frame: keeps the floor under the camera and decor around it.
+func _follow_floor(center: Vector2) -> void:
+	if _floor_bg:
+		_floor_bg.position = center - FLOOR_VIEW_HALF
+	if _floor_sprite and _floor_period != Vector2.ZERO:
+		var corner := center - FLOOR_VIEW_HALF
+		_floor_sprite.position = (corner / _floor_period).floor() * _floor_period
+	_update_decor_chunks(center)
+
+func _load_decor_textures(chapter: int) -> Array[Texture2D]:
+	var found: Array[Texture2D] = []
+	for decor_name: String in DECOR_NAMES:
+		var path := "res://assets/suelo/decorados/cap%d/%s.png" % [chapter, decor_name]
+		if ResourceLoader.exists(path):
+			found.append(load(path) as Texture2D)
+	if found.is_empty():
+		for decor_name: String in DECOR_FALLBACK.get(chapter, []):
+			var path := "res://assets/suelo/decorados/cap1/%s.png" % decor_name
+			if ResourceLoader.exists(path):
+				found.append(load(path) as Texture2D)
+	return found
+
+func _update_decor_chunks(center: Vector2) -> void:
+	if _decor_textures.is_empty():
+		return
+	var here := Vector2i((center / DECOR_CHUNK).floor())
+	var wanted := {}
+	for dx in range(-1, 2):
+		for dy in range(-2, 3):
+			wanted[here + Vector2i(dx, dy)] = true
+	for chunk: Vector2i in _decor_chunks.keys():
+		if not wanted.has(chunk):
+			for sprite: Sprite2D in _decor_chunks[chunk]:
+				if is_instance_valid(sprite):
+					sprite.queue_free()
+			_decor_chunks.erase(chunk)
+	for chunk: Vector2i in wanted.keys():
+		if not _decor_chunks.has(chunk):
+			_decor_chunks[chunk] = _spawn_decor_chunk(chunk)
+
+## Same chunk always gets the same decor (seeded by chunk and chapter).
+func _spawn_decor_chunk(chunk: Vector2i) -> Array[Sprite2D]:
+	var made: Array[Sprite2D] = []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Vector3i(chunk.x, chunk.y, _chapter))
+	for i in DECOR_PER_CHUNK:
+		var at := (Vector2(chunk) + Vector2(rng.randf(), rng.randf())) * DECOR_CHUNK
+		var tex: Texture2D = _decor_textures[rng.randi() % _decor_textures.size()]
+		if at.length() < 160.0:
+			continue # keep the starting spot clear
+		var decor := Sprite2D.new()
+		decor.texture = tex
+		decor.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var k := DECOR_SIZE * rng.randf_range(0.8, 1.15) / float(maxi(tex.get_width(), tex.get_height()))
+		decor.scale = Vector2(k * (-1.0 if rng.randf() < 0.5 else 1.0), k)
+		decor.position = at
+		decor.modulate = Color(0.78, 0.78, 0.84)
+		decor.z_index = -98
+		add_child(decor)
+		made.append(decor)
+	return made
+
+## Infinite map: regular enemies the player outran reappear ahead of them
+## instead of trailing forever off-screen. Bosses, élites and the mini-boss
+## stay put (the player is meant to deal with them).
+func _recycle_far_enemies() -> void:
+	var heading: Vector2 = player.velocity.normalized() if player.velocity.length() > 10.0 else Vector2.from_angle(randf() * TAU)
+	for enemy in enemies:
+		if not is_instance_valid(enemy) or enemy.dead or enemy.is_boss or enemy.elite_tier > 0:
+			continue
+		if enemy.global_position.distance_to(player.global_position) > ENEMY_RECYCLE_DISTANCE:
+			enemy.global_position = player.global_position + heading.rotated(randf_range(-0.9, 0.9)) * 540.0
 
 func _ready() -> void:
 	GameState.change_screen("playing")
@@ -149,7 +267,6 @@ func _ready() -> void:
 	_grant_starting_power()
 	for i in 4:
 		spawn_enemy()
-	queue_redraw()
 
 ## Dim arena with a few warm lights (hero, élites, boss), so the
 ## violet/teal palette glows. Kept to a handful of lights: the Compatibility
@@ -223,7 +340,8 @@ func _physics_process(delta: float) -> void:
 		if not is_instance_valid(projectile):
 			projectiles.erase(projectile)
 	update_powers(delta)
-	queue_redraw()
+	_follow_floor(player.global_position)
+	_recycle_far_enemies()
 
 func spawn_boss() -> void:
 	boss_spawned = true
@@ -1543,18 +1661,3 @@ func _on_orb_removed(orb: EmberfallXPOrb) -> void:
 
 func _on_projectile_removed(projectile: EmberfallProjectile) -> void:
 	projectiles.erase(projectile)
-
-func _draw() -> void:
-	# A quiet arena makes projectiles and enemy silhouettes readable on a phone.
-	var chapter := int(GameState.current_stage_context.get("chapter", 1))
-	var ground: Color = BIOME_TINTS.get(chapter, BIOME_TINTS[1])
-	draw_rect(Rect2(-900, -900, 1800, 1800), ground)
-	# Barely-visible patches prevent the arena from feeling like a flat editor
-	# canvas while keeping the gameplay silhouette-first.
-	var shadow := ground.darkened(0.38)
-	shadow.a = 0.16
-	draw_set_transform(Vector2(-320, -190), 0.0, Vector2(1.8, 0.7))
-	draw_circle(Vector2.ZERO, 180.0, shadow)
-	draw_set_transform(Vector2(310, 240), 0.0, Vector2(1.4, 0.55))
-	draw_circle(Vector2.ZERO, 210.0, shadow)
-	draw_set_transform(Vector2.ZERO)
