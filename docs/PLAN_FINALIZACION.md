@@ -242,6 +242,8 @@ Con el mismo marco que 6.1: **Armadura** (pecho de armadura), **Suerte** (trébo
 
 Reemplaza al botón de personaje (que ahora vive solo dentro de la mochila). Mientras falte, el footer usa la flecha verde del kit.
 
+**Estado:** hecho con el set completo de tres estados (`tienda`, `arbol`, `casa`, `mochila`, `portal` + `_normal`, `_hover`/`_hover_seleccionado`, `_desactivado`). Los corazones del HUD usan `hud/heart_full/half/empty.png`.
+
 **Dónde va:** `assets/ui/pixel_simple_v1/navigation/upgrades.png` (mismo tamaño y estilo que `home.png`, `shop.png`, etc.).
 
 > Pixel art game UI navigation icon, 64x64, transparent background, chunky dark purple outline, same style as a set of icons (shop stall, house, backpack, purple portal). Subject: a glowing upward arrow rising out of a small rune anvil, with tiny ember sparks. Palette: dark violet base, turquoise cyan glow (#3fe0d0), small gold highlights. Centered, readable at 48px, no text, no frame.
