@@ -44,6 +44,8 @@ const EVOLUTION_ICONS := {
 	"meteor": "evo_cataclismo.png",
 	"shard": "evo_prisma_infinito.png",
 	"aegis": "evo_bastion.png",
+	"blizzard": "evo_invierno_perpetuo.png",
+	"familiar": "evo_legion_espectral.png",
 }
 
 const ACTIVES := {

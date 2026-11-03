@@ -120,22 +120,25 @@ const BIOME_TINTS := {
 ## Infinite map: the floor is one repeating sprite that follows the player,
 ## snapped to the tile so the pattern never slides. Decor is generated per
 ## chunk around the player (same chunk, same decor) and dropped behind.
-## Cavernas is mirrored because its tile shows a seam at the edges.
+## The second value mirrors the tile (only for art whose edges do not
+## match; mirroring shows as a big symmetric cross, so it is a last resort).
 const FLOOR_ART := {
 	1: ["res://assets/mundo/suelos/cap1_criptas.png", false],
-	2: ["res://assets/mundo/suelos/cap2_cavernas.png", true],
+	2: ["res://assets/mundo/suelos/cap2_cavernas.png", false],
 	3: ["res://assets/mundo/suelos/cap3_forja.png", false],
 }
 const FLOOR_TILE_WORLD := 420.0 # on-screen height of one tile
 const FLOOR_VIEW_HALF := Vector2(700.0, 900.0) # covers a 390x844 screen plus shake and margin
 const FLOOR_SHADE := Color(0.82, 0.82, 0.86)
-const DECOR_NAMES := ["pilar", "calaveras", "cristal", "lapida", "brasero", "huesos", "roca", "circulo_runico"]
-## Solid props block the player and enemies; the radius is a share of the
-## drawn size, at the base of the prop. Flat ones (bones, rune circle) are
-## walked over.
+## Decor is every PNG in assets/mundo/decorados/capN/, so variants like
+## roca_2 or roca_llameante just work. Solid props block the player and
+## enemies (matched by the start of the file name, so roca_llameante counts
+## as roca); the radius is a share of the drawn size, at the base of the
+## prop. Flat ones (huesos, circulo_runico) are walked over.
 const DECOR_SOLID := {"pilar": 0.26, "calaveras": 0.3, "cristal": 0.3, "lapida": 0.28, "brasero": 0.28, "roca": 0.36}
 ## A chapter without its own props borrows these neutral ones from chapter 1.
 const DECOR_FALLBACK := {2: ["roca", "cristal", "huesos", "circulo_runico"], 3: ["roca", "huesos", "calaveras", "circulo_runico"]}
+const DECOR_DIR := "res://assets/mundo/decorados/cap%d/"
 const DECOR_CHUNK := 700.0
 const DECOR_PER_CHUNK := 5
 const DECOR_SIZE := 54.0
@@ -190,16 +193,25 @@ func _follow_floor(center: Vector2) -> void:
 
 func _load_decor_textures(chapter: int) -> Array:
 	var found: Array = []
-	for decor_name: String in DECOR_NAMES:
-		var path := "res://assets/mundo/decorados/cap%d/%s.png" % [chapter, decor_name]
-		if ResourceLoader.exists(path):
-			found.append([decor_name, load(path)])
+	var folder := DECOR_DIR % chapter
+	if DirAccess.dir_exists_absolute(folder):
+		for file in ResourceLoader.list_directory(folder):
+			if file.get_extension().to_lower() == "png":
+				found.append([_decor_kind(file.get_basename()), load(folder + file)])
 	if found.is_empty():
 		for decor_name: String in DECOR_FALLBACK.get(chapter, []):
-			var path := "res://assets/mundo/decorados/cap1/%s.png" % decor_name
+			var path := (DECOR_DIR % 1) + decor_name + ".png"
 			if ResourceLoader.exists(path):
 				found.append([decor_name, load(path)])
 	return found
+
+## "roca_llameante" -> "roca": the solid kind a decor file belongs to, or
+## its own name when it isn't solid.
+func _decor_kind(file_stem: String) -> String:
+	for kind: String in DECOR_SOLID.keys():
+		if file_stem.begins_with(kind):
+			return kind
+	return file_stem
 
 func _update_decor_chunks(center: Vector2) -> void:
 	if _decor_textures.is_empty():
