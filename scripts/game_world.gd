@@ -1308,8 +1308,6 @@ func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 	else:
 		SfxPlayer.play("combat/enemy_death.wav")
 
-const ENEMY_TEXTURE := preload("res://assets/characters/enemy.png")
-
 ## Bosses draw their own art, so their death is a plain big ember burst.
 func _spawn_death_fx(enemy: EmberfallEnemy) -> void:
 	var fx := EmberfallDeathFx.new()
@@ -1319,8 +1317,9 @@ func _spawn_death_fx(enemy: EmberfallEnemy) -> void:
 		fx.ember = Color("2de1d0")
 	else:
 		fx.size = enemy.visual_size()
-		fx.tint = enemy.visual_tint()
-		fx.texture = ENEMY_TEXTURE
+		fx.tint = Color.WHITE if enemy.uses_own_art() else enemy.visual_tint()
+		fx.texture = enemy.death_texture()
+		fx.flip = enemy.faces_left()
 	add_child(fx)
 
 ## Past this many orbs on the field, new drops merge into the nearest orb of

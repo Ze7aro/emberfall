@@ -344,6 +344,8 @@ Ya resuelto en el código: el botón Atrás cierra ventanas, pausa la partida y 
 
 ### 8.5 Arte opcional (solo si querés reemplazar el dibujo por código)
 
+**Estado:** en uso desde `assets/vfx/`: `hacha/` (girada por código), `familiar/` (3 cuadros), `muerte/` (disolución sobre el sprite del enemigo) y `estados/` (fuego, veneno y hielo; la electrocución sigue dibujada). El resto de las láminas de VFX quedó en `assets/quitar/vfx_sin_usar/`.
+
 El resto se ve mejor dibujado por código. Estas tres piezas son objetos con forma, donde una imagen sí suma. Usar el bloque de estilo §6.0, PNG con fondo transparente, sin texto.
 
 | Pieza | Archivo | Tamaño | Prompt |

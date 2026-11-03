@@ -47,7 +47,11 @@ var _hits := 0
 var _last_hit := {} # instance_id -> _age
 
 func _ready() -> void:
-	material = EmberfallFx.additive()
+	# The axe is a solid sprite; additive blending would wash it out.
+	if not (style == Style.AXE and not EmberfallVfxArt.frames("hacha").is_empty()):
+		material = EmberfallFx.additive()
+	else:
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	if evolved:
 		color = EmberfallFx.evolved_color(color)
 		visual_scale *= 1.25
@@ -151,12 +155,23 @@ func _draw() -> void:
 		Style.AXE:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
 			var spin := _age * 15.0
-			EmberfallFx.glow(self, Vector2.ZERO, 22.0, color, 0.25)
+			var axe_frames := EmberfallVfxArt.frames("hacha")
+			if axe_frames.is_empty():
+				EmberfallFx.glow(self, Vector2.ZERO, 22.0, color, 0.25)
 			# Motion blur: two faint arcs trailing each blade.
 			for i in 2:
 				var a := spin + PI * i
 				draw_arc(Vector2.ZERO, 15.0, a - 1.6, a, 10, Color(color, 0.35), 7.0)
 				draw_arc(Vector2.ZERO, 17.0, a - 0.8, a, 6, Color(1, 1, 1, 0.35), 2.0)
+			if not axe_frames.is_empty():
+				# Sprite spun in code (smooth) rather than stepping through the
+				# 4 drawn angles; evolutions get the gold tint.
+				var axe: Texture2D = axe_frames[0]
+				var k := 42.0 / float(maxi(axe.get_width(), axe.get_height()))
+				draw_set_transform(Vector2.ZERO, spin, Vector2.ONE * visual_scale * k)
+				draw_texture(axe, -axe.get_size() * 0.5, Color(1.0, 0.88, 0.62) if evolved else Color.WHITE)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				return
 			for i in 2:
 				var dir := Vector2.RIGHT.rotated(spin + PI * i)
 				var side := dir.orthogonal()

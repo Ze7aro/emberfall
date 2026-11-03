@@ -293,6 +293,22 @@ static func walk_frames(folder: String, chapter: int) -> Array:
 	_walk_cache[key] = frames
 	return frames
 
+## What the enemy looks like right now (for the death effect).
+func death_texture() -> Texture2D:
+	var frames: Array = [] if is_boss else walk_frames(_art_folder(), int(GameState.current_stage_context.get("chapter", 1)))
+	if not frames.is_empty():
+		return frames[0]
+	if _shared_texture == null:
+		_shared_texture = load("res://assets/characters/enemy.png") as Texture2D
+	return _shared_texture
+
+func uses_own_art() -> bool:
+	return not is_boss and not walk_frames(_art_folder(), int(GameState.current_stage_context.get("chapter", 1))).is_empty()
+
+func faces_left() -> bool:
+	var facing: int = ART_FACING.get(_art_folder(), 0)
+	return facing != 0 and ((_face_left and facing > 0) or (not _face_left and facing < 0))
+
 func _art_folder() -> String:
 	return "elite" if elite_tier > 0 else str(ARCHETYPE_FOLDERS.get(archetype, "chaser"))
 
@@ -401,10 +417,17 @@ func draw_status_icons(center: Vector2) -> void:
 	if active.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0
-	var spacing := 13.0
+	var spacing := 15.0
 	var x := -spacing * (active.size() - 1) / 2.0
 	for status in active:
 		var c := center + Vector2(x, sin(t * 6.0 + x) * 1.5)
+		# Badge art for burn/poison/freeze (assets/vfx/estados); shock and any
+		# missing badge keep the small drawn glyph.
+		var badge := EmberfallVfxArt.image("estados/%s.png" % status)
+		if badge:
+			draw_texture_rect(badge, Rect2(c - Vector2(7, 7), Vector2(14, 14)), false)
+			x += spacing
+			continue
 		draw_circle(c, 6.5, Color(0.05, 0.03, 0.10, 0.75))
 		match status:
 			"burn":

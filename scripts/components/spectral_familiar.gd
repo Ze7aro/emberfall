@@ -18,6 +18,7 @@ var _clock := 0.0
 var _time := 0.0
 ## Legión Espectral: gold halo and eyes.
 var evolved := false
+const FAMILIAR_HEIGHT := 30.0
 
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing" or not is_instance_valid(player_node):
@@ -52,6 +53,18 @@ func _fire(target: EmberfallEnemy) -> void:
 ## glowing eyes. Not additive (it's a creature, not light), only its halo.
 func _draw() -> void:
 	var bob := sin(_time * 5.0) * 2.0
+	var art := EmberfallVfxArt.frames("familiar")
+	if not art.is_empty():
+		# Sprite art (assets/vfx/familiar), looping 0-1-2-1 with the bob.
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		if evolved:
+			EmberfallFx.glow(self, Vector2(0, bob - 4.0), 15.0, EmberfallFx.GOLD, 0.18)
+		var cycle := [0, 1, 2, 1]
+		var tex: Texture2D = art[mini(cycle[int(_time * 6.0) % cycle.size()], art.size() - 1)]
+		var k := FAMILIAR_HEIGHT / float(tex.get_height())
+		var drawn := tex.get_size() * k
+		draw_texture_rect(tex, Rect2(Vector2(-drawn.x / 2.0, bob + 10.0 - drawn.y), drawn), false)
+		return
 	var body := Color(0.80, 0.95, 0.92, 0.85)
 	var eye := EmberfallFx.GOLD if evolved else Color("2de1d0")
 	EmberfallFx.glow(self, Vector2(0, bob), 16.0, EmberfallFx.GOLD if evolved else Color("8ff0d0"), 0.35)
