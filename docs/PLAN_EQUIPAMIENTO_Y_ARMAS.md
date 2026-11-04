@@ -151,16 +151,25 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 
 Mientras falte el arte de las fases 2 a 8, se usan íconos provisorios: el sprite del proyectil del héroe para las armas y el ícono del casillero con el color de la rareza para los objetos.
 
-## Valores de la fase 5
-- Stat principal en nivel 1 (común / raro / épico / legendario): Daño 3/6/10/15, Vida 1/2/3/4 medios corazones, Bloqueo 2/3/5/7 %, Enfriamiento 3/5/8/10 %, Crítico 3/5/8/10 %, Velocidad 4/7/10/14 %.
-- Secundarias: Área 4/6/8/10 %, Imán 8/12/16/20 %, Oro 5/8/12/15 %, Experiencia 4/6/8/10 %, Regeneración 1/1,5/2/3 medios corazones por minuto, Vel. de proyectil 5/8/12/15 %.
-- Cada nivel suma 15 % del valor de nivel 1 (nivel 10 = x2,35).
-- Los legendarios ya traen su efecto único guardado; el efecto funciona desde la fase 8.
+## Rarezas y Forja (corrección después de la fase 6)
+- **6 rarezas:** común (gris), poco común (verde), raro (azul), épico (morado), épico+ (rosa) y legendario (dorado).
+- Cada objeto (24, 4 por casillero) existe en todas las rarezas y conserva su nombre al subir.
+- **Forja:** 3 objetos **iguales** (mismo objeto y misma rareza) se fusionan en uno de la rareza siguiente. De épico+ a legendario alcanzan 2.
+  - Se queda la copia de nivel más alto; se devuelve la Esencia gastada en las otras.
+  - Si alguna de las copias estaba equipada, el resultado queda equipado.
+  - Al subir de rareza se suben la stat principal y las secundarias a los valores de la nueva rareza, se agregan secundarias nuevas si corresponde, y al llegar a legendario se suma el efecto único.
+  - "Fusionar todo" hace todas las fusiones posibles, de la rareza más baja a la más alta.
+  - Se entra desde el botón FORJA del equipamiento o desde el detalle de un objeto (muestra cuántas copias tenés, por ejemplo 2/3).
+- **Nivel máximo por rareza:** 10 / 20 / 30 / 40 / 50 / 60. Cada nivel suma 5 % del valor de nivel 1 (nivel 60 = x3,95).
+- **Secundarias por rareza:** 0 / 1 / 2 / 2 / 3 / 3.
+- **Stat principal en nivel 1** (común → legendario): Daño 3/5/7/10/13/16, Vida 1/1/2/2/3/4 medios corazones, Bloqueo 2/3/4/5/6/7 %, Enfriamiento y Crítico 3/4/5/7/8/10 %, Velocidad 4/5/7/9/11/14 %.
+- **Secundarias:** Área 4/5/6/7/8/10 %, Imán 8/10/12/14/16/20 %, Oro 5/6/8/10/12/15 %, Experiencia 4/5/6/7/8/10 %, Regeneración 1/1,2/1,5/2/2,5/3 medios corazones por minuto, Vel. de proyectil 5/6/8/10/12/15 %.
+- **Baúles:** el común da común o poco común; el épico, raro o épico. Probabilidades: común 50, poco común 30, raro 15, épico 5. Épico+ y legendario solo salen de la Forja por ahora (la chance de legendario del baúl épico va en la fase 7).
 
 ## Valores de la fase 6
-- Mejorar del nivel N al N+1 cuesta 40 × N de oro y 4 × N de Esencia, multiplicado por la rareza: común ×1, raro ×1,5, épico ×2,5, legendario ×4. Por ejemplo, un común de 1 a 2 cuesta 40 de oro y 4 de Esencia; un legendario de 9 a 10, 1440 de oro y 144 de Esencia.
-- Desarmar da 10 / 25 / 60 / 150 de Esencia según la rareza, más la mitad de la Esencia gastada en mejorarlo. Si estaba equipado, se quita.
-- Ya no hay conversión automática de repetidos a oro: todo va a la mochila.
+- Mejorar del nivel N al N+1 cuesta 40 × N de oro y 4 × N de Esencia, multiplicado por la rareza: ×1 / ×1,25 / ×1,5 / ×2 / ×2,5 / ×3.
+- Desarmar da 10 / 20 / 40 / 80 / 150 / 300 de Esencia según la rareza, más la mitad de la Esencia gastada en mejorarlo. Si estaba equipado, se quita.
+- Ya no hay conversión automática de repetidos a oro: todo va a la mochila (los repetidos sirven para la Forja).
 - Tocar un objeto (en la mochila o equipado) abre su detalle. Para desarmar hay que tocar dos veces.
 - En la mochila, ▲ marca los objetos con más stat principal que el equipado en su casillero.
 

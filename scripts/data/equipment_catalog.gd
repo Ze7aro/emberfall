@@ -3,8 +3,9 @@ extends RefCounted
 
 ## Equipment rules (docs/PLAN_EQUIPAMIENTO_Y_ARMAS.md, part B): every item
 ## has a fixed main stat for its slot, random secondary stats by rarity and
-## a level from 1 to 10 that scales all of them. Items are plain
-## dictionaries so they save as JSON:
+## a level that scales all of them. Each item (recipe) exists in every
+## rarity: 3 identical copies fuse into the next rarity in the Forge (2 for
+## Épico+ -> Legendario). Items are plain dictionaries so they save as JSON:
 ##   {uid, id, name, equipment_type, rarity, level,
 ##    main: {stat, base}, subs: [{stat, base}], unique: ""}
 ## `base` is the value at level 1; value_at() applies the level.
@@ -15,17 +16,26 @@ const TYPE_LABELS := {
 	"amulet": "AMULETO", "ring": "ANILLO", "boots": "BOTAS",
 }
 
-const RARITIES := ["common", "rare", "epic", "legendary"]
-const RARITY_LABELS := {"common": "COMÚN", "rare": "RARO", "epic": "ÉPICO", "legendary": "LEGENDARIO"}
-const RARITY_COLORS := {
-	"common": Color("9b8eaa"), "rare": Color("6be0ff"),
-	"epic": Color("c58bff"), "legendary": Color("ffb84d"),
+const RARITIES := ["common", "uncommon", "rare", "epic", "epic_plus", "legendary"]
+const RARITY_LABELS := {
+	"common": "COMÚN", "uncommon": "POCO COMÚN", "rare": "RARO",
+	"epic": "ÉPICO", "epic_plus": "ÉPICO+", "legendary": "LEGENDARIO",
 }
-const SUB_COUNT := {"common": 0, "rare": 1, "epic": 2, "legendary": 2}
+## Grey, green, blue, purple, magenta, gold.
+const RARITY_COLORS := {
+	"common": Color("9b8eaa"), "uncommon": Color("6fd36f"), "rare": Color("6be0ff"),
+	"epic": Color("c58bff"), "epic_plus": Color("ff6fd2"), "legendary": Color("ffb84d"),
+}
+const SUB_COUNT := {"common": 0, "uncommon": 1, "rare": 2, "epic": 2, "epic_plus": 3, "legendary": 3}
+## Copies of the same item and rarity needed to fuse into the next rarity.
+const MERGE_COUNT := {"common": 3, "uncommon": 3, "rare": 3, "epic": 3, "epic_plus": 2}
 
-const MAX_LEVEL := 10
-## Each level adds this share of the level-1 value (level 10 = x2.35).
-const LEVEL_GROWTH := 0.15
+## Level cap per rarity (gris 10, verde 20, ... legendario 60).
+const MAX_LEVELS := [10, 20, 30, 40, 50, 60]
+const MAX_LEVEL := 60
+## Each level adds this share of the level-1 value (level 10 = x1.45,
+## level 60 = x3.95).
+const LEVEL_GROWTH := 0.05
 
 const MAIN_STAT := {
 	"weapon": "damage", "armor": "health", "helmet": "block",
@@ -37,22 +47,23 @@ const SUB_STATS := ["area", "magnet", "gold", "xp", "regen", "proj_speed"]
 ## percentages; damage is flat attack, health is half-hearts, regen is
 ## half-hearts per minute.
 const STATS := {
-	"damage": {"label": "Daño", "values": [3, 6, 10, 15], "pct": false},
-	"health": {"label": "Vida", "values": [1, 2, 3, 4], "pct": false},
-	"block": {"label": "Bloqueo", "values": [2, 3, 5, 7], "pct": true},
-	"cooldown": {"label": "Enfriamiento", "values": [3, 5, 8, 10], "pct": true},
-	"crit": {"label": "Crítico", "values": [3, 5, 8, 10], "pct": true},
-	"speed": {"label": "Velocidad", "values": [4, 7, 10, 14], "pct": true},
-	"area": {"label": "Área", "values": [4, 6, 8, 10], "pct": true},
-	"magnet": {"label": "Imán", "values": [8, 12, 16, 20], "pct": true},
-	"gold": {"label": "Oro", "values": [5, 8, 12, 15], "pct": true},
-	"xp": {"label": "Experiencia", "values": [4, 6, 8, 10], "pct": true},
-	"regen": {"label": "Regeneración", "values": [1, 1.5, 2, 3], "pct": false},
-	"proj_speed": {"label": "Vel. de proyectil", "values": [5, 8, 12, 15], "pct": true},
+	"damage": {"label": "Daño", "values": [3, 5, 7, 10, 13, 16], "pct": false},
+	"health": {"label": "Vida", "values": [1, 1, 2, 2, 3, 4], "pct": false},
+	"block": {"label": "Bloqueo", "values": [2, 3, 4, 5, 6, 7], "pct": true},
+	"cooldown": {"label": "Enfriamiento", "values": [3, 4, 5, 7, 8, 10], "pct": true},
+	"crit": {"label": "Crítico", "values": [3, 4, 5, 7, 8, 10], "pct": true},
+	"speed": {"label": "Velocidad", "values": [4, 5, 7, 9, 11, 14], "pct": true},
+	"area": {"label": "Área", "values": [4, 5, 6, 7, 8, 10], "pct": true},
+	"magnet": {"label": "Imán", "values": [8, 10, 12, 14, 16, 20], "pct": true},
+	"gold": {"label": "Oro", "values": [5, 6, 8, 10, 12, 15], "pct": true},
+	"xp": {"label": "Experiencia", "values": [4, 5, 6, 7, 8, 10], "pct": true},
+	"regen": {"label": "Regeneración", "values": [1, 1.2, 1.5, 2, 2.5, 3], "pct": false},
+	"proj_speed": {"label": "Vel. de proyectil", "values": [5, 6, 8, 10, 12, 15], "pct": true},
 }
 
-## One recipe per slot and rarity (ids kept from the old pool so saves map
-## straight across).
+## Four items per slot; each one can have any rarity (the "rarity" field is
+## the rarity the old pool gave it, used to convert old saves). Ids are kept
+## from the old pool so saves map straight across.
 const RECIPES := [
 	{"id": "blade_focus", "name": "FILO ENFOCADO", "equipment_type": "weapon", "rarity": "common"},
 	{"id": "sharp_claw", "name": "GARRA AFILADA", "equipment_type": "weapon", "rarity": "rare"},
@@ -83,10 +94,10 @@ const RECIPES := [
 ## Upgrade price from level L to L+1: gold and Esencia grow with the level
 ## and the rarity. Salvaging gives a base amount by rarity plus half of the
 ## Esencia spent upgrading the item.
-const RARITY_COST_MULT := [1.0, 1.5, 2.5, 4.0]
+const RARITY_COST_MULT := [1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
 const UPGRADE_GOLD := 40
 const UPGRADE_ESSENCE := 4
-const SALVAGE_ESSENCE := [10, 25, 60, 150]
+const SALVAGE_ESSENCE := [10, 20, 40, 80, 150, 300]
 
 ## Legendary effects. They are rolled and shown now; the effects
 ## themselves arrive with the sets (phase 8 of the plan).
@@ -108,6 +119,17 @@ static func recipe_for(equipment_type: String, rarity: String) -> Dictionary:
 			return entry
 	return {}
 
+static func max_level(rarity: String) -> int:
+	return int(MAX_LEVELS[rarity_index(rarity)])
+
+static func next_rarity(rarity: String) -> String:
+	var i := rarity_index(rarity)
+	return str(RARITIES[i + 1]) if i + 1 < RARITIES.size() else ""
+
+## Copies needed to fuse this rarity; 0 when it can't go higher.
+static func merge_count(rarity: String) -> int:
+	return int(MERGE_COUNT.get(rarity, 0))
+
 static func rarity_index(rarity: String) -> int:
 	return maxi(0, RARITIES.find(rarity))
 
@@ -119,11 +141,13 @@ static func value_at(base: float, level: int) -> float:
 	return base * (1.0 + LEVEL_GROWTH * float(clampi(level, 1, MAX_LEVEL) - 1))
 
 ## A fresh level-1 item from a recipe, with its secondary stats rolled.
-static func make_item(recipe_id: String, uid: String) -> Dictionary:
+## `rarity` defaults to the recipe's own.
+static func make_item(recipe_id: String, uid: String, rarity := "") -> Dictionary:
 	var entry := recipe(recipe_id)
 	if entry.is_empty():
 		return {}
-	var rarity := str(entry["rarity"])
+	if not rarity in RARITIES:
+		rarity = str(entry["rarity"])
 	var equipment_type := str(entry["equipment_type"])
 	var main_stat := str(MAIN_STAT[equipment_type])
 	var pool: Array = SUB_STATS.duplicate()
@@ -141,12 +165,42 @@ static func make_item(recipe_id: String, uid: String) -> Dictionary:
 		"subs": subs, "unique": unique,
 	}
 
-## Random recipe of one of `rarities` (any slot).
-static func random_recipe(rarities: Array) -> String:
-	var options := RECIPES.filter(func(e): return e["rarity"] in rarities)
-	if options.is_empty():
-		return str(RECIPES[0]["id"])
-	return str(options.pick_random()["id"])
+## Random recipe (any slot).
+static func random_recipe() -> String:
+	return str(RECIPES.pick_random()["id"])
+
+## `item` raised to the next rarity in place: main stat and secondary stats
+## move to the new rarity's values, new secondary stats are rolled up to the
+## new count, and a legendary gets its unique effect. The level is kept.
+static func raise_rarity(item: Dictionary) -> void:
+	var rarity := next_rarity(str(item.get("rarity", "common")))
+	if rarity == "":
+		return
+	item["rarity"] = rarity
+	var main: Dictionary = item.get("main", {})
+	if not main.is_empty():
+		main["base"] = base_value(str(main["stat"]), rarity)
+	var subs: Array = item.get("subs", [])
+	var taken: Array = []
+	for sub in subs:
+		sub["base"] = base_value(str(sub["stat"]), rarity)
+		taken.append(str(sub["stat"]))
+	var pool: Array = SUB_STATS.filter(func(stat): return not taken.has(stat))
+	pool.shuffle()
+	while subs.size() < int(SUB_COUNT.get(rarity, 0)) and not pool.is_empty():
+		var stat := str(pool.pop_back())
+		subs.append({"stat": stat, "base": base_value(stat, rarity)})
+	item["subs"] = subs
+	if rarity == "legendary" and str(item.get("unique", "")) == "":
+		item["unique"] = str(UNIQUES.keys().pick_random())
+
+## Esencia spent upgrading `item` from level 1 to its current level.
+static func essence_spent(item: Dictionary) -> int:
+	var mult: float = RARITY_COST_MULT[rarity_index(str(item.get("rarity", "common")))]
+	var spent := 0
+	for l in range(1, int(item.get("level", 1))):
+		spent += int(round(UPGRADE_ESSENCE * l * mult))
+	return spent
 
 ## True for items saved before this system (single "stat"/"value").
 static func is_legacy(item: Dictionary) -> bool:
@@ -203,7 +257,7 @@ static func main_short(item: Dictionary) -> String:
 ## {gold, essence} to raise `item` one level; empty at MAX_LEVEL.
 static func upgrade_cost(item: Dictionary) -> Dictionary:
 	var level := int(item.get("level", 1))
-	if level >= MAX_LEVEL:
+	if level >= max_level(str(item.get("rarity", "common"))):
 		return {}
 	var mult: float = RARITY_COST_MULT[rarity_index(str(item.get("rarity", "common")))]
 	return {
@@ -214,11 +268,7 @@ static func upgrade_cost(item: Dictionary) -> Dictionary:
 ## Esencia returned when salvaging `item`.
 static func salvage_value(item: Dictionary) -> int:
 	var rarity := str(item.get("rarity", "common"))
-	var mult: float = RARITY_COST_MULT[rarity_index(rarity)]
-	var spent := 0
-	for l in range(1, int(item.get("level", 1))):
-		spent += int(round(UPGRADE_ESSENCE * l * mult))
-	return int(SALVAGE_ESSENCE[rarity_index(rarity)]) + spent / 2
+	return int(SALVAGE_ESSENCE[rarity_index(rarity)]) + essence_spent(item) / 2
 
 ## Value of the item's main stat at its level (to compare items).
 static func main_value(item: Dictionary) -> float:
@@ -230,7 +280,8 @@ static func main_value(item: Dictionary) -> float:
 ## Signed difference for the compare view: "+3", "-2%", "+0.5/min".
 static func delta_text(stat: String, delta: float) -> String:
 	var info: Dictionary = STATS.get(stat, {})
-	var shown := snappedf(delta, 0.1) if stat == "regen" else roundf(delta)
+	# Small changes (one level up) keep one decimal so they don't read "+0".
+	var shown := snappedf(delta, 0.1) if stat == "regen" or absf(delta) < 1.0 else roundf(delta)
 	var number := str(int(absf(shown))) if is_equal_approx(shown, roundf(shown)) else "%.1f" % absf(shown)
 	var sign := "+" if shown >= 0.0 else "-"
 	if bool(info.get("pct", false)):

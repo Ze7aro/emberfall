@@ -8,6 +8,8 @@ const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 ## / Salvage actions. Tapping outside the card closes it.
 
 signal closed
+## Asks the screen to open the Forge with this item chosen.
+signal forge_requested(uid: String)
 
 const CARD_WIDTH := 350.0
 const UP_COLOR := Color("6fe08a")
@@ -83,7 +85,7 @@ func _rebuild() -> void:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top.add_child(info)
 	info.add_child(_label("%s · %s" % [EquipmentCatalog.RARITY_LABELS.get(rarity, rarity), EquipmentCatalog.TYPE_LABELS.get(equipment_type, equipment_type)], 14, rarity_color, true))
-	info.add_child(_label("Nivel %d/%d" % [level, EquipmentCatalog.MAX_LEVEL], 14, UiTheme.TEXT))
+	info.add_child(_label("Nivel %d/%d" % [level, EquipmentCatalog.max_level(rarity)], 14, UiTheme.TEXT))
 	if equipped:
 		info.add_child(_label("EQUIPADO", 12, UiTheme.GOLD, true))
 
@@ -157,9 +159,13 @@ func _stats_grid(item: Dictionary, other: Dictionary) -> Control:
 func _buttons(item: Dictionary, equipped: bool, cost: Dictionary) -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 8)
+	box.add_child(top_row)
 	var equip := Button.new()
 	equip.text = "QUITAR" if equipped else "EQUIPAR"
 	equip.custom_minimum_size = Vector2(0, 48)
+	equip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UiTheme.apply_primary(equip)
 	equip.pressed.connect(func():
 		if equipped:
@@ -168,7 +174,16 @@ func _buttons(item: Dictionary, equipped: bool, cost: Dictionary) -> Control:
 			GameState.equip_item(_uid)
 		_confirm_salvage = false
 		_rebuild())
-	box.add_child(equip)
+	top_row.add_child(equip)
+	var forge := Button.new()
+	var need := EquipmentCatalog.merge_count(str(item.get("rarity", "common")))
+	var copies := GameState.merge_copies(_uid).size()
+	forge.text = "FORJA · %d/%d" % [copies, need] if need > 0 else "FORJA"
+	forge.custom_minimum_size = Vector2(120, 48)
+	UiTheme.apply_secondary(forge, 6.0)
+	forge.add_theme_color_override("font_color", UiTheme.EMBER)
+	forge.pressed.connect(func(): forge_requested.emit(_uid))
+	top_row.add_child(forge)
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)

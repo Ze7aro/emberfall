@@ -110,8 +110,10 @@ const KIT := {
 	"bar_bg": ["bars/bar_track.png", 4, 4, 4, 4],
 	"bar_fill": ["bars/fill_energy.png", 2, 2, 2, 2],
 	"rarity_common": ["frames/slot.png", 6, 6, 6, 6],
+	"rarity_uncommon": ["frames/slot.png", 6, 6, 6, 6],
 	"rarity_rare": ["frames/slot.png", 6, 6, 6, 6],
 	"rarity_epic": ["frames/slot.png", 6, 6, 6, 6],
+	"rarity_epic_plus": ["frames/slot.png", 6, 6, 6, 6],
 	"rarity_legendary": ["frames/slot.png", 6, 6, 6, 6],
 	"hero_card": ["frames/panel.png", 10, 10, 10, 10],
 	"hero_card_focus": ["frames/selection.png", 6, 6, 6, 6],
@@ -156,12 +158,18 @@ static func kit(id: String, fallback: StyleBox, content: float = -1.0) -> StyleB
 	style.texture_margin_top = float(entry[2])
 	style.texture_margin_right = float(entry[3])
 	style.texture_margin_bottom = float(entry[4])
-	if id == "rarity_rare":
-		style.modulate_color = Color(0.8, 1.0, 1.12)
+	# The frame art is purple; these tints push it towards each rarity's
+	# colour (grey, green, blue, purple, magenta, gold).
+	if id == "rarity_uncommon":
+		style.modulate_color = Color(0.55, 1.35, 0.55)
+	elif id == "rarity_rare":
+		style.modulate_color = Color(0.5, 1.05, 1.5)
 	elif id == "rarity_epic":
-		style.modulate_color = Color(1.12, 0.84, 1.12)
+		style.modulate_color = Color(1.15, 0.75, 1.3)
+	elif id == "rarity_epic_plus":
+		style.modulate_color = Color(1.6, 0.55, 1.05)
 	elif id == "rarity_legendary":
-		style.modulate_color = Color(1.2, 0.95, 0.6)
+		style.modulate_color = Color(1.5, 1.1, 0.4)
 	if entry.size() > 6:
 		style.region_rect = entry[6]
 	var sides := [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]

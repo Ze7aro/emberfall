@@ -28,7 +28,7 @@ const DUNGEON_UNLOCK_STAGE := 10
 ## Six equipment slots; items, stats and rarities live in EquipmentCatalog.
 const EQUIPMENT_TYPES := EquipmentCatalog.TYPES
 const EQUIPMENT_TYPE_LABELS := EquipmentCatalog.TYPE_LABELS
-const RARITY_WEIGHTS := {"common": 60, "rare": 30, "epic": 10, "legendary": 0}
+const RARITY_WEIGHTS := {"common": 50, "uncommon": 30, "rare": 15, "epic": 5, "epic_plus": 0, "legendary": 0}
 const RARITY_LABELS := EquipmentCatalog.RARITY_LABELS
 
 const DAY_SECONDS := 86400.0
@@ -500,7 +500,7 @@ const ENERGY_OFFERS := [
 	{"id": "recarga_energia_grande", "amount": 120, "cost": -1, "usd": "1,99", "art": "BOTTLES"},
 ]
 const CHEST_TIERS := [
-	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["COMÚN", "RARO"], "art": "COMMON"},
+	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["COMÚN", "POCO COMÚN"], "art": "COMMON"},
 	{"id": "baul_epico", "title": "BAÚL ÉPICO", "cost": 400, "rarities": ["RARO", "ÉPICO"], "art": "EPIC"},
 ]
 ## One-time "GRATIS" (cost 0) offers — without this they had no claimed-once
@@ -582,9 +582,10 @@ func open_chest_with_gems(tier_index: int) -> Dictionary:
 	for key in RARITY_LABELS:
 		if tier.rarities.has(RARITY_LABELS[key]):
 			allowed.append(key)
-	var recipe_id := _roll_equipment_drop(allowed)
+	var rarity := _roll_equipment_rarity(allowed)
+	var recipe_id := EquipmentCatalog.random_recipe()
 	gems -= cost; gems_changed.emit(gems)
-	var item := EquipmentCatalog.make_item(recipe_id, _generate_item_uid(recipe_id))
+	var item := EquipmentCatalog.make_item(recipe_id, _generate_item_uid(recipe_id), rarity)
 	equipment_inventory.append(item); inventory_changed.emit(); daily_chests += 1; weekly_chests += 1; missions_changed.emit(); save()
 	return item
 
@@ -745,9 +746,8 @@ func record_run(stats: Dictionary) -> Array[String]:
 
 ## -- Equipment / chests --
 
-## A recipe id: rarity by RARITY_WEIGHTS (only among `allowed`, all when
-## empty), then any slot of that rarity.
-func _roll_equipment_drop(allowed: Array = []) -> String:
+## A rarity by RARITY_WEIGHTS (only among `allowed`, all when empty).
+func _roll_equipment_rarity(allowed: Array = []) -> String:
 	var rarities: Array = allowed if not allowed.is_empty() else RARITY_WEIGHTS.keys()
 	var total := 0
 	for r in rarities:
@@ -760,7 +760,7 @@ func _roll_equipment_drop(allowed: Array = []) -> String:
 			if roll < 0:
 				picked = str(r)
 				break
-	return EquipmentCatalog.random_recipe([picked])
+	return picked
 
 ## Time.get_ticks_msec() resets to 0 every launch, so two chests opened at
 ## roughly the same point in two different sessions could mint the exact
@@ -808,6 +808,94 @@ func upgrade_item(uid: String) -> bool:
 	SfxPlayer.play("economy/purchase_success.wav", false)
 	save()
 	return true
+
+## -- Forge: 3 identical items (same recipe and rarity) fuse into one of the
+## next rarity; 2 for Épico+ -> Legendario. The copy with the highest level
+## is kept and raised; the Esencia spent on the others is given back.
+
+## Every copy of `uid`'s item with its rarity, highest level first (the
+## equipped one first on a tie).
+func merge_copies(uid: String) -> Array:
+	var item := find_item(uid)
+	if item.is_empty():
+		return []
+	var copies: Array = equipment_inventory.filter(func(other):
+		return str(other.get("id", "")) == str(item.get("id", "")) and str(other.get("rarity", "")) == str(item.get("rarity", "")))
+	copies.sort_custom(func(a, b):
+		var la := int(a.get("level", 1))
+		var lb := int(b.get("level", 1))
+		if la != lb:
+			return la > lb
+		return _is_equipped(a) and not _is_equipped(b))
+	return copies
+
+## [kept item, materials...] for fusing `uid`'s item, or [] when there are
+## not enough copies or the rarity is already the highest.
+func merge_selection(uid: String) -> Array:
+	var copies := merge_copies(uid)
+	if copies.is_empty():
+		return []
+	var need := EquipmentCatalog.merge_count(str(copies[0].get("rarity", "")))
+	if need <= 0 or copies.size() < need:
+		return []
+	# Keep the best copy; spend the lowest-level ones.
+	return [copies[0]] + copies.slice(copies.size() - (need - 1))
+
+func _is_equipped(item: Dictionary) -> bool:
+	return str(equipped_by_type.get(str(item.get("equipment_type", "")), "")) == str(item.get("uid", ""))
+
+func _merge(selection: Array) -> Dictionary:
+	var kept: Dictionary = selection[0]
+	var equipment_type := str(kept.get("equipment_type", ""))
+	var refund := 0
+	var was_equipped := _is_equipped(kept)
+	for material in selection.slice(1):
+		refund += EquipmentCatalog.essence_spent(material)
+		was_equipped = was_equipped or _is_equipped(material)
+		equipment_inventory.erase(material)
+	EquipmentCatalog.raise_rarity(kept)
+	if was_equipped:
+		equipped_by_type[equipment_type] = str(kept.get("uid", ""))
+	essence += refund
+	return kept
+
+## Fuses `uid`'s item; returns the raised item, or {} when it can't.
+func merge_item(uid: String) -> Dictionary:
+	var selection := merge_selection(uid)
+	if selection.is_empty():
+		SfxPlayer.play("economy/purchase_failed.wav", false)
+		return {}
+	var result := _merge(selection)
+	essence_changed.emit(essence)
+	inventory_changed.emit()
+	SfxPlayer.play("economy/purchase_success.wav", false)
+	save()
+	return result
+
+## Fuses everything that can be fused, lowest rarity first (so fresh
+## results can fuse again). Returns how many fusions were made.
+func merge_all() -> int:
+	var count := 0
+	while true:
+		var selection: Array = []
+		for rarity in EquipmentCatalog.RARITIES:
+			for item in equipment_inventory:
+				if str(item.get("rarity", "")) == rarity:
+					selection = merge_selection(str(item.get("uid", "")))
+					if not selection.is_empty():
+						break
+			if not selection.is_empty():
+				break
+		if selection.is_empty():
+			break
+		_merge(selection)
+		count += 1
+	if count > 0:
+		essence_changed.emit(essence)
+		inventory_changed.emit()
+		SfxPlayer.play("economy/purchase_success.wav", false)
+		save()
+	return count
 
 ## Removes the item (unequipping it first) and returns the Esencia gained.
 func salvage_item(uid: String) -> int:

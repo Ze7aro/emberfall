@@ -43,6 +43,8 @@ var _weapon_icon: TextureRect
 var _weapon_name: Label
 var _weapon_goal: Label
 var _change_hero_button: Button
+var _forge_button: Button
+var _forge: ForgePanel
 var _basic_stats: HBoxContainer
 ## Equipment stats other than attack and health, in one short line.
 var _equip_summary: Label
@@ -106,6 +108,14 @@ func _load_type_icons() -> void:
 
 func _icon_for_type(t: String) -> Texture2D:
 	return _type_icons.get(t)
+
+## The item's own icon (assets/ui/equipment/items/<id>.png, see
+## docs/PROMPTS_EQUIPAMIENTO.md) or its slot's generic one while it's missing.
+func _icon_for_item(item: Dictionary) -> Texture2D:
+	var path := "res://assets/ui/equipment/items/%s.png" % str(item.get("id", ""))
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	return _icon_for_type(str(item.get("equipment_type", "")))
 
 ## Heroes live as CharacterData .tres resources (see CharacterCatalog for the
 ## explicit roster) so adding/rebalancing one doesn't require touching this
@@ -206,14 +216,23 @@ func _build_equipment_state() -> Control:
 	_hero_attack_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hero_wrap.add_child(_hero_attack_label)
 
+	var hero_buttons := HBoxContainer.new()
+	hero_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	hero_buttons.add_theme_constant_override("separation", 10)
+	col.add_child(hero_buttons)
 	_change_hero_button = Button.new()
 	_change_hero_button.text = "CAMBIAR HÉROE"
-	_change_hero_button.custom_minimum_size = Vector2(0, 52)
-	_change_hero_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	UiTheme.apply_primary(_change_hero_button)
-	_change_hero_button.custom_minimum_size = Vector2(230, 52)
+	_change_hero_button.custom_minimum_size = Vector2(200, 52)
 	_change_hero_button.pressed.connect(_on_change_hero_pressed)
-	col.add_child(_change_hero_button)
+	hero_buttons.add_child(_change_hero_button)
+	_forge_button = Button.new()
+	_forge_button.text = "FORJA"
+	UiTheme.apply_secondary(_forge_button)
+	_forge_button.add_theme_color_override("font_color", UiTheme.EMBER)
+	_forge_button.custom_minimum_size = Vector2(110, 52)
+	_forge_button.pressed.connect(func(): open_forge(""))
+	hero_buttons.add_child(_forge_button)
 
 	_basic_stats = HBoxContainer.new()
 	_basic_stats.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -381,8 +400,23 @@ func open_item_detail(uid: String) -> void:
 		return
 	_detail = EquipmentDetailPanel.new()
 	add_child(_detail)
-	_detail.show_item(uid, _icon_for_type(str(item.get("equipment_type", ""))))
+	_detail.show_item(uid, _icon_for_item(item))
+	_detail.forge_requested.connect(open_forge)
 	_detail.closed.connect(func():
+		_refresh_equipment_slots()
+		_refresh_inventory()
+		_refresh_basic_stats())
+
+## The Forge, optionally with `uid`'s item already chosen.
+func open_forge(uid: String) -> void:
+	if is_instance_valid(_detail):
+		_detail.queue_free()
+	if is_instance_valid(_forge):
+		_forge.queue_free()
+	_forge = ForgePanel.new(_icon_for_item)
+	_forge.select(uid)
+	add_child(_forge)
+	_forge.closed.connect(func():
 		_refresh_equipment_slots()
 		_refresh_inventory()
 		_refresh_basic_stats())
@@ -427,7 +461,7 @@ func _refresh_equipment_slots() -> void:
 		if item.is_empty():
 			slot.set_empty()
 		else:
-			slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), true, false, int(item.get("level", 1)))
+			slot.set_item(_icon_for_item(item), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), true, false, int(item.get("level", 1)))
 
 ## Backpack always shows a full grid of square slots, not just the ones
 ## holding an item — an empty inventory otherwise reads as a blank panel
@@ -453,7 +487,7 @@ func _build_inventory_slot(item: Dictionary) -> Control:
 	var t := str(item.get("equipment_type", ""))
 	var equipped := str(GameState.equipped_by_type.get(t, "")) == uid
 	var slot := EquipmentSlot.new()
-	slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), equipped, _is_upgrade_over_equipped(item), int(item.get("level", 1)))
+	slot.set_item(_icon_for_item(item), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), equipped, _is_upgrade_over_equipped(item), int(item.get("level", 1)))
 	slot.pressed.connect(_on_inventory_item_pressed.bind(uid))
 	return slot
 
@@ -862,6 +896,7 @@ func _enter_selection_mode() -> void:
 	tween.tween_property(_inventory_panel, "position:y", 60.0, TRANSITION_TIME)
 	tween.tween_property(_inventory_panel, "modulate:a", 0.0, TRANSITION_TIME)
 	tween.tween_property(_change_hero_button, "modulate:a", 0.0, 0.2)
+	tween.tween_property(_forge_button, "modulate:a", 0.0, 0.2)
 	tween.tween_property(_basic_stats, "modulate:a", 0.0, 0.2)
 	tween.tween_property(_hero_attack_label, "modulate:a", 0.0, 0.2)
 	tween.set_parallel(false)
@@ -902,6 +937,7 @@ func _exit_selection_mode(hero_changed: bool) -> void:
 	tween.tween_property(_inventory_panel, "position:y", 0.0, TRANSITION_TIME)
 	tween.tween_property(_inventory_panel, "modulate:a", 1.0, TRANSITION_TIME)
 	tween.tween_property(_change_hero_button, "modulate:a", 1.0, 0.2)
+	tween.tween_property(_forge_button, "modulate:a", 1.0, 0.2)
 	tween.tween_property(_basic_stats, "modulate:a", 1.0, 0.2)
 	tween.tween_property(_hero_attack_label, "modulate:a", 1.0, 0.2)
 	tween.set_parallel(false)
@@ -912,5 +948,6 @@ func _reset_equipment_transform() -> void:
 	_right_slots.position.x = 0.0; _right_slots.modulate.a = 1.0
 	_inventory_panel.position.y = 0.0; _inventory_panel.modulate.a = 1.0
 	_change_hero_button.modulate.a = 1.0
+	_forge_button.modulate.a = 1.0
 	_basic_stats.modulate.a = 1.0
 	_hero_attack_label.modulate.a = 1.0
