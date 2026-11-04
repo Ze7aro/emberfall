@@ -46,8 +46,17 @@ var _change_hero_button: Button
 var _basic_stats: HBoxContainer
 ## Equipment stats other than attack and health, in one short line.
 var _equip_summary: Label
+var _summary_toggle: Button
+static var _summary_open := false
 var _inventory_panel: Control
 var _inventory_grid: GridContainer
+var _essence_label: Label
+var _sort_button: Button
+var _detail: EquipmentDetailPanel
+## Backpack order; kept while the game is open.
+const SORT_MODES := ["rarity", "type", "level"]
+const SORT_LABELS := {"rarity": "RAREZA", "type": "CASILLERO", "level": "NIVEL"}
+static var _sort_mode := "rarity"
 var _carousel_area: Control
 var _carousel_indicators: HBoxContainer
 var _selected_hero_name: Label
@@ -73,6 +82,7 @@ func _ready() -> void:
 
 	GameState.gold_changed.connect(func(_v): _refresh_basic_stats(); _refresh_inventory())
 	GameState.gems_changed.connect(func(_v): _refresh_inventory())
+	GameState.essence_changed.connect(func(_v): _refresh_inventory())
 	GameState.inventory_changed.connect(func(): _refresh_equipment_slots(); _refresh_inventory())
 	GameState.progress_changed.connect(_refresh_cards)
 
@@ -221,6 +231,17 @@ func _build_equipment_state() -> Control:
 	_equip_summary.add_theme_font_size_override("font_size", 12)
 	_equip_summary.add_theme_color_override("font_color", UiTheme.ACCENT)
 	stats_box.add_child(_equip_summary)
+	_summary_toggle = Button.new()
+	_summary_toggle.flat = true
+	_summary_toggle.focus_mode = Control.FOCUS_NONE
+	_summary_toggle.custom_minimum_size = Vector2(0, 22)
+	_summary_toggle.add_theme_font_size_override("font_size", 11)
+	_summary_toggle.add_theme_color_override("font_color", UiTheme.ACCENT)
+	_summary_toggle.add_theme_color_override("font_hover_color", UiTheme.TEXT)
+	_summary_toggle.pressed.connect(func():
+		_summary_open = not _summary_open
+		_refresh_basic_stats())
+	stats_box.add_child(_summary_toggle)
 	stats_panel.add_child(stats_box)
 	col.add_child(stats_panel)
 
@@ -301,14 +322,32 @@ func _build_hero_preview() -> Control:
 func _build_inventory_panel() -> Control:
 	var panel := VBoxContainer.new()
 	panel.add_theme_constant_override("separation", 6)
+	# Header: sort button, title and the Esencia the player has.
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	panel.add_child(header)
+	_sort_button = Button.new()
+	_sort_button.custom_minimum_size = Vector2(104, 30)
+	_sort_button.add_theme_font_size_override("font_size", 11)
+	UiTheme.apply_secondary(_sort_button, 6.0)
+	_sort_button.pressed.connect(_on_sort_pressed)
+	header.add_child(_sort_button)
 	var title := Label.new()
 	title.text = "MOCHILA"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_font_size_override("font_size", 16)
 	title.add_theme_color_override("font_color", UiTheme.ACCENT)
-	panel.add_child(title)
+	header.add_child(title)
+	_essence_label = Label.new()
+	_essence_label.custom_minimum_size = Vector2(104, 0)
+	_essence_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_essence_label.add_theme_font_override("font", UiTheme.bold_font())
+	_essence_label.add_theme_font_size_override("font_size", 12)
+	_essence_label.add_theme_color_override("font_color", EquipmentCatalog.RARITY_COLORS["epic"])
+	header.add_child(_essence_label)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 220)
+	scroll.custom_minimum_size = Vector2(0, 214)
 	panel.add_child(scroll)
 	_inventory_grid = GridContainer.new()
 	_inventory_grid.columns = 4
@@ -324,18 +363,60 @@ func _build_inventory_panel() -> Control:
 
 func _on_equipment_slot_pressed(equipment_type: String) -> void:
 	equipment_slot_pressed.emit(equipment_type)
-	if not GameState.get_equipped_item_for_type(equipment_type).is_empty():
-		GameState.unequip_type(equipment_type)
-		_refresh_equipment_slots()
-		_refresh_basic_stats()
+	var item := GameState.get_equipped_item_for_type(equipment_type)
+	if not item.is_empty():
+		open_item_detail(str(item.get("uid", "")))
 
 func _on_inventory_item_pressed(uid: String) -> void:
 	inventory_item_pressed.emit(uid)
-	equip_item_requested.emit(uid)
-	GameState.equip_item(uid)
-	_refresh_equipment_slots()
+	open_item_detail(uid)
+
+## Detail card with compare, equip, upgrade and salvage (see
+## EquipmentDetailPanel). Changes reach this screen via inventory_changed.
+func open_item_detail(uid: String) -> void:
+	if is_instance_valid(_detail):
+		_detail.queue_free()
+	var item := GameState.find_item(uid)
+	if item.is_empty():
+		return
+	_detail = EquipmentDetailPanel.new()
+	add_child(_detail)
+	_detail.show_item(uid, _icon_for_type(str(item.get("equipment_type", ""))))
+	_detail.closed.connect(func():
+		_refresh_equipment_slots()
+		_refresh_inventory()
+		_refresh_basic_stats())
+
+func _on_sort_pressed() -> void:
+	_sort_mode = SORT_MODES[(SORT_MODES.find(_sort_mode) + 1) % SORT_MODES.size()]
 	_refresh_inventory()
-	_refresh_basic_stats()
+
+func _sorted_inventory() -> Array:
+	var items: Array = GameState.equipment_inventory.duplicate()
+	var key := func(item: Dictionary) -> Array:
+		var rarity := EquipmentCatalog.rarity_index(str(item.get("rarity", "common")))
+		var slot := GameState.EQUIPMENT_TYPES.find(str(item.get("equipment_type", "")))
+		var level := int(item.get("level", 1))
+		match _sort_mode:
+			"type": return [slot, -rarity, -level]
+			"level": return [-level, -rarity, slot]
+		return [-rarity, slot, -level]
+	items.sort_custom(func(a, b):
+		var ka: Array = key.call(a)
+		var kb: Array = key.call(b)
+		for i in ka.size():
+			if ka[i] != kb[i]:
+				return ka[i] < kb[i]
+		return str(a.get("uid", "")) < str(b.get("uid", "")))
+	return items
+
+## True when `item` would raise the main stat of its slot.
+func _is_upgrade_over_equipped(item: Dictionary) -> bool:
+	var equipment_type := str(item.get("equipment_type", ""))
+	var current := GameState.get_equipped_item_for_type(equipment_type)
+	if str(current.get("uid", "")) == str(item.get("uid", "")):
+		return false
+	return current.is_empty() or EquipmentCatalog.main_value(item) > EquipmentCatalog.main_value(current) + 0.01
 
 func _refresh_equipment_slots() -> void:
 	for t in GameState.EQUIPMENT_TYPES:
@@ -354,9 +435,11 @@ func _refresh_equipment_slots() -> void:
 const INVENTORY_MIN_SLOTS := 12
 
 func _refresh_inventory() -> void:
+	_sort_button.text = "ORDEN: %s" % SORT_LABELS[_sort_mode]
+	_essence_label.text = "ESENCIA %d" % GameState.essence
 	for child in _inventory_grid.get_children():
 		child.queue_free()
-	for item in GameState.equipment_inventory:
+	for item in _sorted_inventory():
 		_inventory_grid.add_child(_build_inventory_slot(item))
 	var slot_count := maxi(INVENTORY_MIN_SLOTS, GameState.equipment_inventory.size())
 	var remainder := slot_count % _inventory_grid.columns
@@ -370,7 +453,7 @@ func _build_inventory_slot(item: Dictionary) -> Control:
 	var t := str(item.get("equipment_type", ""))
 	var equipped := str(GameState.equipped_by_type.get(t, "")) == uid
 	var slot := EquipmentSlot.new()
-	slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), equipped, false, int(item.get("level", 1)))
+	slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), equipped, _is_upgrade_over_equipped(item), int(item.get("level", 1)))
 	slot.pressed.connect(_on_inventory_item_pressed.bind(uid))
 	return slot
 
@@ -407,7 +490,9 @@ func _refresh_basic_stats() -> void:
 			continue
 		parts.append(EquipmentCatalog.stat_text(stat, float(totals[stat])))
 	_equip_summary.text = "  ·  ".join(parts)
-	_equip_summary.visible = not parts.is_empty()
+	_equip_summary.visible = _summary_open and not parts.is_empty()
+	_summary_toggle.visible = not parts.is_empty()
+	_summary_toggle.text = ("Ocultar stats del equipo ▲" if _summary_open else "Ver stats del equipo (%d) ▼" % parts.size())
 
 func _stat_icon_row(icon: Control, label_text: String, value: String) -> Control:
 	var row := HBoxContainer.new()

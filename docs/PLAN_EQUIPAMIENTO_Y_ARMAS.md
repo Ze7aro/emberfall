@@ -127,7 +127,7 @@ Lo que se encuentra en la partida se guarda al terminar, aunque pierdas, y se mu
   - Nivel en la esquina.
   - Ordenar por rareza, casillero o nivel.
 - **Equipamiento:** stats totales del héroe y bonus de set activos.
-- **HUD superior:** contador de Esencia junto al oro y las gemas.
+- **Esencia:** el contador va en el encabezado de la mochila, porque el HUD superior no tiene lugar para un cuarto recurso.
 
 ### Guardado
 Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 1 y con su rareza.
@@ -143,7 +143,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 | 3 | ✅ Armas de otros héroes en el pool y desbloqueo | Desafío con progreso, aviso al desbloquear y el arma apareciendo con otro héroe |
 | 4 | ✅ Pantallas de armas | Selección de héroe con el arma y su desafío, Códex de armas |
 | 5 | ✅ Equipamiento: datos nuevos | Stats nuevas aplicadas en partida, rareza legendaria y guardado convertido |
-| 6 | Equipamiento: detalle, mejorar y desarmar | Subir un objeto con oro y Esencia, desarmar y comparar |
+| 6 | ✅ Equipamiento: detalle, mejorar y desarmar | Subir un objeto con oro y Esencia, desarmar y comparar |
 | 7 | Fuentes de equipamiento | Drops de élites y jefes, misiones, mazmorras y baúles nuevos |
 | 8 | Sets y legendarios | Bonus de 2 y 4 piezas y efectos únicos funcionando |
 | 9 | Evoluciones de armas | 14 evoluciones doradas |
@@ -157,7 +157,13 @@ Mientras falte el arte de las fases 2 a 8, se usan íconos provisorios: el sprit
 - Cada nivel suma 15 % del valor de nivel 1 (nivel 10 = x2,35).
 - Los legendarios ya traen su efecto único guardado; el efecto funciona desde la fase 8.
 
+## Valores de la fase 6
+- Mejorar del nivel N al N+1 cuesta 40 × N de oro y 4 × N de Esencia, multiplicado por la rareza: común ×1, raro ×1,5, épico ×2,5, legendario ×4. Por ejemplo, un común de 1 a 2 cuesta 40 de oro y 4 de Esencia; un legendario de 9 a 10, 1440 de oro y 144 de Esencia.
+- Desarmar da 10 / 25 / 60 / 150 de Esencia según la rareza, más la mitad de la Esencia gastada en mejorarlo. Si estaba equipado, se quita.
+- Ya no hay conversión automática de repetidos a oro: todo va a la mochila.
+- Tocar un objeto (en la mochila o equipado) abre su detalle. Para desarmar hay que tocar dos veces.
+- En la mochila, ▲ marca los objetos con más stat principal que el equipado en su casillero.
+
 ## A definir más adelante
 - Desafíos y números finales (los de la tabla son una propuesta).
 - Nombres y efectos de los 3 sets y de los legendarios.
-- Precio en oro y Esencia de cada nivel de objeto.

@@ -4,6 +4,7 @@ signal screen_changed(screen: String)
 signal energy_changed(value: int)
 signal gold_changed(value: int)
 signal gems_changed(value: int)
+signal essence_changed(value: int)
 signal run_finished(victory: bool)
 signal level_changed(value: int)
 signal experience_changed(current: int, needed: int)
@@ -56,6 +57,8 @@ var energy := MAX_ENERGY
 var energy_timestamp := Time.get_unix_time_from_system()
 var gold := 0
 var gems := 0
+## Material for upgrading equipment (from salvaging items).
+var essence := 0
 var high_score := 0
 var permanent_damage := 0
 var permanent_health := 0
@@ -742,8 +745,6 @@ func record_run(stats: Dictionary) -> Array[String]:
 
 ## -- Equipment / chests --
 
-const CHEST_COST := 150
-
 ## A recipe id: rarity by RARITY_WEIGHTS (only among `allowed`, all when
 ## empty), then any slot of that rarity.
 func _roll_equipment_drop(allowed: Array = []) -> String:
@@ -768,41 +769,62 @@ func _generate_item_uid(base_id: String) -> String:
 	_next_item_uid += 1
 	return "%s_%d" % [base_id, _next_item_uid]
 
-## ECON-02: a duplicate recipe would otherwise just sit in the backpack as
-## dead weight (only one item per equipment_type can ever be equipped at
-## once). Converting it to gold instead means every chest is worth opening,
-## never a wasted pull.
-const DUPLICATE_REFUND_GOLD := {"common": 15, "rare": 35, "epic": 70, "legendary": 150}
+## Upgrading an item costs gold and Esencia (EquipmentCatalog.upgrade_cost);
+## salvaging one gives Esencia back. Salvaging replaces the old automatic
+## gold refund for duplicates: every drop goes to the backpack and the player
+## decides what to keep.
+func find_item(uid: String) -> Dictionary:
+	for item in equipment_inventory:
+		if str(item.get("uid", "")) == uid:
+			return item
+	return {}
 
-func _owns_equipment_recipe(recipe_id: String) -> bool:
-	for existing in equipment_inventory:
-		if str(existing.get("id", "")) == recipe_id:
-			return true
-	return false
+func add_essence(amount: int) -> void:
+	if amount <= 0:
+		return
+	essence += amount
+	essence_changed.emit(essence)
+	_save_dirty = true
 
-func open_chest() -> Dictionary:
-	if gold < CHEST_COST:
+func can_upgrade_item(uid: String) -> bool:
+	var item := find_item(uid)
+	if item.is_empty():
+		return false
+	var cost := EquipmentCatalog.upgrade_cost(item)
+	return not cost.is_empty() and gold >= int(cost["gold"]) and essence >= int(cost["essence"])
+
+func upgrade_item(uid: String) -> bool:
+	if not can_upgrade_item(uid):
 		SfxPlayer.play("economy/purchase_failed.wav", false)
-		return {}
-	gold -= CHEST_COST
+		return false
+	var item := find_item(uid)
+	var cost := EquipmentCatalog.upgrade_cost(item)
+	gold -= int(cost["gold"])
+	essence -= int(cost["essence"])
+	item["level"] = int(item.get("level", 1)) + 1
 	gold_changed.emit(gold)
-	var recipe_id := _roll_equipment_drop()
-	var item: Dictionary = EquipmentCatalog.recipe(recipe_id).duplicate()
-	if _owns_equipment_recipe(recipe_id):
-		var refund := int(DUPLICATE_REFUND_GOLD.get(str(item.get("rarity", "common")), 15))
-		gold += refund
-		gold_changed.emit(gold)
-		item["duplicate_refund"] = refund
-	else:
-		item = EquipmentCatalog.make_item(recipe_id, _generate_item_uid(recipe_id))
-		equipment_inventory.append(item)
-		inventory_changed.emit()
-	daily_chests += 1
-	weekly_chests += 1
-	missions_changed.emit()
-	SfxPlayer.play("economy/chest_open.wav", false)
+	essence_changed.emit(essence)
+	inventory_changed.emit()
+	SfxPlayer.play("economy/purchase_success.wav", false)
 	save()
-	return item
+	return true
+
+## Removes the item (unequipping it first) and returns the Esencia gained.
+func salvage_item(uid: String) -> int:
+	var item := find_item(uid)
+	if item.is_empty():
+		return 0
+	var gained := EquipmentCatalog.salvage_value(item)
+	var equipment_type := str(item.get("equipment_type", ""))
+	if str(equipped_by_type.get(equipment_type, "")) == uid:
+		equipped_by_type[equipment_type] = ""
+	equipment_inventory.erase(item)
+	essence += gained
+	essence_changed.emit(essence)
+	inventory_changed.emit()
+	SfxPlayer.play_ui("economy/item_equip.wav")
+	save()
+	return gained
 
 ## Each equipment type (weapon/armor/helmet/amulet/ring/boots) has its own
 ## slot; equipping an item replaces whatever was in that type's slot before.
@@ -1001,7 +1023,7 @@ func save() -> void:
 	data.merge({
 		"save_version": SAVE_FORMAT_VERSION,
 		"energy": energy, "energy_timestamp": energy_timestamp, "gold": gold, "high_score": high_score,
-		"damage": permanent_damage, "health": permanent_health, "speed": permanent_speed, "gems": gems,
+		"damage": permanent_damage, "health": permanent_health, "speed": permanent_speed, "gems": gems, "essence": essence,
 		"permanent_upgrades": permanent_upgrades, "run_stats": run_stats, "unlocked_abilities": unlocked_abilities,
 		"hero_stats": hero_stats, "unlocked_weapons": unlocked_weapons,
 		"discovered_abilities": discovered_abilities, "discovered_evolutions": discovered_evolutions, "bestiary": bestiary,
@@ -1064,6 +1086,7 @@ func load_save() -> void:
 	energy_timestamp = _safe_float(data.get("energy_timestamp"), Time.get_unix_time_from_system())
 	gold = maxi(0, _safe_int(data.get("gold"), 0))
 	gems = maxi(0, _safe_int(data.get("gems"), 0))
+	essence = maxi(0, _safe_int(data.get("essence"), 0))
 	high_score = maxi(0, _safe_int(data.get("high_score"), 0))
 	permanent_damage = clampi(_safe_int(data.get("damage"), 0), 0, 10)
 	permanent_health = clampi(_safe_int(data.get("health"), 0), 0, 10)

@@ -80,6 +80,14 @@ const RECIPES := [
 	{"id": "comet_stride", "name": "PASOS DEL COMETA", "equipment_type": "boots", "rarity": "legendary"},
 ]
 
+## Upgrade price from level L to L+1: gold and Esencia grow with the level
+## and the rarity. Salvaging gives a base amount by rarity plus half of the
+## Esencia spent upgrading the item.
+const RARITY_COST_MULT := [1.0, 1.5, 2.5, 4.0]
+const UPGRADE_GOLD := 40
+const UPGRADE_ESSENCE := 4
+const SALVAGE_ESSENCE := [10, 25, 60, 150]
+
 ## Legendary effects. They are rolled and shown now; the effects
 ## themselves arrive with the sets (phase 8 of the plan).
 const UNIQUES := {
@@ -167,16 +175,21 @@ static func item_stats(item: Dictionary) -> Dictionary:
 
 ## "+12% Crítico", "+3 Vida".
 static func stat_text(stat: String, value: float) -> String:
-	var info: Dictionary = STATS.get(stat, {})
-	var label := str(info.get("label", stat))
-	# Whole numbers read better; only regen keeps one decimal.
+	var label := stat_label(stat)
+	if stat == "regen":
+		return "%s %s/min" % [value_text(stat, value), label]
+	return "%s %s" % [value_text(stat, value), label]
+
+static func stat_label(stat: String) -> String:
+	return str(STATS.get(stat, {}).get("label", stat))
+
+## Just the number: "+12%", "+3", "+1.5" (regen keeps one decimal).
+static func value_text(stat: String, value: float) -> String:
 	var shown := snappedf(value, 0.1) if stat == "regen" else roundf(value)
 	var number := str(int(shown)) if is_equal_approx(shown, roundf(shown)) else "%.1f" % shown
-	if bool(info.get("pct", false)):
-		return "+%s%% %s" % [number, label]
-	if stat == "regen":
-		return "+%s %s/min" % [number, label]
-	return "+%s %s" % [number, label]
+	if bool(STATS.get(stat, {}).get("pct", false)):
+		return "+%s%%" % number
+	return "+" + number
 
 ## Short value for a slot tile: the main stat at its level.
 static func main_short(item: Dictionary) -> String:
@@ -186,3 +199,40 @@ static func main_short(item: Dictionary) -> String:
 	var value := value_at(float(main["base"]), int(item.get("level", 1)))
 	var shown := int(round(value))
 	return ("+%d%%" if bool(STATS.get(str(main["stat"]), {}).get("pct", false)) else "+%d") % shown
+
+## {gold, essence} to raise `item` one level; empty at MAX_LEVEL.
+static func upgrade_cost(item: Dictionary) -> Dictionary:
+	var level := int(item.get("level", 1))
+	if level >= MAX_LEVEL:
+		return {}
+	var mult: float = RARITY_COST_MULT[rarity_index(str(item.get("rarity", "common")))]
+	return {
+		"gold": int(round(UPGRADE_GOLD * level * mult)),
+		"essence": int(round(UPGRADE_ESSENCE * level * mult)),
+	}
+
+## Esencia returned when salvaging `item`.
+static func salvage_value(item: Dictionary) -> int:
+	var rarity := str(item.get("rarity", "common"))
+	var mult: float = RARITY_COST_MULT[rarity_index(rarity)]
+	var spent := 0
+	for l in range(1, int(item.get("level", 1))):
+		spent += int(round(UPGRADE_ESSENCE * l * mult))
+	return int(SALVAGE_ESSENCE[rarity_index(rarity)]) + spent / 2
+
+## Value of the item's main stat at its level (to compare items).
+static func main_value(item: Dictionary) -> float:
+	var main: Dictionary = item.get("main", {})
+	if main.is_empty():
+		return 0.0
+	return value_at(float(main["base"]), int(item.get("level", 1)))
+
+## Signed difference for the compare view: "+3", "-2%", "+0.5/min".
+static func delta_text(stat: String, delta: float) -> String:
+	var info: Dictionary = STATS.get(stat, {})
+	var shown := snappedf(delta, 0.1) if stat == "regen" else roundf(delta)
+	var number := str(int(absf(shown))) if is_equal_approx(shown, roundf(shown)) else "%.1f" % absf(shown)
+	var sign := "+" if shown >= 0.0 else "-"
+	if bool(info.get("pct", false)):
+		return "%s%s%%" % [sign, number]
+	return sign + number
