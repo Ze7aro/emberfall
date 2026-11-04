@@ -63,6 +63,9 @@ func _ready() -> void:
 		box.add_child(_label(stage_name, 13, UiTheme.PURPLE))
 	box.add_child(_stats_row(summary))
 	box.add_child(_label(_rewards_text(summary, rewards), 14, GOLD))
+	var loot: Array = (summary.get("loot", []) as Array) + (rewards.get("items", []) as Array)
+	if not loot.is_empty():
+		box.add_child(_loot_row(loot))
 	var unlocked: Array = summary.get("unlocked", [])
 	if not unlocked.is_empty():
 		var names := PackedStringArray()
@@ -118,8 +121,29 @@ func _rewards_text(summary: Dictionary, rewards: Dictionary) -> String:
 	var parts := PackedStringArray(["+%d ORO" % gold])
 	if int(rewards.get("gems", 0)) > 0:
 		parts.append("+%d GEMAS" % int(rewards.get("gems", 0)))
+	if int(rewards.get("essence", 0)) > 0:
+		parts.append("+%d ESENCIA" % int(rewards.get("essence", 0)))
 	parts.append("+%d EXP" % int(rewards.get("xp", 0)))
 	return "  ·  ".join(parts)
+
+## Equipment found this run (kept even after a defeat), best first.
+func _loot_row(loot: Array) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	box.add_child(_label("BOTÍN", 13, UiTheme.TEXT_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	var items := loot.duplicate()
+	items.sort_custom(func(a, b): return EquipmentCatalog.rarity_index(str(a.get("rarity", ""))) > EquipmentCatalog.rarity_index(str(b.get("rarity", ""))))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	box.add_child(row)
+	for item in items:
+		var slot := EquipmentSlot.new()
+		slot.custom_minimum_size = Vector2(52, 52)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.set_item(EquipmentCatalog.icon(item), str(item.get("rarity", "common")), "", false, false, 0)
+		row.add_child(slot)
+	return box
 
 func _ranking(summary: Dictionary) -> Control:
 	var box := VBoxContainer.new()

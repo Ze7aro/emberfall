@@ -28,7 +28,6 @@ const DUNGEON_UNLOCK_STAGE := 10
 ## Six equipment slots; items, stats and rarities live in EquipmentCatalog.
 const EQUIPMENT_TYPES := EquipmentCatalog.TYPES
 const EQUIPMENT_TYPE_LABELS := EquipmentCatalog.TYPE_LABELS
-const RARITY_WEIGHTS := {"common": 50, "uncommon": 30, "rare": 15, "epic": 5, "epic_plus": 0, "legendary": 0}
 const RARITY_LABELS := EquipmentCatalog.RARITY_LABELS
 
 const DAY_SECONDS := 86400.0
@@ -280,7 +279,7 @@ func finish_run(victory: bool, kills: int) -> void:
 	daily_kills += kills
 	weekly_kills += kills
 	var context := current_stage_context
-	last_run_rewards = {"gold": 0, "gems": 0, "xp": 0, "first_clear": false}
+	last_run_rewards = {"gold": 0, "gems": 0, "xp": 0, "first_clear": false, "essence": 0, "items": []}
 	if victory:
 		var bonus_gold := int(context.get("gold_reward", 20 + kills / 2))
 		var bonus_gems := int(context.get("gems_reward", 0))
@@ -289,11 +288,21 @@ func finish_run(victory: bool, kills: int) -> void:
 		# this one-time bonus, so replaying stays worthwhile without making
 		# grinding a specific stage the best strategy.
 		var clear_key := "%s_%s" % [str(context.get("type", "stage")), str(context.get("index", 0))]
+		var is_dungeon := str(context.get("type", "stage")) == "dungeon"
 		if not first_clears.has(clear_key):
 			first_clears.append(clear_key)
 			bonus_gold += FIRST_CLEAR_BONUS_GOLD
 			bonus_gems += FIRST_CLEAR_BONUS_GEMS
 			last_run_rewards["first_clear"] = true
+			# First clear of a dungeon: an epic item or better.
+			if is_dungeon:
+				var drop := roll_loot("dungeon_first")
+				last_run_rewards["items"] = [_grant_item(str(drop["rarity"]), str(drop["id"]))]
+				inventory_changed.emit()
+		elif is_dungeon:
+			var gained := DUNGEON_REPEAT_ESSENCE + DUNGEON_REPEAT_ESSENCE_STEP * int(context.get("index", 1))
+			last_run_rewards["essence"] = gained
+			add_essence(gained)
 		last_run_rewards["gold"] = bonus_gold
 		last_run_rewards["gems"] = bonus_gems
 		gold += bonus_gold
@@ -500,8 +509,10 @@ const ENERGY_OFFERS := [
 	{"id": "recarga_energia_grande", "amount": 120, "cost": -1, "usd": "1,99", "art": "BOTTLES"},
 ]
 const CHEST_TIERS := [
-	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["COMÚN", "POCO COMÚN"], "art": "COMMON"},
-	{"id": "baul_epico", "title": "BAÚL ÉPICO", "cost": 400, "rarities": ["RARO", "ÉPICO"], "art": "EPIC"},
+	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["COMÚN", "POCO COMÚN"], "art": "COMMON",
+		"weights": {"common": 65, "uncommon": 35}},
+	{"id": "baul_epico", "title": "BAÚL ÉPICO", "cost": 400, "rarities": ["RARO", "ÉPICO", "LEGENDARIO 3%"], "art": "EPIC",
+		"weights": {"rare": 70, "epic": 27, "legendary": 3}},
 ]
 ## One-time "GRATIS" (cost 0) offers — without this they had no claimed-once
 ## guard, so the free-coins/free-energy buttons could be tapped indefinitely
@@ -578,15 +589,9 @@ func open_chest_with_gems(tier_index: int) -> Dictionary:
 	var cost := int(tier.cost)
 	if gems < cost:
 		return {}
-	var allowed: Array = []
-	for key in RARITY_LABELS:
-		if tier.rarities.has(RARITY_LABELS[key]):
-			allowed.append(key)
-	var rarity := _roll_equipment_rarity(allowed)
-	var recipe_id := EquipmentCatalog.random_recipe()
 	gems -= cost; gems_changed.emit(gems)
-	var item := EquipmentCatalog.make_item(recipe_id, _generate_item_uid(recipe_id), rarity)
-	equipment_inventory.append(item); inventory_changed.emit(); daily_chests += 1; weekly_chests += 1; missions_changed.emit(); save()
+	var item := _grant_item(_roll_rarity(tier.weights))
+	inventory_changed.emit(); daily_chests += 1; weekly_chests += 1; missions_changed.emit(); save()
 	return item
 
 func buy_upgrade(kind: String) -> bool:
@@ -746,21 +751,56 @@ func record_run(stats: Dictionary) -> Array[String]:
 
 ## -- Equipment / chests --
 
-## A rarity by RARITY_WEIGHTS (only among `allowed`, all when empty).
-func _roll_equipment_rarity(allowed: Array = []) -> String:
-	var rarities: Array = allowed if not allowed.is_empty() else RARITY_WEIGHTS.keys()
+## Where equipment comes from (besides the shop chests): chance to drop and
+## rarity weights. "dungeon_first" is the first clear of a dungeon,
+## "weekly_milestone" the last weekly mission milestone.
+const LOOT_TABLES := {
+	"elite": {"chance": 0.25, "weights": {"common": 70, "uncommon": 30}},
+	"miniboss": {"chance": 0.6, "weights": {"uncommon": 60, "rare": 40}},
+	"boss": {"chance": 1.0, "weights": {"rare": 75, "epic": 22, "epic_plus": 3}},
+	"dungeon_first": {"chance": 1.0, "weights": {"epic": 85, "epic_plus": 12, "legendary": 3}},
+	"weekly_milestone": {"chance": 1.0, "weights": {"rare": 60, "epic": 40}},
+}
+## Esencia for clearing a dungeon again: base + per dungeon index.
+const DUNGEON_REPEAT_ESSENCE := 30
+const DUNGEON_REPEAT_ESSENCE_STEP := 15
+
+## A rarity picked by `weights` ({rarity: weight}).
+func _roll_rarity(weights: Dictionary) -> String:
 	var total := 0
-	for r in rarities:
-		total += int(RARITY_WEIGHTS.get(r, 0))
-	var picked: String = str(rarities[0])
-	if total > 0:
-		var roll := randi() % total
-		for r in rarities:
-			roll -= int(RARITY_WEIGHTS.get(r, 0))
-			if roll < 0:
-				picked = str(r)
-				break
-	return picked
+	for r in weights:
+		total += int(weights[r])
+	var roll := randi() % maxi(1, total)
+	for r in weights:
+		roll -= int(weights[r])
+		if roll < 0:
+			return str(r)
+	return str(weights.keys()[0])
+
+## {id, rarity} rolled from LOOT_TABLES[source], or {} when nothing drops.
+func roll_loot(source: String) -> Dictionary:
+	var table: Dictionary = LOOT_TABLES.get(source, {})
+	if table.is_empty() or randf() >= float(table.get("chance", 0.0)):
+		return {}
+	return {"id": EquipmentCatalog.random_recipe(), "rarity": _roll_rarity(table["weights"])}
+
+## A new level-1 item in the backpack (callers emit and save).
+func _grant_item(rarity: String, recipe_id := "") -> Dictionary:
+	if recipe_id == "":
+		recipe_id = EquipmentCatalog.random_recipe()
+	var item := EquipmentCatalog.make_item(recipe_id, _generate_item_uid(recipe_id), rarity)
+	equipment_inventory.append(item)
+	return item
+
+## Adds the run's drops ([{id, rarity}]) to the backpack; returns the items.
+## finish_run() saves right after.
+func grant_run_loot(loot: Array) -> Array:
+	var items: Array = []
+	for drop in loot:
+		items.append(_grant_item(str(drop.get("rarity", "common")), str(drop.get("id", ""))))
+	if not items.is_empty():
+		inventory_changed.emit()
+	return items
 
 ## Time.get_ticks_msec() resets to 0 every launch, so two chests opened at
 ## roughly the same point in two different sessions could mint the exact
@@ -1032,15 +1072,15 @@ func has_claimable_missions() -> bool:
 ## 1/3/5/7/10 (which assumes a bigger catalogue than DAILY_MISSIONS has) —
 ## same shape, real numbers.
 const DAILY_MILESTONES := [
-	{"threshold": 1, "gold": 30, "gems": 0},
-	{"threshold": 2, "gold": 60, "gems": 1},
-	{"threshold": 3, "gold": 120, "gems": 2},
+	{"threshold": 1, "gold": 30, "gems": 0, "essence": 10},
+	{"threshold": 2, "gold": 60, "gems": 1, "essence": 20},
+	{"threshold": 3, "gold": 120, "gems": 2, "essence": 40},
 ]
 const WEEKLY_MILESTONES := [
-	{"threshold": 1, "gold": 80, "gems": 0},
-	{"threshold": 2, "gold": 160, "gems": 2},
-	{"threshold": 3, "gold": 280, "gems": 4},
-	{"threshold": 4, "gold": 450, "gems": 8},
+	{"threshold": 1, "gold": 80, "gems": 0, "essence": 30},
+	{"threshold": 2, "gold": 160, "gems": 2, "essence": 50},
+	{"threshold": 3, "gold": 280, "gems": 4, "essence": 80},
+	{"threshold": 4, "gold": 450, "gems": 8, "item": "weekly_milestone"},
 ]
 var claimed_daily_milestones: Array = []
 var claimed_weekly_milestones: Array = []
@@ -1082,6 +1122,13 @@ func _grant_milestone_reward(entry: Dictionary) -> void:
 	if reward_gems > 0:
 		gems += reward_gems
 		gems_changed.emit(gems)
+	add_essence(int(entry.get("essence", 0)))
+	var loot_source := str(entry.get("item", ""))
+	if loot_source != "":
+		var drop := roll_loot(loot_source)
+		var item := _grant_item(str(drop["rarity"]), str(drop["id"]))
+		inventory_changed.emit()
+		add_notification("Objeto obtenido: %s (%s)" % [str(item.get("name", "")), str(EquipmentCatalog.RARITY_LABELS.get(str(item["rarity"]), "")).to_lower()])
 	SfxPlayer.play("economy/chest_open.wav", false)
 	missions_changed.emit()
 	save()

@@ -144,7 +144,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 | 4 | ✅ Pantallas de armas | Selección de héroe con el arma y su desafío, Códex de armas |
 | 5 | ✅ Equipamiento: datos nuevos | Stats nuevas aplicadas en partida, rareza legendaria y guardado convertido |
 | 6 | ✅ Equipamiento: detalle, mejorar y desarmar | Subir un objeto con oro y Esencia, desarmar y comparar |
-| 7 | Fuentes de equipamiento | Drops de élites y jefes, misiones, mazmorras y baúles nuevos |
+| 7 | ✅ Fuentes de equipamiento | Drops de élites y jefes, misiones, mazmorras y baúles nuevos |
 | 8 | Sets y legendarios | Bonus de 2 y 4 piezas y efectos únicos funcionando |
 | 9 | Evoluciones de armas | 14 evoluciones doradas |
 | 10 | Arte | Íconos de las 14 armas y de los objetos (prompts en el mismo formato que `PROMPTS_ICONOS.md`) |
@@ -172,6 +172,23 @@ Mientras falte el arte de las fases 2 a 8, se usan íconos provisorios: el sprit
 - Ya no hay conversión automática de repetidos a oro: todo va a la mochila (los repetidos sirven para la Forja).
 - Tocar un objeto (en la mochila o equipado) abre su detalle. Para desarmar hay que tocar dos veces.
 - En la mochila, ▲ marca los objetos con más stat principal que el equipado en su casillero.
+
+## Valores de la fase 7
+| Fuente | Chance | Rarezas |
+|---|---|---|
+| Élite | 25 % | común 70, poco común 30 |
+| Mini-jefe (élite de nivel 2) | 60 % | poco común 60, raro 40 |
+| Jefe | siempre | raro 75, épico 22, épico+ 3 |
+| Baúl común (150 gemas) | siempre | común 65, poco común 35 |
+| Baúl épico (400 gemas) | siempre | raro 70, épico 27, legendario 3 |
+| Mazmorra, primera vez | siempre | épico 85, épico+ 12, legendario 3 |
+| Mazmorra, repetida | — | 30 + 15 × número de mazmorra de Esencia (45 / 60 / 75) |
+| Hitos diarios | — | 10 / 20 / 40 de Esencia, además del oro y las gemas |
+| Hitos semanales 1 a 3 | — | 30 / 50 / 80 de Esencia |
+| Hito semanal 4 | siempre | un objeto: raro 60, épico 40 |
+
+- En la partida, el objeto que suelta un élite o jefe se anuncia con un cartel del color de su rareza y se suma a la mochila al terminar, aunque pierdas. La pantalla de resultado lo muestra en "BOTÍN", junto con el objeto o la Esencia de la mazmorra.
+- Por ahora los objetos que caen son de cualquier tipo; que sean del set del capítulo llega con los sets en la fase 8.
 
 ## A definir más adelante
 - Desafíos y números finales (los de la tabla son una propuesta).

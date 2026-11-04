@@ -80,6 +80,9 @@ var _kills_by_type := {}
 var _frozen_count := 0
 var _poison_kills := 0
 var _elite_kills := 0
+## Equipment dropped by élites and bosses this run, as [{id, rarity}]; it is
+## added to the backpack when the run ends, won or lost.
+var _loot: Array = []
 var _damage_taken := 0
 ## Seconds survived before losing more than 3 hearts (6 half-hearts).
 var _clean_time := 0.0
@@ -1382,11 +1385,23 @@ func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 		spawn_xp(enemy.global_position, enemy.xp_value)
 	if enemy.elite_tier == 0 and not enemy.is_boss:
 		_roll_small_drop(enemy.global_position)
+	else:
+		_roll_equipment_loot(enemy)
 	if enemy == boss:
 		SfxPlayer.play("boss/boss_defeated.wav", false)
 		end_run(true)
 	else:
 		SfxPlayer.play("combat/enemy_death.wav")
+
+## Élites may drop an item, bosses always do (GameState.LOOT_TABLES).
+func _roll_equipment_loot(enemy: EmberfallEnemy) -> void:
+	var source := "boss" if enemy.is_boss else ("miniboss" if enemy.elite_tier >= 2 else "elite")
+	var drop := GameState.roll_loot(source)
+	if drop.is_empty():
+		return
+	_loot.append(drop)
+	var rarity := str(drop["rarity"])
+	announced.emit("¡Botín: %s (%s)!" % [str(EquipmentCatalog.recipe(str(drop["id"])).get("name", "")), str(EquipmentCatalog.RARITY_LABELS.get(rarity, "")).to_lower()], EquipmentCatalog.RARITY_COLORS.get(rarity, GOLD))
 
 ## Bosses draw their own art, so their death is a plain big ember burst.
 func _spawn_death_fx(enemy: EmberfallEnemy) -> void:
@@ -1741,6 +1756,7 @@ func end_run(victory: bool) -> void:
 			"damage": damage_by_source.duplicate(),
 			"skills": skills.duplicate(), "evolved": evolved.duplicate(),
 			"unlocked": newly,
+			"loot": GameState.grant_run_loot(_loot),
 		}
 	GameState.finish_run(victory, kills)
 

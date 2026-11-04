@@ -119,6 +119,16 @@ static func recipe_for(equipment_type: String, rarity: String) -> Dictionary:
 			return entry
 	return {}
 
+## The item's own icon (assets/ui/equipment/items/<id>.png) or its slot's
+## generic one while that art is missing.
+static func icon(item: Dictionary) -> Texture2D:
+	var path := "res://assets/ui/equipment/items/%s.png" % str(item.get("id", ""))
+	if not ResourceLoader.exists(path):
+		path = "res://assets/ui/equipment/%s.png" % str(item.get("equipment_type", "armor"))
+	if not ResourceLoader.exists(path):
+		path = "res://assets/ui/equipment/armor.png"
+	return load(path) as Texture2D
+
 static func max_level(rarity: String) -> int:
 	return int(MAX_LEVELS[rarity_index(rarity)])
 
