@@ -90,6 +90,10 @@ var permanent_upgrades: Dictionary = {}
 ## Lifetime stats that unlock abilities (AbilityCatalog.UNLOCKS).
 var run_stats: Dictionary = {"lifetime_kills": 0, "bosses_defeated": 0, "best_level": 0, "chests_opened": 0, "evolutions_done": 0, "best_time": 0}
 var unlocked_abilities: Array[String] = []
+## Stats per hero, only from runs played with that hero (see
+## AbilityCatalog.WEAPON_CHALLENGES), and the weapons already unlocked.
+var hero_stats: Dictionary = {}
+var unlocked_weapons: Array[String] = []
 var music_enabled := true
 var effects_enabled := true
 var tutorial_completed := false
@@ -648,6 +652,53 @@ func unlock_progress(id: String) -> Array:
 		return [1, 1]
 	return [int(run_stats.get(str(requirement["stat"]), 0)), int(requirement["target"])]
 
+## -- Hero weapons --
+
+func is_weapon_unlocked(id: String) -> bool:
+	return id in unlocked_weapons
+
+## Progress of a hero's weapon challenge as [current, target].
+func weapon_challenge_progress(hero_id: String) -> Array:
+	var challenge := AbilityCatalog.weapon_challenge(hero_id)
+	if challenge.is_empty():
+		return [0, 1]
+	var stats: Dictionary = hero_stats.get(hero_id, {})
+	return [int(stats.get(str(challenge["stat"]), 0)), int(challenge["target"])]
+
+## Adds a run to its hero's stats and unlocks that hero's weapon when the
+## challenge is met. Returns the newly unlocked weapon ids.
+func _record_hero_run(stats: Dictionary) -> Array[String]:
+	var unlocked: Array[String] = []
+	var hero_id := str(stats.get("hero", ""))
+	if hero_id == "":
+		return unlocked
+	var mine: Dictionary = hero_stats.get(hero_id, {})
+	var run := {
+		"kills": int(stats.get("kills", 0)),
+		"bosses": 1 if stats.get("victory", false) else 0,
+		"elites": int(stats.get("elites", 0)),
+		"frozen": int(stats.get("frozen", 0)),
+		"poison_kills": int(stats.get("poison_kills", 0)),
+		"evolutions": int(stats.get("evolutions", 0)),
+		"best_time": int(stats.get("time", 0)),
+		"best_level": int(stats.get("level", 0)),
+		"best_clean_time": int(stats.get("clean_time", 0)),
+	}
+	for key: String in run:
+		if key.begins_with("best_"):
+			mine[key] = maxi(int(mine.get(key, 0)), int(run[key]))
+		else:
+			mine[key] = int(mine.get(key, 0)) + int(run[key])
+	hero_stats[hero_id] = mine
+	var weapon := AbilityCatalog.weapon_id(StringName(hero_id))
+	var progress := weapon_challenge_progress(hero_id)
+	if weapon not in unlocked_weapons and not AbilityCatalog.weapon_challenge(hero_id).is_empty() and int(progress[0]) >= int(progress[1]):
+		unlocked_weapons.append(weapon)
+		unlocked.append(weapon)
+		var hero := AbilityCatalog.weapon_hero(weapon)
+		add_notification("Arma desbloqueada: %s" % (hero.attack_name if hero != null else weapon))
+	return unlocked
+
 ## -- Códex --
 ## Abilities/passives ever taken, evolutions ever made, and lifetime kills
 ## per bestiary key (see BestiaryCatalog). Updated once per run in record_run.
@@ -709,6 +760,7 @@ func record_run(stats: Dictionary) -> Array[String]:
 			unlocked_abilities.append(id)
 			unlocked.append(id)
 			add_notification("Habilidad desbloqueada: %s" % AbilityCatalog.display_name(id))
+	unlocked.append_array(_record_hero_run(stats))
 	save()
 	return unlocked
 
@@ -960,6 +1012,7 @@ func save() -> void:
 		"energy": energy, "energy_timestamp": energy_timestamp, "gold": gold, "high_score": high_score,
 		"damage": permanent_damage, "health": permanent_health, "speed": permanent_speed, "gems": gems,
 		"permanent_upgrades": permanent_upgrades, "run_stats": run_stats, "unlocked_abilities": unlocked_abilities,
+		"hero_stats": hero_stats, "unlocked_weapons": unlocked_weapons,
 		"discovered_abilities": discovered_abilities, "discovered_evolutions": discovered_evolutions, "bestiary": bestiary,
 		"music": music_enabled, "effects": effects_enabled, "tutorial_completed": tutorial_completed,
 		"vibration": vibration_enabled, "reduce_motion": reduce_motion, "joystick_size": joystick_size,
@@ -1040,6 +1093,22 @@ func load_save() -> void:
 		for id in stored_unlocked:
 			if id is String and AbilityCatalog.UNLOCKS.has(id) and id not in unlocked_abilities:
 				unlocked_abilities.append(id)
+	hero_stats = {}
+	var stored_hero_stats = data.get("hero_stats", {})
+	if stored_hero_stats is Dictionary:
+		for hero_id in stored_hero_stats:
+			var entry = stored_hero_stats[hero_id]
+			if AbilityCatalog.WEAPON_CHALLENGES.has(str(hero_id)) and entry is Dictionary:
+				var clean := {}
+				for key in entry:
+					clean[str(key)] = maxi(0, _safe_int(entry[key], 0))
+				hero_stats[str(hero_id)] = clean
+	unlocked_weapons.clear()
+	var stored_weapons = data.get("unlocked_weapons", [])
+	if stored_weapons is Array:
+		for id in stored_weapons:
+			if id is String and AbilityCatalog.is_weapon(id) and AbilityCatalog.WEAPON_CHALLENGES.has(AbilityCatalog.weapon_hero_id(id)) and id not in unlocked_weapons:
+				unlocked_weapons.append(id)
 	_load_ability_ids(data.get("discovered_abilities", []), discovered_abilities)
 	_load_ability_ids(data.get("discovered_evolutions", []), discovered_evolutions)
 	bestiary = {}

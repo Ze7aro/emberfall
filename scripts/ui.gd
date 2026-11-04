@@ -327,7 +327,7 @@ func _build_power_card(option: String) -> Control:
 	else:
 		stack.add_child(_card_label("NV. %d → %d" % [current_level, current_level + 1], 11, UiTheme.PURPLE))
 	var desc_text := AbilityCatalog.description(option)
-	if AbilityCatalog.is_weapon(option):
+	if AbilityCatalog.is_weapon(option) and current_level > 0:
 		desc_text = AbilityCatalog.weapon_level_text(current_level + 1)
 	var desc := _card_label(desc_text, 10, UiTheme.TEXT_MUTED)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL

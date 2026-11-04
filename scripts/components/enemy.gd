@@ -30,6 +30,7 @@ var burn_timer := 0.0
 var burn_tick_clock := 0.0
 var burn_damage := 0
 var freeze_timer := 0.0
+var _was_frozen := false # counted once for the weapon challenges
 ## Electrocutado (Cadena Eléctrica): the next hit taken deals +25%.
 var shock_timer := 0.0
 var hit_flash := 0.0
@@ -148,6 +149,10 @@ func apply_burn(duration: float, damage_per_tick: int) -> void:
 	burn_damage = maxi(burn_damage, damage_per_tick)
 
 func apply_freeze(duration: float) -> void:
+	if not _was_frozen:
+		_was_frozen = true
+		if game_ref and game_ref.has_method("note_frozen"):
+			game_ref.note_frozen()
 	freeze_timer = maxf(freeze_timer, duration)
 	SfxPlayer.play("status/freeze_apply.wav")
 

@@ -163,6 +163,32 @@ const WEAPON_LEVEL_TEXT := {
 	5: "+30% de daño y ataca 20% más rápido",
 }
 
+## Each hero's weapon unlocks for every hero once its challenge is met
+## playing that hero. `stat` is a per-hero stat in GameState.hero_stats:
+## the ones starting with "best_" keep the best run, the rest add up.
+const WEAPON_CHALLENGES := {
+	"variante_01": {"stat": "best_time", "target": 300, "text": "Sobreviví 5 minutos"},
+	"variante_02": {"stat": "frozen", "target": 300, "text": "Congelá 300 enemigos"},
+	"variante_03": {"stat": "poison_kills", "target": 300, "text": "Eliminá 300 enemigos envenenados"},
+	"variante_04": {"stat": "best_level", "target": 15, "text": "Llegá al nivel 15"},
+	"variante_05": {"stat": "kills", "target": 500, "text": "Eliminá 500 enemigos"},
+	"variante_06": {"stat": "best_time", "target": 480, "text": "Sobreviví 8 minutos"},
+	"variante_07": {"stat": "elites", "target": 3, "text": "Eliminá 3 élites"},
+	"variante_08": {"stat": "bosses", "target": 1, "text": "Derrotá a un jefe"},
+	"variante_09": {"stat": "kills", "target": 800, "text": "Eliminá 800 enemigos"},
+	"variante_10": {"stat": "best_clean_time", "target": 600, "text": "Sobreviví 10 minutos sin perder más de 3 corazones"},
+	"variante_11": {"stat": "best_level", "target": 20, "text": "Llegá al nivel 20"},
+	"variante_12": {"stat": "evolutions", "target": 1, "text": "Evolucioná una habilidad"},
+	"variante_13": {"stat": "kills", "target": 1000, "text": "Eliminá 1000 enemigos"},
+	"variante_14": {"stat": "bosses", "target": 2, "text": "Derrotá a 2 jefes"},
+}
+
+static func weapon_challenge(hero_id: String) -> Dictionary:
+	return WEAPON_CHALLENGES.get(hero_id, {})
+
+static func weapon_hero_id(id: String) -> String:
+	return id.trim_prefix(WEAPON_PREFIX)
+
 static func is_weapon(id: String) -> bool:
 	return id.begins_with(WEAPON_PREFIX)
 

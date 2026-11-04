@@ -76,6 +76,14 @@ var _chests_opened := 0
 var _evolutions_done := 0
 ## Kills per bestiary key this run (BestiaryCatalog), saved in end_run.
 var _kills_by_type := {}
+## Per-hero weapon challenges (AbilityCatalog.WEAPON_CHALLENGES).
+var _frozen_count := 0
+var _poison_kills := 0
+var _elite_kills := 0
+var _damage_taken := 0
+## Seconds survived before losing more than 3 hearts (6 half-hearts).
+var _clean_time := 0.0
+const CLEAN_RUN_MAX_LOSS := 6
 var _run_reported := false
 var _revives_left := 0
 var _events_fired: Array[int] = []
@@ -346,6 +354,8 @@ func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":
 		return
 	elapsed += delta
+	if _damage_taken <= CLEAN_RUN_MAX_LOSS:
+		_clean_time = elapsed
 	if not boss_spawned and elapsed >= _boss_time():
 		spawn_boss()
 	_tick_events()
@@ -868,6 +878,14 @@ var damage_by_source := {}
 var damage_source := "basic"
 var _gold_at_start := 0
 
+## Called by enemy.gd the first time an enemy gets frozen.
+func note_frozen() -> void:
+	_frozen_count += 1
+
+## Called by player.gd with every hit that lands (half-heart units).
+func note_damage_taken(amount: int) -> void:
+	_damage_taken += amount
+
 func gold_this_run() -> int:
 	return maxi(0, GameState.gold - _gold_at_start)
 
@@ -1339,6 +1357,10 @@ func _apply_hero_guaranteed_status(enemy: EmberfallEnemy, hero_data: CharacterDa
 ## victory once the stage boss falls.
 func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 	kills += 1
+	if enemy.poison_timer > 0.0:
+		_poison_kills += 1
+	if enemy.elite_tier > 0:
+		_elite_kills += 1
 	var bestiary_key := BestiaryCatalog.key_for(enemy)
 	_kills_by_type[bestiary_key] = int(_kills_by_type.get(bestiary_key, 0)) + 1
 	_spawn_death_fx(enemy)
@@ -1532,6 +1554,10 @@ func _upgrade_candidates(exclude: Array[String] = []) -> Dictionary:
 	for id: String in skills:
 		if AbilityCatalog.is_weapon(id) and id not in banished and id not in exclude and skill_level(id) < MAX_ABILITY_LEVEL:
 			result[id] = 3.0
+	# Other heroes' weapons, once unlocked with their challenge.
+	for id: String in GameState.unlocked_weapons:
+		if not skills.has(id) and id not in banished and id not in exclude and skills.size() < AbilityCatalog.ACTIVE_SLOTS:
+			result[id] = 1.0
 	for id in AbilityCatalog.ACTIVES:
 		if id in banished or id in exclude:
 			continue
@@ -1695,9 +1721,12 @@ func end_run(victory: bool) -> void:
 			"chests": _chests_opened, "evolutions": _evolutions_done,
 			"abilities": skills.keys().filter(func(id): return not AbilityCatalog.is_weapon(id)) + passives.keys(), "evolved": evolved.duplicate(),
 			"kills_by_type": _kills_by_type,
+			"hero": str(GameState.selected_character_id), "frozen": _frozen_count,
+			"poison_kills": _poison_kills, "elites": _elite_kills, "clean_time": int(_clean_time),
 		})
 		for id in newly:
-			announced.emit("¡Nueva habilidad: %s!" % AbilityCatalog.display_name(id), GOLD)
+			var kind := "Arma desbloqueada" if AbilityCatalog.is_weapon(id) else "Nueva habilidad"
+			announced.emit("¡%s: %s!" % [kind, AbilityCatalog.display_name(id)], GOLD)
 		GameState.last_run_summary = {
 			"victory": victory, "kills": kills, "level": level, "time": int(elapsed),
 			"chests": _chests_opened, "evolutions": _evolutions_done,

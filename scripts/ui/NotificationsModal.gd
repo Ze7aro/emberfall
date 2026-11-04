@@ -6,6 +6,7 @@ signal closed
 
 const WIDTH := 340.0
 const UNLOCK_PREFIX := "Habilidad desbloqueada: "
+const WEAPON_PREFIX := "Arma desbloqueada: "
 
 var _list: VBoxContainer
 ## Unread state when the modal opened: Inicio marks everything read right
@@ -111,6 +112,9 @@ func _entry_row(entry: Dictionary) -> Control:
 	if text.begins_with(UNLOCK_PREFIX):
 		title.text = "Habilidad desbloqueada"
 		detail.text = text.substr(UNLOCK_PREFIX.length()).capitalize()
+	elif text.begins_with(WEAPON_PREFIX):
+		title.text = "Arma desbloqueada"
+		detail.text = "%s · ya la pueden usar todos los héroes" % text.substr(WEAPON_PREFIX.length())
 	else:
 		title.text = text
 		detail.visible = false
@@ -149,6 +153,15 @@ func _icon_for(text: String) -> Texture2D:
 				var tex := AbilityCatalog.icon(id)
 				if tex != null:
 					return tex
+	if text.begins_with(WEAPON_PREFIX):
+		var weapon_name := text.substr(WEAPON_PREFIX.length())
+		for hero_id in AbilityCatalog.WEAPON_CHALLENGES:
+			var weapon := AbilityCatalog.weapon_id(StringName(hero_id))
+			var hero := AbilityCatalog.weapon_hero(weapon)
+			if hero != null and hero.attack_name == weapon_name:
+				var weapon_tex := AbilityCatalog.icon(weapon)
+				if weapon_tex != null:
+					return weapon_tex
 	return UiTheme.icon("notificacion.png")
 
 func _relative_time(timestamp: int) -> String:

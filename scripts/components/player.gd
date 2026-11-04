@@ -132,6 +132,8 @@ func damage(amount: int) -> void:
 	invulnerable = 1.2 + (game.invuln_bonus() if game else 0.0)
 	_hit_shake_time = 0.0 if GameState.reduce_motion else 0.10
 	GameState.vibrate(60)
+	if game:
+		game.note_damage_taken(mini(amount, hp))
 	hp = maxi(0, hp - amount)
 	SfxPlayer.play("combat/player_hit.wav")
 	if hp == 0:

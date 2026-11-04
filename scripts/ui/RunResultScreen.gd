@@ -68,7 +68,7 @@ func _ready() -> void:
 		var names := PackedStringArray()
 		for id in unlocked:
 			names.append(AbilityCatalog.display_name(str(id)))
-		var unlock_label := _label("¡Nueva habilidad: %s!" % ", ".join(names), 14, UiTheme.ACCENT)
+		var unlock_label := _label("¡Desbloqueaste: %s!" % ", ".join(names), 14, UiTheme.ACCENT)
 		unlock_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(unlock_label)
 	box.add_child(_ranking(summary))

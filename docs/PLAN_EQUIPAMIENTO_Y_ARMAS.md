@@ -140,7 +140,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 |---|---|---|
 | 1 | ✅ Casilleros 6 + 6 | Una partida con 6 activas y 6 pasivas, barra y pausa incluidas |
 | 2 | ✅ Ataques de héroe convertidos en armas | Cada héroe arranca con su arma, que sube de nivel 1 a 5 al subir de nivel |
-| 3 | Armas de otros héroes en el pool y desbloqueo | Desafío con progreso, aviso al desbloquear y el arma apareciendo con otro héroe |
+| 3 | ✅ Armas de otros héroes en el pool y desbloqueo | Desafío con progreso, aviso al desbloquear y el arma apareciendo con otro héroe |
 | 4 | Pantallas de armas | Selección de héroe con el arma y su desafío, Códex de armas |
 | 5 | Equipamiento: datos nuevos | Stats nuevas aplicadas en partida, rareza legendaria y guardado convertido |
 | 6 | Equipamiento: detalle, mejorar y desarmar | Subir un objeto con oro y Esencia, desarmar y comparar |
