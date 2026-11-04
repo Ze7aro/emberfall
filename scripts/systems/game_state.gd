@@ -696,7 +696,7 @@ func _load_ability_ids(stored: Variant, target: Array[String]) -> void:
 	if not stored is Array:
 		return
 	for id in stored:
-		if id is String and (AbilityCatalog.ACTIVES.has(id) or AbilityCatalog.PASSIVES.has(id)) and id not in target:
+		if id is String and (AbilityCatalog.ACTIVES.has(id) or AbilityCatalog.PASSIVES.has(id) or AbilityCatalog.is_weapon(id)) and id not in target:
 			target.append(id)
 
 func _record_discoveries(stats: Dictionary) -> void:

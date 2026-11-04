@@ -1317,9 +1317,17 @@ func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bo
 	)
 	var bonus_damage := GameState.permanent_damage + int(round(_eq("damage")))
 	var base_damage := (BASIC_ATTACK_BASE_DAMAGE + bonus_damage * 2) * float(stats["damage"])
+	var evo_trait := AbilityCatalog.weapon_trait(id) if is_evolved(id) else ""
+	if evo_trait != "":
+		base_damage *= AbilityCatalog.WEAPON_EVO_DAMAGE
 	var final_damage := int(round(base_damage * damage_multiplier() * hero_data.damage_modifier))
 	var attack_count := int(_weapon_attack_counts.get(id, 0)) + 1
 	_weapon_attack_counts[id] = attack_count
+	if attack_count % 3 == 0:
+		if evo_trait == "quake":
+			_weapon_quake(id, hero_data, final_damage)
+		elif evo_trait == "meteor":
+			_spawn_meteor(living_enemies[0].global_position, (METEOR_BASE_RADIUS + 20.0) * area_multiplier(), final_damage * 2, 0.5)
 
 	# Some melee heroes (e.g. Theron) land an area hit instead of a
 	# single-target one every Nth swing — that replaces this attack entirely.
@@ -1329,7 +1337,7 @@ func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bo
 
 	var shot_range_scale := hero_data.attack_range_scale * float(stats["range"])
 	SfxPlayer.play("combat/basic_melee.wav" if hero_data.attack_range_scale < 1.0 else "combat/basic_projectile.wav")
-	var shot_count := 1 + amount_bonus() + int(stats["shots"])
+	var shot_count := 1 + amount_bonus() + int(stats["shots"]) + (2 if evo_trait == "volley" else 0)
 	var shot_frame_names := _shot_frame_names(hero_data, attack_count)
 	var origin_pos := player.projectile_origin.global_position if is_instance_valid(player.projectile_origin) else player.position
 	for i in mini(shot_count, living_enemies.size()):
@@ -1339,8 +1347,10 @@ func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bo
 		projectile.setup(target.position, final_damage, hero_data.attack_color, hero_data.attack_sprite_folder, shot_range_scale, shot_frame_names)
 		projectile.speed = PROJECTILE_SPEED * proj_speed_multiplier()
 		projectile.set_meta("hit_enemies", [])
-		projectile.set_meta("max_pierces", int(stats["pierce"]))
+		projectile.set_meta("max_pierces", 999 if evo_trait == "pierce" else int(stats["pierce"]))
 		projectile.set_meta("source", id)
+		if evo_trait != "":
+			projectile.modulate = Color(1.3, 1.12, 0.65)
 		projectile.set_meta("hero", hero_data)
 		projectile.tree_exiting.connect(_on_projectile_removed.bind(projectile))
 		add_child(projectile)
@@ -1365,6 +1375,8 @@ func _trigger_melee_aoe(id: String, hero_data: CharacterData, hit_damage: int) -
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
 			if not _apply_damage(enemy, hit_damage, false, true, id):
 				_apply_hero_guaranteed_status(enemy, hero_data)
+			if is_evolved(id):
+				_weapon_evo_hit(id, enemy, enemy.global_position, hit_damage, player.global_position.direction_to(enemy.global_position))
 	var fx := EmberfallProjectile.new()
 	fx.position = player.position
 	fx.setup(player.position, 0, hero_data.attack_color, hero_data.attack_sprite_folder, 0.4, hero_data.attack_aoe_frame_names, 0.5)
@@ -1383,12 +1395,69 @@ func _process(_delta: float) -> void:
 				hit_enemies.append(enemy)
 				projectile.set_meta("hit_enemies", hit_enemies)
 				var hit_pos: Vector2 = enemy.global_position
-				if not _apply_damage(enemy, projectile.damage_amount, false, true, str(projectile.get_meta("source", "basic"))):
+				var source := str(projectile.get_meta("source", "basic"))
+				if not _apply_damage(enemy, projectile.damage_amount, false, true, source):
 					_apply_hero_guaranteed_status(enemy, projectile.get_meta("hero", null))
+				if AbilityCatalog.is_weapon(source) and is_evolved(source):
+					_weapon_evo_hit(source, enemy, hit_pos, projectile.damage_amount, projectile.global_position.direction_to(hit_pos))
 				_spawn_impact_flash(hit_pos, projectile.color)
 				if hit_enemies.size() > max_pierces:
 					projectile.queue_free()
 				break
+
+## Golden weapon traits that fire on every hit (AbilityCatalog.WEAPON_EVOLUTIONS).
+const EVO_BLAST_RADIUS := 64.0
+const EVO_CHAIN_RANGE := 170.0
+const EVO_LEECH_CHANCE := 0.06
+const EVO_EXECUTE_SHARE := 0.25
+func _weapon_evo_hit(id: String, enemy: EmberfallEnemy, at: Vector2, hit_damage: int, dir: Vector2) -> void:
+	var hero_data := AbilityCatalog.weapon_hero(id)
+	match AbilityCatalog.weapon_trait(id):
+		"blast":
+			var radius := EVO_BLAST_RADIUS * area_multiplier()
+			for other in enemies.duplicate():
+				if is_instance_valid(other) and not other.dead and other != enemy and other.global_position.distance_to(at) < radius:
+					if not _apply_damage(other, int(hit_damage * 0.5), false, false, id):
+						_apply_hero_guaranteed_status(other, hero_data)
+			_spawn_burst_fx(at, radius, hero_data.attack_color if hero_data else EmberfallFx.GOLD)
+		"pool":
+			_spawn_poison_pool(at, 3)
+		"split":
+			for turn in [-0.7, 0.7]:
+				_spawn_shard(at, dir.rotated(turn), maxi(1, hit_damage / 2), 0, 0.8, false)
+		"chain":
+			var hit: Array = [enemy]
+			var from := at
+			for jump in 2:
+				var pool := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and not hit.has(e))
+				var next := nearest_from(pool, from, EVO_CHAIN_RANGE)
+				if next == null:
+					break
+				hit.append(next)
+				_spawn_chain_fx(from, next.global_position)
+				from = next.global_position
+				if not _apply_damage(next, int(hit_damage * 0.6), false, true, id):
+					_apply_hero_guaranteed_status(next, hero_data)
+		"leech":
+			if randf() < EVO_LEECH_CHANCE:
+				player.heal(1)
+				spawn_sparks(player.global_position, Color("ff5a6e"), 6, 90.0)
+		"execute":
+			if is_instance_valid(enemy) and not enemy.dead and not enemy.is_boss and enemy.hp <= int(enemy.max_hp * EVO_EXECUTE_SHARE):
+				spawn_ring(at, EmberfallFx.GOLD, 30.0, 0.25, 3.0)
+				_apply_damage(enemy, enemy.hp + 1, false, false, id)
+
+## Falla Sísmica / Vendaval de Acero: every 3rd attack hits all around.
+func _weapon_quake(id: String, hero_data: CharacterData, hit_damage: int) -> void:
+	var at := player.global_position
+	var radius := 130.0 * area_multiplier()
+	for enemy in enemies.duplicate():
+		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(at) < radius:
+			if not _apply_damage(enemy, hit_damage, false, true, id):
+				enemy.knockback(at.direction_to(enemy.global_position) * 380.0)
+	spawn_ring(at, EmberfallFx.GOLD, radius, 0.4, 7.0)
+	_spawn_burst_fx(at, radius, hero_data.attack_color)
+	hit_stop(0.04)
 
 ## HERO-01: ties each mage's element to their weapon instead of luck
 ## (AUD-05) — Vaelor's fire always burns, Azyren's ice always briefly
@@ -1610,8 +1679,7 @@ func can_evolve(active_id: String) -> bool:
 		return false
 	if skill_level(active_id) < MAX_ABILITY_LEVEL or is_evolved(active_id):
 		return false
-	var paired := str(AbilityCatalog.ACTIVES[active_id]["evolution"]["passive"])
-	return passive_level(paired) > 0
+	return passive_level(AbilityCatalog.evolution_partner(active_id)) > 0
 
 ## Every non-evolution option that could be picked right now, with its
 ## weight: upgrades of what you already own are 3× as likely as something

@@ -322,7 +322,7 @@ func _build_power_card(option: String) -> Control:
 	stack.add_child(icon)
 	stack.add_child(_card_label(AbilityCatalog.display_name(base_id, is_evolution), 11, GOLD if is_evolution else UiTheme.ACCENT))
 	if is_evolution:
-		var paired := str(AbilityCatalog.ACTIVES[base_id]["evolution"]["passive"])
+		var paired := AbilityCatalog.evolution_partner(base_id)
 		stack.add_child(_card_label("%s + %s" % [AbilityCatalog.display_name(base_id), AbilityCatalog.display_name(paired)], 8, UiTheme.PURPLE))
 	else:
 		stack.add_child(_card_label("NV. %d → %d" % [current_level, current_level + 1], 11, UiTheme.PURPLE))
@@ -334,8 +334,8 @@ func _build_power_card(option: String) -> Control:
 	stack.add_child(desc)
 	# Every active card names its evolution partner, so the player learns
 	# recipes while playing instead of needing a wiki.
-	if not is_evolution and AbilityCatalog.is_active(option):
-		var partner := str(AbilityCatalog.ACTIVES[option]["evolution"]["passive"])
+	if not is_evolution and AbilityCatalog.has_evolution(option):
+		var partner := AbilityCatalog.evolution_partner(option)
 		stack.add_child(_card_label("Evoluciona con %s" % AbilityCatalog.display_name(partner), 8, Color(GOLD, 0.75)))
 	# The whole card is the button.
 	var pick := Button.new()
@@ -586,8 +586,8 @@ func _build_row(id: String) -> Control:
 		var weapon_hint := _card_label("Arma · %s" % AbilityCatalog.description(id), 9, Color("8a7d9c"))
 		weapon_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		text.add_child(weapon_hint)
-	if AbilityCatalog.is_active(id) and not evolved:
-		var partner := str(AbilityCatalog.ACTIVES[id]["evolution"]["passive"])
+	if AbilityCatalog.has_evolution(id) and not evolved:
+		var partner := AbilityCatalog.evolution_partner(id)
 		var ready_level: bool = world.ability_level(id) >= AbilityCatalog.MAX_LEVEL
 		var has_partner: bool = world.passive_level(partner) > 0
 		var hint := _card_label("%s Nv.%d/%d  ·  %s %s" % ["✓" if ready_level else "·", world.ability_level(id), AbilityCatalog.MAX_LEVEL, "✓" if has_partner else "·", AbilityCatalog.display_name(partner)], 9, Color("8a7d9c"))

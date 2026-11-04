@@ -228,6 +228,10 @@ func _build_equipment_state() -> Control:
 	hero_buttons.add_child(_change_hero_button)
 	_forge_button = Button.new()
 	_forge_button.text = "FORJA"
+	_forge_button.icon = load("res://assets/ui/forge.png")
+	_forge_button.add_theme_constant_override("icon_max_width", 26)
+	_forge_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_forge_button.add_theme_constant_override("h_separation", 4)
 	UiTheme.apply_secondary(_forge_button)
 	_forge_button.add_theme_color_override("font_color", UiTheme.EMBER)
 	_forge_button.custom_minimum_size = Vector2(110, 52)
@@ -358,13 +362,24 @@ func _build_inventory_panel() -> Control:
 	title.add_theme_font_size_override("font_size", 16)
 	title.add_theme_color_override("font_color", UiTheme.ACCENT)
 	header.add_child(title)
+	var essence_box := HBoxContainer.new()
+	essence_box.custom_minimum_size = Vector2(104, 0)
+	essence_box.alignment = BoxContainer.ALIGNMENT_END
+	essence_box.add_theme_constant_override("separation", 4)
+	header.add_child(essence_box)
+	var essence_icon := TextureRect.new()
+	essence_icon.texture = load("res://assets/ui/essence.png")
+	essence_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	essence_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	essence_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	essence_icon.custom_minimum_size = Vector2(18, 20)
+	essence_box.add_child(essence_icon)
 	_essence_label = Label.new()
-	_essence_label.custom_minimum_size = Vector2(104, 0)
 	_essence_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_essence_label.add_theme_font_override("font", UiTheme.bold_font())
-	_essence_label.add_theme_font_size_override("font_size", 12)
+	_essence_label.add_theme_font_size_override("font_size", 13)
 	_essence_label.add_theme_color_override("font_color", EquipmentCatalog.RARITY_COLORS["epic"])
-	header.add_child(_essence_label)
+	essence_box.add_child(_essence_label)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 214)
 	panel.add_child(scroll)
@@ -470,7 +485,7 @@ const INVENTORY_MIN_SLOTS := 12
 
 func _refresh_inventory() -> void:
 	_sort_button.text = "ORDEN: %s" % SORT_LABELS[_sort_mode]
-	_essence_label.text = "ESENCIA %d" % GameState.essence
+	_essence_label.text = str(GameState.essence)
 	for child in _inventory_grid.get_children():
 		child.queue_free()
 	for item in _sorted_inventory():

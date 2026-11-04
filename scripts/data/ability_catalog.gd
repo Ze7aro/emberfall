@@ -151,7 +151,8 @@ const PASSIVES := {
 
 ## Hero weapons: each hero's basic attack is an active with id
 ## "arma:<hero id>", levels 1-5, sharing the active slots. Name, colour and
-## art come from the hero's CharacterData. No evolution yet.
+## art come from the hero's CharacterData. Like the actives, a level-5
+## weapon plus its paired passive evolves (WEAPON_EVOLUTIONS).
 const WEAPON_PREFIX := "arma:"
 const PROJECTILE_DIR := "res://assets/habilidades/proyectiles"
 ## What each weapon level adds on top of the previous one.
@@ -182,6 +183,49 @@ const WEAPON_CHALLENGES := {
 	"variante_13": {"stat": "kills", "target": 1000, "text": "Eliminá 1000 enemigos"},
 	"variante_14": {"stat": "bosses", "target": 2, "text": "Derrotá a 2 jefes"},
 }
+
+## Golden weapons: +WEAPON_EVO_DAMAGE damage and a trait applied by
+## game_world.gd (_weapon_evo_hit / _fire_weapon):
+##   blast   - the hit explodes around the enemy (with the hero's status)
+##   pool    - the hit leaves a poison pool
+##   split   - the shot splits into 2 shards on hit
+##   volley  - +2 shots per attack
+##   chain   - the hit jumps to 2 more enemies
+##   leech   - hits may heal half a heart
+##   quake   - every 3rd attack hits everything around the hero
+##   pierce  - shots go through every enemy
+##   execute - hits finish off enemies under 25% life (not bosses)
+##   meteor  - every 3rd attack drops a meteor on the target
+const WEAPON_EVO_DAMAGE := 1.3
+const WEAPON_EVOLUTIONS := {
+	"variante_01": {"passive": "area", "name": "FÉNIX", "trait": "blast", "desc": "Los disparos estallan y queman alrededor"},
+	"variante_02": {"passive": "duration", "name": "CERO ABSOLUTO", "trait": "blast", "desc": "Los disparos estallan y congelan alrededor"},
+	"variante_03": {"passive": "cooldown", "name": "PESTE NEGRA", "trait": "pool", "desc": "Cada disparo deja un charco de veneno"},
+	"variante_04": {"passive": "amount", "name": "LUNA ROTA", "trait": "split", "desc": "Cada disparo se parte en dos esquirlas"},
+	"variante_05": {"passive": "haste", "name": "LLUVIA DE FLECHAS", "trait": "volley", "desc": "Dispara 2 flechas más por ataque"},
+	"variante_06": {"passive": "magnet", "name": "SELLO RÚNICO", "trait": "blast", "desc": "Los disparos estallan en runas"},
+	"variante_07": {"passive": "vitality", "name": "SEGADOR CARMESÍ", "trait": "leech", "desc": "Los golpes pueden curarte medio corazón"},
+	"variante_08": {"passive": "armor", "name": "FALLA SÍSMICA", "trait": "quake", "desc": "Cada 3 ataques, golpea todo alrededor"},
+	"variante_09": {"passive": "proj_speed", "name": "HACHA TORMENTA", "trait": "pierce", "desc": "El hacha atraviesa a todos los enemigos"},
+	"variante_10": {"passive": "crit", "name": "ESTOCADA LETAL", "trait": "execute", "desc": "Remata enemigos con menos de 25% de vida"},
+	"variante_11": {"passive": "might", "name": "OBÚS ÍGNEO", "trait": "meteor", "desc": "Cada 3 ataques cae un meteoro"},
+	"variante_12": {"passive": "regen", "name": "TORRENTE ARCANO", "trait": "chain", "desc": "Los disparos saltan a 2 enemigos más"},
+	"variante_13": {"passive": "haste", "name": "PUÑO DEL TRUENO", "trait": "chain", "desc": "Los golpes lanzan rayos a 2 enemigos"},
+	"variante_14": {"passive": "area", "name": "VENDAVAL DE ACERO", "trait": "quake", "desc": "Cada 3 ataques, cortes en cruz alrededor"},
+}
+
+## Evolution data of an active or weapon ({passive, name, desc, ...}), or {}.
+static func evolution_info(id: String) -> Dictionary:
+	if is_weapon(id):
+		return WEAPON_EVOLUTIONS.get(weapon_hero_id(id), {})
+	return ACTIVES.get(id, {}).get("evolution", {})
+
+## The passive that evolves `id` together with it ("" when none).
+static func evolution_partner(id: String) -> String:
+	return str(evolution_info(id).get("passive", ""))
+
+static func weapon_trait(id: String) -> String:
+	return str(evolution_info(id).get("trait", ""))
 
 static func weapon_challenge(hero_id: String) -> Dictionary:
 	return WEAPON_CHALLENGES.get(hero_id, {})
@@ -224,7 +268,7 @@ static func takes_active_slot(id: String) -> bool:
 	return ACTIVES.has(id) or is_weapon(id)
 
 static func has_evolution(id: String) -> bool:
-	return ACTIVES.has(id)
+	return not evolution_info(id).is_empty()
 
 static func is_active(id: String) -> bool:
 	return ACTIVES.has(id)
@@ -243,15 +287,19 @@ static func evolution_source(option_id: String) -> String:
 
 static func _entry(id: String) -> Dictionary:
 	if is_evolution(id):
-		return ACTIVES.get(evolution_source(id), {}).get("evolution", {})
+		return evolution_info(evolution_source(id))
 	if ACTIVES.has(id):
 		return ACTIVES[id]
 	return PASSIVES.get(id, {})
 
 static func display_name(id: String, evolved: bool = false) -> String:
 	if is_weapon(id):
+		if evolved and has_evolution(id):
+			return str(evolution_info(id)["name"])
 		var hero := weapon_hero(id)
 		return hero.attack_name.to_upper() if hero != null else "ARMA"
+	if is_evolution(id):
+		return display_name(evolution_source(id), true)
 	if evolved and ACTIVES.has(id):
 		return str(ACTIVES[id]["evolution"]["name"])
 	return str(_entry(id).get("name", id))
@@ -263,6 +311,8 @@ static func description(id: String) -> String:
 	return str(_entry(id).get("desc", ""))
 
 static func color(id: String) -> Color:
+	if is_evolution(id) and is_weapon(evolution_source(id)):
+		return color(evolution_source(id))
 	if is_weapon(id):
 		var hero := weapon_hero(id)
 		return hero.attack_color if hero != null else Color("8a7d9c")
@@ -273,8 +323,10 @@ static func color(id: String) -> Color:
 ## then draws a placeholder). Evolutions try their own art first, then
 ## their source active's.
 static func icon(id: String, evolved: bool = false) -> Texture2D:
+	if is_evolution(id) and is_weapon(evolution_source(id)):
+		return _weapon_icon(evolution_source(id), true)
 	if is_weapon(id):
-		return _weapon_icon(id)
+		return _weapon_icon(id, evolved)
 	var base := evolution_source(id) if is_evolution(id) else id
 	var candidates: Array[String] = []
 	if is_evolution(id) or evolved:
@@ -352,7 +404,7 @@ static func _badge(texture: Texture2D, key: String, tint: Color, evolved: bool, 
 
 ## Until weapons get their own art: the hero's first projectile frame on a
 ## badge in the hero's attack colour.
-static func _weapon_icon(id: String) -> Texture2D:
+static func _weapon_icon(id: String, evolved: bool = false) -> Texture2D:
 	var hero := weapon_hero(id)
 	if hero == null or hero.attack_sprite_folder == "":
 		return null
@@ -364,7 +416,7 @@ static func _weapon_icon(id: String) -> Texture2D:
 	var path := "%s/%s/%s" % [PROJECTILE_DIR, hero.attack_sprite_folder, frame]
 	if not ResourceLoader.exists(path):
 		return null
-	return _badge(load(path) as Texture2D, path, hero.attack_color, false, true)
+	return _badge(load(path) as Texture2D, path, hero.attack_color, evolved, true)
 
 static func _fallback_entry(id: String) -> Dictionary:
 	return ACTIVES[id] if ACTIVES.has(id) else PASSIVES.get(id, {})

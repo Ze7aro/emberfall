@@ -34,10 +34,11 @@ func _build() -> void:
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(stack)
 	icon_rect = TextureRect.new()
-	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# Item art is ~160 px drawn at ~30: mipmaps keep it clean when shrunk.
+	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon_rect.custom_minimum_size = Vector2(30, 30)
+	icon_rect.custom_minimum_size = Vector2(32, 32)
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(icon_rect)
 	bonus_label = Label.new()

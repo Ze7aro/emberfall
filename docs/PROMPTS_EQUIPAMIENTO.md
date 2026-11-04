@@ -5,7 +5,7 @@ Mismo formato que `PROMPTS_ICONOS.md`.
 - Hay **un ícono por objeto**, no por rareza: el mismo objeto existe en las 6 rarezas y la rareza se ve en el color del marco. Por eso ningún ícono debe tener marco, brillo de rareza ni fondo de color.
 - Cada ícono tiene que leerse como su casillero (arma, armadura, casco, amuleto, anillo o botas), porque en la mochila conviven objetos de distintos casilleros.
 - Destino: `assets/ui/equipment/items/<id>.png`. El juego los toma solo con ese nombre; mientras falte uno, usa el ícono genérico del casillero.
-- Los de Esencia y Forja todavía no están conectados: cuando estén, los agrego al contador de la mochila y al botón FORJA.
+- Esencia (`assets/ui/essence.png`) va en el contador de la mochila y Forja (`assets/ui/forge.png`) en el botón FORJA.
 
 ## Armas (assets/ui/equipment/items/)
 

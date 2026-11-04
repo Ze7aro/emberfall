@@ -146,7 +146,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 | 6 | ✅ Equipamiento: detalle, mejorar y desarmar | Subir un objeto con oro y Esencia, desarmar y comparar |
 | 7 | ✅ Fuentes de equipamiento | Drops de élites y jefes, misiones, mazmorras y baúles nuevos |
 | 8 | ✅ Sets y legendarios | Bonus de 2 y 4 piezas y efectos únicos funcionando |
-| 9 | Evoluciones de armas | 14 evoluciones doradas |
+| 9 | ✅ Evoluciones de armas | 14 evoluciones doradas |
 | 10 | Arte | Íconos de las 14 armas y de los objetos (prompts en el mismo formato que `PROMPTS_ICONOS.md`) |
 
 Mientras falte el arte de las fases 2 a 8, se usan íconos provisorios: el sprite del proyectil del héroe para las armas y el ícono del casillero con el color de la rareza para los objetos.
@@ -207,6 +207,29 @@ Sin set: Garra Afilada, Corazón de Roble, Yelmo de Hierro, Amuleto de Brasa, An
 - Al recibir daño, una nova empuja a los enemigos a 170 de distancia.
 
 En pantalla: el detalle del objeto muestra su set, cuántas piezas tenés equipadas y qué bonus están activos (✓). El resumen de stats del equipo suma los bonus de set y lista los sets activos.
+
+## Valores de la fase 9
+Un arma en nivel 5 más su pasiva emparejada aparece como carta dorada al subir de nivel, igual que las habilidades. El arma dorada hace +30 % de daño, sus disparos brillan dorados y suma un efecto propio:
+
+| Héroe | Arma | Pasiva | Evolución | Efecto |
+|---|---|---|---|---|
+| Vaelor | Disparo de Fuego | Área | Fénix | Los disparos estallan (50 % del daño alrededor) y queman |
+| Azyren | Disparo de Hielo | Duración | Cero Absoluto | Los disparos estallan y congelan alrededor |
+| Orven | Disparo de Veneno | Enfriamiento | Peste Negra | Cada disparo deja un charco de veneno |
+| Zerath | Disparo Lunar | Amplitud | Luna Rota | Cada disparo se parte en dos esquirlas (50 % del daño) |
+| Sylven | Flecha | Celeridad | Lluvia de Flechas | +2 flechas por ataque |
+| Halvek | Disparo Rúnico | Magnetismo | Sello Rúnico | Los disparos estallan en runas (50 % alrededor) |
+| Mordrak | Tajo en U | Vitalidad | Segador Carmesí | 6 % de chance por golpe de curar medio corazón |
+| Kaelgor | Grieta de Impacto | Armadura | Falla Sísmica | Cada 3 ataques golpea todo a 130 de distancia y empuja |
+| Torvak | Hacha Arrojadiza | Velocidad de proyectil | Hacha Tormenta | Atraviesa a todos los enemigos |
+| Theron | Estocada | Crítico | Estocada Letal | Remata enemigos con menos de 25 % de vida (no jefes) |
+| Cinder | Bala Compacta | Fuerza | Obús Ígneo | Cada 3 ataques, un meteoro (doble de daño) sobre el objetivo |
+| Eldren | Disparo Mágico | Regeneración | Torrente Arcano | Los disparos saltan a 2 enemigos más (60 % del daño) |
+| Raiken | Onda de Puño | Celeridad | Puño del Trueno | Los golpes lanzan rayos a 2 enemigos más |
+| Darven | Corte en X | Área | Vendaval de Acero | Cada 3 ataques, cortes alrededor que empujan |
+
+- Las cartas y la barra de la partida muestran "Evoluciona con …" también para las armas.
+- El Códex de armas muestra la receta ("nivel 5 + pasiva → ???") hasta que la evolucionás por primera vez; después, el nombre y el efecto.
 
 ## A definir más adelante
 - Desafíos y números finales (los de la tabla son una propuesta).

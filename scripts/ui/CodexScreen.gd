@@ -197,10 +197,20 @@ func _weapon_tile(hero_id: String) -> Control:
 		return _tile(UiTheme.BORDER_SOFT, _picture(AbilityCatalog.icon(id), 46.0, LOCKED_TINT), "???", UiTheme.TEXT_MUTED, func():
 			_show_detail(null, "???", hint, UiTheme.TEXT_MUTED))
 	var color := AbilityCatalog.color(id)
-	return _tile(color, _picture(AbilityCatalog.icon(id), 46.0, Color.WHITE), AbilityCatalog.display_name(id), UiTheme.TEXT, func():
+	var evolved_seen := id in GameState.discovered_evolutions
+	var evolution := AbilityCatalog.evolution_info(id)
+	return _tile(GOLD if evolved_seen else color, _picture(AbilityCatalog.icon(id, evolved_seen), 46.0, Color.WHITE), AbilityCatalog.display_name(id), UiTheme.TEXT, func():
 		var text := "Arma de %s. La pueden usar todos los héroes.
 Niveles: %s." % [hero_name, ", ".join(PackedStringArray([2, 3, 4, 5].map(func(l): return AbilityCatalog.weapon_level_text(l).to_lower())))]
-		_show_detail(AbilityCatalog.icon(id), AbilityCatalog.display_name(id), text, color))
+		if not evolution.is_empty():
+			var partner := AbilityCatalog.display_name(str(evolution["passive"]))
+			if evolved_seen:
+				text += "
+★ %s (nivel %d + %s): %s" % [str(evolution["name"]), AbilityCatalog.MAX_LEVEL, partner, str(evolution["desc"])]
+			else:
+				text += "
+Evolución: nivel %d + %s → ???" % [AbilityCatalog.MAX_LEVEL, partner]
+		_show_detail(AbilityCatalog.icon(id, evolved_seen), AbilityCatalog.display_name(id, evolved_seen), text, GOLD if evolved_seen else color))
 
 func _enemy_tile(entry: Dictionary) -> Control:
 	var key := str(entry["key"])
