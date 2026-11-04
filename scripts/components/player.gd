@@ -50,7 +50,7 @@ func setup(owner: Node) -> void:
 	if hero_data != null:
 		max_hp = maxi(2, max_hp + hero_data.hp_modifier)
 	hp = max_hp
-	speed *= 1.0 + (GameState.permanent_speed + GameState.get_equipped_bonus("speed")) * 0.05
+	speed *= 1.0 + GameState.permanent_speed * 0.05 + GameState.equipment_stat("speed") / 100.0
 	if hero_data != null:
 		speed *= hero_data.move_speed_modifier
 	_camera = Camera2D.new()

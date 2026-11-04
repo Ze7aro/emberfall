@@ -10,13 +10,14 @@ const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 
 signal pressed
 
-const RARITY_BORDERS := {"common": Color("9b8eaa"), "rare": Color("6be0ff"), "epic": Color("ffb84d")}
+const RARITY_BORDERS := EquipmentCatalog.RARITY_COLORS
 const EMPTY_BORDER := Color("3a2b52")
 
 var icon_rect: TextureRect
 var bonus_label: Label
 var empty_label: Label
 var upgrade_marker: Label
+var level_label: Label
 
 ## Built in _init (not _ready) so callers can call set_item()/set_empty()
 ## right after `.new()`, before this node is ever added to the tree.
@@ -60,6 +61,15 @@ func _build() -> void:
 	upgrade_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	upgrade_marker.visible = false
 	add_child(upgrade_marker)
+	level_label = Label.new()
+	level_label.position = Vector2(5, 2)
+	level_label.add_theme_font_override("font", UiTheme.bold_font())
+	level_label.add_theme_font_size_override("font_size", 11)
+	level_label.add_theme_color_override("font_outline_color", Color("07060d"))
+	level_label.add_theme_constant_override("outline_size", 3)
+	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	level_label.visible = false
+	add_child(level_label)
 
 func set_empty() -> void:
 	icon_rect.texture = null
@@ -67,11 +77,15 @@ func set_empty() -> void:
 	bonus_label.visible = false
 	empty_label.visible = true
 	upgrade_marker.visible = false
+	level_label.visible = false
 	add_theme_stylebox_override("panel", UiTheme.kit("rarity_common", _style(EMPTY_BORDER, false), 6.0))
 
 ## `bonus_text` and `has_upgrade` are optional — pass "" / false to omit
 ## indicators the real data doesn't back (no fabricated levels/upgrades).
-func set_item(icon: Texture2D, rarity: String, bonus_text: String = "", equipped: bool = false, has_upgrade: bool = false) -> void:
+func set_item(icon: Texture2D, rarity: String, bonus_text: String = "", equipped: bool = false, has_upgrade: bool = false, level: int = 0) -> void:
+	level_label.text = "%d" % level
+	level_label.visible = level > 0
+	level_label.add_theme_color_override("font_color", RARITY_BORDERS.get(rarity, Color.WHITE))
 	icon_rect.texture = icon
 	icon_rect.visible = icon != null
 	bonus_label.text = bonus_text

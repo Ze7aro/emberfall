@@ -44,6 +44,8 @@ var _weapon_name: Label
 var _weapon_goal: Label
 var _change_hero_button: Button
 var _basic_stats: HBoxContainer
+## Equipment stats other than attack and health, in one short line.
+var _equip_summary: Label
 var _inventory_panel: Control
 var _inventory_grid: GridContainer
 var _carousel_area: Control
@@ -209,7 +211,17 @@ func _build_equipment_state() -> Control:
 	var stats_panel := PanelContainer.new()
 	stats_panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_default", UiTheme.slot(false, 8)))
 	stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	stats_panel.add_child(_basic_stats)
+	var stats_box := VBoxContainer.new()
+	stats_box.add_theme_constant_override("separation", 2)
+	stats_box.add_child(_basic_stats)
+	_equip_summary = Label.new()
+	_equip_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_equip_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_equip_summary.custom_minimum_size = Vector2(300, 0)
+	_equip_summary.add_theme_font_size_override("font_size", 12)
+	_equip_summary.add_theme_color_override("font_color", UiTheme.ACCENT)
+	stats_box.add_child(_equip_summary)
+	stats_panel.add_child(stats_box)
 	col.add_child(stats_panel)
 
 	var inventory_wrap := Control.new()
@@ -334,7 +346,7 @@ func _refresh_equipment_slots() -> void:
 		if item.is_empty():
 			slot.set_empty()
 		else:
-			slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), "+%d" % int(item.get("value", 0)), true)
+			slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), true, false, int(item.get("level", 1)))
 
 ## Backpack always shows a full grid of square slots, not just the ones
 ## holding an item — an empty inventory otherwise reads as a blank panel
@@ -358,7 +370,7 @@ func _build_inventory_slot(item: Dictionary) -> Control:
 	var t := str(item.get("equipment_type", ""))
 	var equipped := str(GameState.equipped_by_type.get(t, "")) == uid
 	var slot := EquipmentSlot.new()
-	slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), "+%d" % int(item.get("value", 0)), equipped)
+	slot.set_item(_icon_for_type(t), str(item.get("rarity", "common")), EquipmentCatalog.main_short(item), equipped, false, int(item.get("level", 1)))
 	slot.pressed.connect(_on_inventory_item_pressed.bind(uid))
 	return slot
 
@@ -388,6 +400,14 @@ func _refresh_basic_stats() -> void:
 		heart_icon.heart_size = 16.0
 		heart_icon.set_hearts(2, 2)
 		_basic_stats.add_child(_stat_icon_row(heart_icon, "VIDA", str(max_units)))
+	var totals := GameState.equipment_totals()
+	var parts := PackedStringArray()
+	for stat in EquipmentCatalog.STATS:
+		if stat in ["damage", "health"] or float(totals.get(stat, 0.0)) <= 0.0:
+			continue
+		parts.append(EquipmentCatalog.stat_text(stat, float(totals[stat])))
+	_equip_summary.text = "  ·  ".join(parts)
+	_equip_summary.visible = not parts.is_empty()
 
 func _stat_icon_row(icon: Control, label_text: String, value: String) -> Control:
 	var row := HBoxContainer.new()

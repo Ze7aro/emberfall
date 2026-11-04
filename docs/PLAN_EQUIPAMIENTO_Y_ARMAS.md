@@ -142,7 +142,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 | 2 | ✅ Ataques de héroe convertidos en armas | Cada héroe arranca con su arma, que sube de nivel 1 a 5 al subir de nivel |
 | 3 | ✅ Armas de otros héroes en el pool y desbloqueo | Desafío con progreso, aviso al desbloquear y el arma apareciendo con otro héroe |
 | 4 | ✅ Pantallas de armas | Selección de héroe con el arma y su desafío, Códex de armas |
-| 5 | Equipamiento: datos nuevos | Stats nuevas aplicadas en partida, rareza legendaria y guardado convertido |
+| 5 | ✅ Equipamiento: datos nuevos | Stats nuevas aplicadas en partida, rareza legendaria y guardado convertido |
 | 6 | Equipamiento: detalle, mejorar y desarmar | Subir un objeto con oro y Esencia, desarmar y comparar |
 | 7 | Fuentes de equipamiento | Drops de élites y jefes, misiones, mazmorras y baúles nuevos |
 | 8 | Sets y legendarios | Bonus de 2 y 4 piezas y efectos únicos funcionando |
@@ -150,6 +150,12 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 | 10 | Arte | Íconos de las 14 armas y de los objetos (prompts en el mismo formato que `PROMPTS_ICONOS.md`) |
 
 Mientras falte el arte de las fases 2 a 8, se usan íconos provisorios: el sprite del proyectil del héroe para las armas y el ícono del casillero con el color de la rareza para los objetos.
+
+## Valores de la fase 5
+- Stat principal en nivel 1 (común / raro / épico / legendario): Daño 3/6/10/15, Vida 1/2/3/4 medios corazones, Bloqueo 2/3/5/7 %, Enfriamiento 3/5/8/10 %, Crítico 3/5/8/10 %, Velocidad 4/7/10/14 %.
+- Secundarias: Área 4/6/8/10 %, Imán 8/12/16/20 %, Oro 5/8/12/15 %, Experiencia 4/6/8/10 %, Regeneración 1/1,5/2/3 medios corazones por minuto, Vel. de proyectil 5/8/12/15 %.
+- Cada nivel suma 15 % del valor de nivel 1 (nivel 10 = x2,35).
+- Los legendarios ya traen su efecto único guardado; el efecto funciona desde la fase 8.
 
 ## A definir más adelante
 - Desafíos y números finales (los de la tabla son una propuesta).

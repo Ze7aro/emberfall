@@ -285,7 +285,14 @@ func _recycle_far_enemies() -> void:
 		if enemy.global_position.distance_to(player.global_position) > ENEMY_RECYCLE_DISTANCE:
 			enemy.global_position = player.global_position + heading.rotated(randf_range(-0.9, 0.9)) * 540.0
 
+## Equipped item stats, read once per run (EquipmentCatalog.STATS units).
+var _equip := {}
+
+func _eq(stat: String) -> float:
+	return float(_equip.get(stat, 0.0))
+
 func _ready() -> void:
+	_equip = GameState.equipment_totals()
 	GameState.change_screen("playing")
 	GameState.set_boss_encounter(false)
 	_build_biome_background()
@@ -1265,7 +1272,7 @@ func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bo
 	living_enemies.sort_custom(func(a, b):
 		return player.global_position.distance_squared_to(a.global_position) < player.global_position.distance_squared_to(b.global_position)
 	)
-	var bonus_damage := GameState.permanent_damage + GameState.get_equipped_bonus("damage")
+	var bonus_damage := GameState.permanent_damage + int(round(_eq("damage")))
 	var base_damage := (BASIC_ATTACK_BASE_DAMAGE + bonus_damage * 2) * float(stats["damage"])
 	var final_damage := int(round(base_damage * damage_multiplier() * hero_data.damage_modifier))
 	var attack_count := int(_weapon_attack_counts.get(id, 0)) + 1
@@ -1440,7 +1447,7 @@ func _up(id: String) -> int:
 	return GameState.get_upgrade_level(id)
 
 func pickup_radius() -> float:
-	return 80.0 + passive_level("magnet") * 35.0 + _up("magnet") * 20.0 + (60.0 if is_evolved("familiar") else 0.0)
+	return (80.0 + passive_level("magnet") * 35.0 + _up("magnet") * 20.0 + (60.0 if is_evolved("familiar") else 0.0)) * (1.0 + _eq("magnet") / 100.0)
 
 func damage_multiplier() -> float:
 	return 1.0 + passive_level("might") * 0.10 + _up("damage") * 0.03
@@ -1449,10 +1456,10 @@ func boss_damage_multiplier() -> float:
 	return 1.0 + _up("boss_damage") * 0.10
 
 func xp_multiplier() -> float:
-	return 1.0 + _up("growth") * 0.04
+	return 1.0 + _up("growth") * 0.04 + _eq("xp") / 100.0
 
 func gold_multiplier() -> float:
-	return 1.0 + _up("greed") * 0.10
+	return 1.0 + _up("greed") * 0.10 + _eq("gold") / 100.0
 
 func luck_multiplier() -> float:
 	return 1.0 + _up("luck") * 0.25
@@ -1468,13 +1475,13 @@ func speed_multiplier() -> float:
 
 ## Half-hearts per second.
 func regen_per_second() -> float:
-	return passive_level("regen") * 0.1 + _up("regen") * (1.0 / 30.0)
+	return passive_level("regen") * 0.1 + _up("regen") * (1.0 / 30.0) + _eq("regen") / 60.0
 
 func armor_block_chance() -> float:
-	return passive_level("armor") * 0.08 + _up("armor") * 0.03
+	return passive_level("armor") * 0.08 + _up("armor") * 0.03 + _eq("block") / 100.0
 
 func crit_chance() -> float:
-	return passive_level("crit") * 0.08 + _up("crit") * 0.03
+	return passive_level("crit") * 0.08 + _up("crit") * 0.03 + _eq("crit") / 100.0
 
 func crit_multiplier() -> float:
 	return 1.5 + passive_level("crit") * 0.2
@@ -1483,10 +1490,10 @@ func attack_speed_multiplier() -> float:
 	return maxf(0.5, 1.0 - passive_level("haste") * 0.08 - _up("haste") * 0.04)
 
 func cooldown_multiplier() -> float:
-	return maxf(0.4, 1.0 - passive_level("cooldown") * 0.08 - _up("cooldown") * 0.03)
+	return maxf(0.4, 1.0 - passive_level("cooldown") * 0.08 - _up("cooldown") * 0.03 - _eq("cooldown") / 100.0)
 
 func area_multiplier() -> float:
-	return 1.0 + passive_level("area") * 0.10 + _up("area") * 0.05
+	return 1.0 + passive_level("area") * 0.10 + _up("area") * 0.05 + _eq("area") / 100.0
 
 func duration_multiplier() -> float:
 	return 1.0 + passive_level("duration") * 0.15 + _up("duration") * 0.08
@@ -1500,7 +1507,7 @@ func bounce_bonus() -> int:
 	return _up("bounce")
 
 func proj_speed_multiplier() -> float:
-	return 1.0 + passive_level("proj_speed") * 0.15 + _up("proj_speed") * 0.08
+	return 1.0 + passive_level("proj_speed") * 0.15 + _up("proj_speed") * 0.08 + _eq("proj_speed") / 100.0
 
 # --- Level-up -------------------------------------------------------------------
 

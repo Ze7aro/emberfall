@@ -112,6 +112,7 @@ const KIT := {
 	"rarity_common": ["frames/slot.png", 6, 6, 6, 6],
 	"rarity_rare": ["frames/slot.png", 6, 6, 6, 6],
 	"rarity_epic": ["frames/slot.png", 6, 6, 6, 6],
+	"rarity_legendary": ["frames/slot.png", 6, 6, 6, 6],
 	"hero_card": ["frames/panel.png", 10, 10, 10, 10],
 	"hero_card_focus": ["frames/selection.png", 6, 6, 6, 6],
 	"slot_wide": ["frames/slot.png", 6, 6, 6, 6],
@@ -159,6 +160,8 @@ static func kit(id: String, fallback: StyleBox, content: float = -1.0) -> StyleB
 		style.modulate_color = Color(0.8, 1.0, 1.12)
 	elif id == "rarity_epic":
 		style.modulate_color = Color(1.12, 0.84, 1.12)
+	elif id == "rarity_legendary":
+		style.modulate_color = Color(1.2, 0.95, 0.6)
 	if entry.size() > 6:
 		style.region_rect = entry[6]
 	var sides := [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]

@@ -24,36 +24,11 @@ const ENERGY_INTERVAL := 300.0
 const STAGE_COUNT := 10
 const DUNGEON_UNLOCK_STAGE := 10
 
-## Six RPG-style equipment slots, each mapped to one of the three stats the
-## rest of combat already reads (damage/health/speed). Three rarities per
-## type so chests stay worth opening past the first few.
-const EQUIPMENT_TYPES := ["weapon", "armor", "helmet", "amulet", "ring", "boots"]
-const EQUIPMENT_TYPE_LABELS := {
-	"weapon": "ARMA", "armor": "ARMADURA", "helmet": "CASCO",
-	"amulet": "AMULETO", "ring": "ANILLO", "boots": "BOTAS",
-}
-const EQUIPMENT_POOL := [
-	{"id": "blade_focus", "name": "FILO ENFOCADO", "equipment_type": "weapon", "stat": "damage", "value": 3, "rarity": "common"},
-	{"id": "sharp_claw", "name": "GARRA AFILADA", "equipment_type": "weapon", "stat": "damage", "value": 6, "rarity": "rare"},
-	{"id": "chaos_fang", "name": "COLMILLO DEL CAOS", "equipment_type": "weapon", "stat": "damage", "value": 10, "rarity": "epic"},
-	{"id": "iron_will", "name": "VOLUNTAD DE HIERRO", "equipment_type": "armor", "stat": "health", "value": 1, "rarity": "common"},
-	{"id": "oak_heart", "name": "CORAZÓN DE ROBLE", "equipment_type": "armor", "stat": "health", "value": 2, "rarity": "rare"},
-	{"id": "unbreakable_soul", "name": "ALMA INQUEBRANTABLE", "equipment_type": "armor", "stat": "health", "value": 4, "rarity": "epic"},
-	{"id": "iron_helm", "name": "YELMO DE HIERRO", "equipment_type": "helmet", "stat": "health", "value": 1, "rarity": "common"},
-	{"id": "warded_helm", "name": "YELMO PROTEGIDO", "equipment_type": "helmet", "stat": "health", "value": 2, "rarity": "rare"},
-	{"id": "dragonbone_helm", "name": "YELMO DE DRAGÓN", "equipment_type": "helmet", "stat": "health", "value": 4, "rarity": "epic"},
-	{"id": "ember_amulet", "name": "AMULETO DE BRASA", "equipment_type": "amulet", "stat": "damage", "value": 2, "rarity": "common"},
-	{"id": "void_amulet", "name": "AMULETO DEL VACÍO", "equipment_type": "amulet", "stat": "damage", "value": 5, "rarity": "rare"},
-	{"id": "soul_amulet", "name": "AMULETO DE ALMAS", "equipment_type": "amulet", "stat": "damage", "value": 8, "rarity": "epic"},
-	{"id": "swift_ring", "name": "ANILLO VELOZ", "equipment_type": "ring", "stat": "speed", "value": 1, "rarity": "common"},
-	{"id": "storm_ring", "name": "ANILLO TORMENTA", "equipment_type": "ring", "stat": "speed", "value": 3, "rarity": "rare"},
-	{"id": "gale_ring", "name": "ANILLO DEL VENDAVAL", "equipment_type": "ring", "stat": "speed", "value": 5, "rarity": "epic"},
-	{"id": "swift_boots", "name": "BOTAS VELOCES", "equipment_type": "boots", "stat": "speed", "value": 2, "rarity": "common"},
-	{"id": "wind_wings", "name": "ALAS DE VIENTO", "equipment_type": "boots", "stat": "speed", "value": 4, "rarity": "rare"},
-	{"id": "ghost_step", "name": "PASO FANTASMA", "equipment_type": "boots", "stat": "speed", "value": 7, "rarity": "epic"},
-]
-const RARITY_WEIGHTS := {"common": 60, "rare": 30, "epic": 10}
-const RARITY_LABELS := {"common": "COMÚN", "rare": "RARO", "epic": "ÉPICO"}
+## Six equipment slots; items, stats and rarities live in EquipmentCatalog.
+const EQUIPMENT_TYPES := EquipmentCatalog.TYPES
+const EQUIPMENT_TYPE_LABELS := EquipmentCatalog.TYPE_LABELS
+const RARITY_WEIGHTS := {"common": 60, "rare": 30, "epic": 10, "legendary": 0}
+const RARITY_LABELS := EquipmentCatalog.RARITY_LABELS
 
 const DAY_SECONDS := 86400.0
 const WEEK_SECONDS := 604800.0
@@ -600,12 +575,13 @@ func open_chest_with_gems(tier_index: int) -> Dictionary:
 	var cost := int(tier.cost)
 	if gems < cost:
 		return {}
-	var allowed_rarities: Array = tier.rarities
-	var item := _roll_equipment_drop().duplicate()
-	if not allowed_rarities.has(str(RARITY_LABELS.get(str(item.get("rarity", "common")), "COMÚN"))):
-		item = EQUIPMENT_POOL.filter(func(entry): return allowed_rarities.has(str(RARITY_LABELS.get(str(entry.get("rarity", "common")), "COMÚN"))))[0]
+	var allowed: Array = []
+	for key in RARITY_LABELS:
+		if tier.rarities.has(RARITY_LABELS[key]):
+			allowed.append(key)
+	var recipe_id := _roll_equipment_drop(allowed)
 	gems -= cost; gems_changed.emit(gems)
-	item["uid"] = _generate_item_uid(str(item["id"]))
+	var item := EquipmentCatalog.make_item(recipe_id, _generate_item_uid(recipe_id))
 	equipment_inventory.append(item); inventory_changed.emit(); daily_chests += 1; weekly_chests += 1; missions_changed.emit(); save()
 	return item
 
@@ -768,17 +744,22 @@ func record_run(stats: Dictionary) -> Array[String]:
 
 const CHEST_COST := 150
 
-func _roll_equipment_drop() -> Dictionary:
+## A recipe id: rarity by RARITY_WEIGHTS (only among `allowed`, all when
+## empty), then any slot of that rarity.
+func _roll_equipment_drop(allowed: Array = []) -> String:
+	var rarities: Array = allowed if not allowed.is_empty() else RARITY_WEIGHTS.keys()
 	var total := 0
-	for item in EQUIPMENT_POOL:
-		total += int(RARITY_WEIGHTS.get(str(item.get("rarity", "common")), 1))
-	var roll := randi() % total
-	var acc := 0
-	for item in EQUIPMENT_POOL:
-		acc += int(RARITY_WEIGHTS.get(str(item.get("rarity", "common")), 1))
-		if roll < acc:
-			return item
-	return EQUIPMENT_POOL[0]
+	for r in rarities:
+		total += int(RARITY_WEIGHTS.get(r, 0))
+	var picked: String = str(rarities[0])
+	if total > 0:
+		var roll := randi() % total
+		for r in rarities:
+			roll -= int(RARITY_WEIGHTS.get(r, 0))
+			if roll < 0:
+				picked = str(r)
+				break
+	return EquipmentCatalog.random_recipe([picked])
 
 ## Time.get_ticks_msec() resets to 0 every launch, so two chests opened at
 ## roughly the same point in two different sessions could mint the exact
@@ -791,7 +772,7 @@ func _generate_item_uid(base_id: String) -> String:
 ## dead weight (only one item per equipment_type can ever be equipped at
 ## once). Converting it to gold instead means every chest is worth opening,
 ## never a wasted pull.
-const DUPLICATE_REFUND_GOLD := {"common": 15, "rare": 35, "epic": 70}
+const DUPLICATE_REFUND_GOLD := {"common": 15, "rare": 35, "epic": 70, "legendary": 150}
 
 func _owns_equipment_recipe(recipe_id: String) -> bool:
 	for existing in equipment_inventory:
@@ -805,14 +786,15 @@ func open_chest() -> Dictionary:
 		return {}
 	gold -= CHEST_COST
 	gold_changed.emit(gold)
-	var item: Dictionary = _roll_equipment_drop().duplicate()
-	if _owns_equipment_recipe(str(item.get("id", ""))):
+	var recipe_id := _roll_equipment_drop()
+	var item: Dictionary = EquipmentCatalog.recipe(recipe_id).duplicate()
+	if _owns_equipment_recipe(recipe_id):
 		var refund := int(DUPLICATE_REFUND_GOLD.get(str(item.get("rarity", "common")), 15))
 		gold += refund
 		gold_changed.emit(gold)
 		item["duplicate_refund"] = refund
 	else:
-		item["uid"] = _generate_item_uid(str(item["id"]))
+		item = EquipmentCatalog.make_item(recipe_id, _generate_item_uid(recipe_id))
 		equipment_inventory.append(item)
 		inventory_changed.emit()
 	daily_chests += 1
@@ -853,16 +835,25 @@ func get_equipped_item_for_type(equipment_type: String) -> Dictionary:
 			return item
 	return {}
 
-## Sums every equipped slot whose item boosts `stat` — more than one
-## equipment type can feed the same stat (e.g. weapon and amulet both add
-## damage), so this isn't a simple single-slot lookup.
-func get_equipped_bonus(stat: String) -> int:
-	var total := 0
+## Every stat from the equipped items added up, as {stat: value} (see
+## EquipmentCatalog.STATS for units).
+func equipment_totals() -> Dictionary:
+	var totals := {}
 	for equipment_type in equipped_by_type:
 		var item := get_equipped_item_for_type(equipment_type)
-		if not item.is_empty() and str(item.get("stat", "")) == stat:
-			total += int(item.get("value", 0))
-	return total
+		if item.is_empty():
+			continue
+		var stats := EquipmentCatalog.item_stats(item)
+		for stat in stats:
+			totals[stat] = float(totals.get(stat, 0.0)) + float(stats[stat])
+	return totals
+
+func equipment_stat(stat: String) -> float:
+	return float(equipment_totals().get(stat, 0.0))
+
+## Flat stats (damage, health) rounded, for code that works in whole units.
+func get_equipped_bonus(stat: String) -> int:
+	return int(round(equipment_stat(stat)))
 
 ## -- Missions --
 
@@ -1147,6 +1138,11 @@ func load_save() -> void:
 		owned_characters.append(&"variante_01")
 	var stored_equipment = data.get("equipment_inventory", [])
 	equipment_inventory = (stored_equipment as Array).filter(func(item): return item is Dictionary) if stored_equipment is Array else []
+	# Items from before EquipmentCatalog become level-1 items of the same
+	# recipe and rarity (same uid, so equipped slots still point at them).
+	for i in equipment_inventory.size():
+		if EquipmentCatalog.is_legacy(equipment_inventory[i]):
+			equipment_inventory[i] = EquipmentCatalog.convert_legacy(equipment_inventory[i])
 	# Never trust the stored counter alone — also scan existing items in case
 	# this save predates it (their uids came from the old, collision-prone
 	# Time.get_ticks_msec() scheme) or it was hand-edited to something stale.
