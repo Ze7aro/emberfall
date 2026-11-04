@@ -214,6 +214,25 @@ const WEAPON_EVOLUTIONS := {
 	"variante_14": {"passive": "area", "name": "VENDAVAL DE ACERO", "trait": "quake", "desc": "Cada 3 ataques, cortes en cruz alrededor"},
 }
 
+## Weapon art in ICON_DIR (docs/PROMPTS_ARMAS.md): [normal, golden]. While
+## a file is missing the hero's projectile sprite stands in.
+const WEAPON_ICONS := {
+	"variante_01": ["arma_disparo_de_fuego", "evo_fenix"],
+	"variante_02": ["arma_disparo_de_hielo", "evo_cero_absoluto"],
+	"variante_03": ["arma_disparo_de_veneno", "evo_peste_negra"],
+	"variante_04": ["arma_disparo_lunar", "evo_luna_rota"],
+	"variante_05": ["arma_flecha", "evo_lluvia_de_flechas"],
+	"variante_06": ["arma_disparo_runico", "evo_sello_runico"],
+	"variante_07": ["arma_tajo_en_u", "evo_segador_carmesi"],
+	"variante_08": ["arma_grieta_de_impacto", "evo_falla_sismica"],
+	"variante_09": ["arma_hacha_arrojadiza", "evo_hacha_tormenta"],
+	"variante_10": ["arma_estocada", "evo_estocada_letal"],
+	"variante_11": ["arma_bala_compacta", "evo_obus_igneo"],
+	"variante_12": ["arma_disparo_magico", "evo_torrente_arcano"],
+	"variante_13": ["arma_onda_de_puno", "evo_puno_del_trueno"],
+	"variante_14": ["arma_corte_en_x", "evo_vendaval_de_acero"],
+}
+
 ## Evolution data of an active or weapon ({passive, name, desc, ...}), or {}.
 static func evolution_info(id: String) -> Dictionary:
 	if is_weapon(id):
@@ -405,6 +424,17 @@ static func _badge(texture: Texture2D, key: String, tint: Color, evolved: bool, 
 ## Until weapons get their own art: the hero's first projectile frame on a
 ## badge in the hero's attack colour.
 static func _weapon_icon(id: String, evolved: bool = false) -> Texture2D:
+	var names: Array = WEAPON_ICONS.get(weapon_hero_id(id), [])
+	var own_art: Array = []
+	if evolved and names.size() > 1:
+		own_art.append(names[1])
+	if not names.is_empty():
+		own_art.append(names[0])
+	for art_name in own_art:
+		var art_path := "%s/%s.png" % [ICON_DIR, art_name]
+		if ResourceLoader.exists(art_path):
+			var hero_color := weapon_hero(id).attack_color if weapon_hero(id) != null else Color("8a7d9c")
+			return _badge(load(art_path) as Texture2D, art_path, hero_color, evolved)
 	var hero := weapon_hero(id)
 	if hero == null or hero.attack_sprite_folder == "":
 		return null

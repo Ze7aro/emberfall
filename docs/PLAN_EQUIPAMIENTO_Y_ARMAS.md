@@ -147,7 +147,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 | 7 | ✅ Fuentes de equipamiento | Drops de élites y jefes, misiones, mazmorras y baúles nuevos |
 | 8 | ✅ Sets y legendarios | Bonus de 2 y 4 piezas y efectos únicos funcionando |
 | 9 | ✅ Evoluciones de armas | 14 evoluciones doradas |
-| 10 | Arte | Íconos de las 14 armas y de los objetos (prompts en el mismo formato que `PROMPTS_ICONOS.md`) |
+| 10 | Arte | Íconos de los objetos ✅ (`PROMPTS_EQUIPAMIENTO.md`) y de las 14 armas, normal y dorada (`PROMPTS_ARMAS.md`) |
 
 Mientras falte el arte de las fases 2 a 8, se usan íconos provisorios: el sprite del proyectil del héroe para las armas y el ícono del casillero con el color de la rareza para los objetos.
 
