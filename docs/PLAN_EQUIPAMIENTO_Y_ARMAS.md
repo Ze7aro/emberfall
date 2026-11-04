@@ -145,7 +145,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 | 5 | ✅ Equipamiento: datos nuevos | Stats nuevas aplicadas en partida, rareza legendaria y guardado convertido |
 | 6 | ✅ Equipamiento: detalle, mejorar y desarmar | Subir un objeto con oro y Esencia, desarmar y comparar |
 | 7 | ✅ Fuentes de equipamiento | Drops de élites y jefes, misiones, mazmorras y baúles nuevos |
-| 8 | Sets y legendarios | Bonus de 2 y 4 piezas y efectos únicos funcionando |
+| 8 | ✅ Sets y legendarios | Bonus de 2 y 4 piezas y efectos únicos funcionando |
 | 9 | Evoluciones de armas | 14 evoluciones doradas |
 | 10 | Arte | Íconos de las 14 armas y de los objetos (prompts en el mismo formato que `PROMPTS_ICONOS.md`) |
 
@@ -188,8 +188,25 @@ Mientras falte el arte de las fases 2 a 8, se usan íconos provisorios: el sprit
 | Hito semanal 4 | siempre | un objeto: raro 60, épico 40 |
 
 - En la partida, el objeto que suelta un élite o jefe se anuncia con un cartel del color de su rareza y se suma a la mochila al terminar, aunque pierdas. La pantalla de resultado lo muestra en "BOTÍN", junto con el objeto o la Esencia de la mazmorra.
-- Por ahora los objetos que caen son de cualquier tipo; que sean del set del capítulo llega con los sets en la fase 8.
+- Los objetos que sueltan élites y jefes son piezas del set del capítulo (fase 8). Baúles, mazmorras y misiones dan cualquier objeto.
+
+## Valores de la fase 8
+Cada casillero tiene 4 objetos: 3 son piezas de un set (uno por capítulo) y el cuarto no tiene set.
+
+| Set | Capítulo | Piezas | 2 piezas | 4 piezas |
+|---|---|---|---|---|
+| Criptas del Vacío | 1 | Colmillo del Caos, Égida del Abismo, Corona del Eclipse, Amuleto del Vacío, Sello del Vacío, Paso Fantasma | +10 % Crítico | Los enemigos que matás tienen 25 % de chance de estallar (12 de daño en área) |
+| Cavernas Rotas | 2 | Filo Enfocado, Alma Inquebrantable, Yelmo Protegido, Amuleto de Almas, Anillo del Vendaval, Alas de Viento | +8 % Bloqueo | Tus golpes tienen 12 % de chance de congelar 1 s |
+| Forja de Ember | 3 | Furia de Emberfall, Voluntad de Hierro, Yelmo de Dragón, Corazón de la Forja, Anillo Tormenta, Pasos del Cometa | +10 % Daño | Tus golpes tienen 25 % de chance de quemar 3 s (4 por segundo) |
+
+Sin set: Garra Afilada, Corazón de Roble, Yelmo de Hierro, Amuleto de Brasa, Anillo Veloz, Botas Veloces.
+
+**Efectos únicos de los legendarios** (dos iguales no se suman):
+- Al matar, 3 % de chance de soltar una poción de vida.
+- Cada 10 s se carga un golpe que hace el doble de daño (un anillo dorado avisa que está listo).
+- Al recibir daño, una nova empuja a los enemigos a 170 de distancia.
+
+En pantalla: el detalle del objeto muestra su set, cuántas piezas tenés equipadas y qué bonus están activos (✓). El resumen de stats del equipo suma los bonus de set y lista los sets activos.
 
 ## A definir más adelante
 - Desafíos y números finales (los de la tabla son una propuesta).
-- Nombres y efectos de los 3 sets y de los legendarios.

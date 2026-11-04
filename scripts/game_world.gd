@@ -290,12 +290,18 @@ func _recycle_far_enemies() -> void:
 
 ## Equipped item stats, read once per run (EquipmentCatalog.STATS units).
 var _equip := {}
+## 4-piece set effects and legendary effects equipped, as {id: true}.
+var _effects := {}
+## "Cada 10 s, tu próximo golpe hace el doble de daño" (legendary).
+var _empower_clock := 0.0
+var _empowered := false
 
 func _eq(stat: String) -> float:
 	return float(_equip.get(stat, 0.0))
 
 func _ready() -> void:
 	_equip = GameState.equipment_totals()
+	_effects = GameState.equipped_effects()
 	GameState.change_screen("playing")
 	GameState.set_boss_encounter(false)
 	_build_biome_background()
@@ -388,6 +394,7 @@ func _physics_process(delta: float) -> void:
 		if not is_instance_valid(projectile):
 			projectiles.erase(projectile)
 	update_powers(delta)
+	_tick_empower(delta)
 	_follow_floor(player.global_position)
 	_recycle_far_enemies()
 
@@ -857,6 +864,10 @@ func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = 
 	if enemy.is_boss or enemy.elite_tier > 0:
 		final_amount *= boss_damage_multiplier()
 	final_amount *= enemy.consume_shock()
+	if _empowered:
+		_empowered = false
+		final_amount *= 2.0
+		spawn_ring(enemy.global_position, EquipmentCatalog.RARITY_COLORS["legendary"], 46.0, 0.3, 4.0)
 	if can_crit and randf() < crit_chance():
 		_last_hit_crit = true
 		final_amount *= crit_multiplier()
@@ -880,7 +891,34 @@ func _apply_damage(enemy: EmberfallEnemy, amount: int, apply_multiplier: bool = 
 	if enemy.damage(dealt):
 		_on_enemy_killed(enemy)
 		return true
+	_apply_set_touch(enemy)
 	return false
+
+## Cavernas and Forja 4-piece effects: a hit may freeze or burn.
+func _apply_set_touch(enemy: EmberfallEnemy) -> void:
+	if _effects.has("frost_touch") and randf() < EquipmentCatalog.FROST_TOUCH_CHANCE:
+		enemy.apply_freeze(EquipmentCatalog.FROST_TOUCH_TIME * duration_multiplier())
+	if _effects.has("burning_touch") and randf() < EquipmentCatalog.BURN_TOUCH_CHANCE:
+		enemy.apply_burn(EquipmentCatalog.BURN_TOUCH_TIME * duration_multiplier(), EquipmentCatalog.BURN_TOUCH_DAMAGE)
+
+## Legendary "empowered": charges every EMPOWER_INTERVAL seconds; the next
+## hit spends it (see _apply_damage).
+func _tick_empower(delta: float) -> void:
+	if not _effects.has("empowered") or _empowered:
+		return
+	_empower_clock += delta
+	if _empower_clock >= EquipmentCatalog.EMPOWER_INTERVAL:
+		_empower_clock = 0.0
+		_empowered = true
+		spawn_ring(player.global_position, EquipmentCatalog.RARITY_COLORS["legendary"], 34.0, 0.35, 3.0)
+
+## Legendary "repel_nova": taking a hit pushes nearby enemies away.
+func _repel_nova() -> void:
+	var at := player.global_position
+	for enemy in enemies:
+		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(at) < EquipmentCatalog.REPEL_RADIUS:
+			enemy.knockback(at.direction_to(enemy.global_position) * 520.0)
+	spawn_ring(at, EquipmentCatalog.RARITY_COLORS["legendary"], EquipmentCatalog.REPEL_RADIUS, 0.4, 6.0)
 
 ## Damage per source for the result screen's ranking. `damage_source` is
 ## the fallback for hits dealt synchronously inside an ability's trigger.
@@ -895,6 +933,8 @@ func note_frozen() -> void:
 ## Called by player.gd with every hit that lands (half-heart units).
 func note_damage_taken(amount: int) -> void:
 	_damage_taken += amount
+	if _effects.has("repel_nova"):
+		_repel_nova()
 
 func gold_this_run() -> int:
 	return maxi(0, GameState.gold - _gold_at_start)
@@ -1387,6 +1427,11 @@ func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 		_roll_small_drop(enemy.global_position)
 	else:
 		_roll_equipment_loot(enemy)
+	if _effects.has("heart_drop") and randf() < EquipmentCatalog.HEART_DROP_CHANCE:
+		spawn_pickup(enemy.global_position + Vector2(0, 18), EmberfallPickup.Kind.POTION)
+	if _effects.has("void_burst") and randf() < EquipmentCatalog.VOID_BURST_CHANCE:
+		# Deferred so a burst that kills doesn't chain inside this call.
+		_void_burst.call_deferred(enemy.global_position, int(round(EquipmentCatalog.VOID_BURST_DAMAGE * damage_multiplier())))
 	if enemy == boss:
 		SfxPlayer.play("boss/boss_defeated.wav", false)
 		end_run(true)
@@ -1396,7 +1441,7 @@ func _on_enemy_killed(enemy: EmberfallEnemy) -> void:
 ## Élites may drop an item, bosses always do (GameState.LOOT_TABLES).
 func _roll_equipment_loot(enemy: EmberfallEnemy) -> void:
 	var source := "boss" if enemy.is_boss else ("miniboss" if enemy.elite_tier >= 2 else "elite")
-	var drop := GameState.roll_loot(source)
+	var drop := GameState.roll_loot(source, EquipmentCatalog.set_for_chapter(_chapter))
 	if drop.is_empty():
 		return
 	_loot.append(drop)
@@ -1465,7 +1510,7 @@ func pickup_radius() -> float:
 	return (80.0 + passive_level("magnet") * 35.0 + _up("magnet") * 20.0 + (60.0 if is_evolved("familiar") else 0.0)) * (1.0 + _eq("magnet") / 100.0)
 
 func damage_multiplier() -> float:
-	return 1.0 + passive_level("might") * 0.10 + _up("damage") * 0.03
+	return 1.0 + passive_level("might") * 0.10 + _up("damage") * 0.03 + _eq("damage_pct") / 100.0
 
 func boss_damage_multiplier() -> float:
 	return 1.0 + _up("boss_damage") * 0.10

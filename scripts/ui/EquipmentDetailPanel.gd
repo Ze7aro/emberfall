@@ -115,12 +115,34 @@ func _rebuild() -> void:
 
 	var unique := str(item.get("unique", ""))
 	if unique != "":
-		var unique_label := _label("Efecto único: %s (se activa más adelante)" % EquipmentCatalog.UNIQUES.get(unique, unique), 12, EquipmentCatalog.RARITY_COLORS["legendary"])
+		var unique_label := _label("Efecto único: %s" % EquipmentCatalog.UNIQUES.get(unique, unique), 12, EquipmentCatalog.RARITY_COLORS["legendary"])
 		unique_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_body.add_child(unique_label)
 
+	var set_id := EquipmentCatalog.set_of(str(item.get("id", "")))
+	if set_id != "":
+		_body.add_child(_set_box(set_id))
+
 	_body.add_child(_buttons(item, equipped, cost))
 	_body.add_child(_label("Tenés %d de oro y %d de Esencia" % [GameState.gold, GameState.essence], 12, UiTheme.TEXT_MUTED))
+
+## Set name, pieces equipped and its 2- and 4-piece bonuses (lit when active).
+func _set_box(set_id: String) -> Control:
+	var info: Dictionary = EquipmentCatalog.SETS[set_id]
+	var count := int(GameState.equipped_set_pieces().get(set_id, 0))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.add_child(_label("SET %s · %d/%d equipadas" % [info["name"], count, (info["pieces"] as Array).size()], 12, info["color"], true))
+	var lines := [
+		[EquipmentCatalog.SET_BONUS_PIECES, EquipmentCatalog.set_bonus_text(set_id)],
+		[EquipmentCatalog.SET_EFFECT_PIECES, str(info["effect_text"])],
+	]
+	for line in lines:
+		var active := count >= int(line[0])
+		var label := _label("%s %d piezas: %s" % ["✓" if active else "·", int(line[0]), line[1]], 12, UiTheme.ACCENT if active else UiTheme.TEXT_MUTED)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(label)
+	return box
 
 func _stats_grid(item: Dictionary, other: Dictionary) -> Control:
 	var grid := GridContainer.new()

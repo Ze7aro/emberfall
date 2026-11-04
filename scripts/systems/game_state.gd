@@ -778,11 +778,12 @@ func _roll_rarity(weights: Dictionary) -> String:
 	return str(weights.keys()[0])
 
 ## {id, rarity} rolled from LOOT_TABLES[source], or {} when nothing drops.
-func roll_loot(source: String) -> Dictionary:
+## With a `set_id`, the item is a piece of that set (drops in a chapter).
+func roll_loot(source: String, set_id := "") -> Dictionary:
 	var table: Dictionary = LOOT_TABLES.get(source, {})
 	if table.is_empty() or randf() >= float(table.get("chance", 0.0)):
 		return {}
-	return {"id": EquipmentCatalog.random_recipe(), "rarity": _roll_rarity(table["weights"])}
+	return {"id": EquipmentCatalog.random_set_piece(set_id), "rarity": _roll_rarity(table["weights"])}
 
 ## A new level-1 item in the backpack (callers emit and save).
 func _grant_item(rarity: String, recipe_id := "") -> Dictionary:
@@ -996,7 +997,38 @@ func equipment_totals() -> Dictionary:
 		var stats := EquipmentCatalog.item_stats(item)
 		for stat in stats:
 			totals[stat] = float(totals.get(stat, 0.0)) + float(stats[stat])
+	# 2-piece set bonuses.
+	var pieces := equipped_set_pieces()
+	for set_id in pieces:
+		if int(pieces[set_id]) >= EquipmentCatalog.SET_BONUS_PIECES:
+			var bonus: Dictionary = EquipmentCatalog.SETS[set_id]["bonus"]
+			for stat in bonus:
+				totals[stat] = float(totals.get(stat, 0.0)) + float(bonus[stat])
 	return totals
+
+## Equipped pieces per set, as {set_id: count}.
+func equipped_set_pieces() -> Dictionary:
+	var counts := {}
+	for equipment_type in equipped_by_type:
+		var item := get_equipped_item_for_type(equipment_type)
+		var set_id := EquipmentCatalog.set_of(str(item.get("id", "")))
+		if set_id != "":
+			counts[set_id] = int(counts.get(set_id, 0)) + 1
+	return counts
+
+## 4-piece set effects and legendary effects of the equipped items, as
+## {effect_id: true}.
+func equipped_effects() -> Dictionary:
+	var effects := {}
+	var pieces := equipped_set_pieces()
+	for set_id in pieces:
+		if int(pieces[set_id]) >= EquipmentCatalog.SET_EFFECT_PIECES:
+			effects[str(EquipmentCatalog.SETS[set_id]["effect"])] = true
+	for equipment_type in equipped_by_type:
+		var unique := str(get_equipped_item_for_type(equipment_type).get("unique", ""))
+		if unique != "":
+			effects[unique] = true
+	return effects
 
 func equipment_stat(stat: String) -> float:
 	return float(equipment_totals().get(stat, 0.0))

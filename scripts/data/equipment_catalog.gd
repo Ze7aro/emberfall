@@ -59,6 +59,8 @@ const STATS := {
 	"xp": {"label": "Experiencia", "values": [4, 5, 6, 7, 8, 10], "pct": true},
 	"regen": {"label": "Regeneración", "values": [1, 1.2, 1.5, 2, 2.5, 3], "pct": false},
 	"proj_speed": {"label": "Vel. de proyectil", "values": [5, 6, 8, 10, 12, 15], "pct": true},
+	# Only from set bonuses (never rolled on an item): % on top of all damage.
+	"damage_pct": {"label": "Daño", "values": [0, 0, 0, 0, 0, 0], "pct": true},
 }
 
 ## Four items per slot; each one can have any rarity (the "rarity" field is
@@ -99,13 +101,80 @@ const UPGRADE_GOLD := 40
 const UPGRADE_ESSENCE := 4
 const SALVAGE_ESSENCE := [10, 20, 40, 80, 150, 300]
 
-## Legendary effects. They are rolled and shown now; the effects
-## themselves arrive with the sets (phase 8 of the plan).
+## Legendary effects (game_world.gd applies them). Two legendaries with
+## the same effect don't stack.
 const UNIQUES := {
-	"heart_drop": "Al matar, 3% de chance de soltar un corazón",
-	"empowered": "Cada 10 s, la próxima habilidad hace el doble de daño",
+	"heart_drop": "Al matar, 3% de chance de soltar una poción de vida",
+	"empowered": "Cada 10 s, tu próximo golpe hace el doble de daño",
 	"repel_nova": "Al recibir daño, una nova empuja a los enemigos",
 }
+const HEART_DROP_CHANCE := 0.03
+const EMPOWER_INTERVAL := 10.0
+const REPEL_RADIUS := 170.0
+
+## One set per chapter, one piece per slot (the fourth item of each slot
+## has no set). 2 pieces equipped give `bonus` (stats added to the
+## equipment totals); 4 pieces give `effect` (game_world.gd applies it).
+## Pieces of a chapter's set are what élites and bosses drop there.
+const SET_BONUS_PIECES := 2
+const SET_EFFECT_PIECES := 4
+const SETS := {
+	"crypts": {
+		"name": "CRIPTAS DEL VACÍO", "chapter": 1, "color": Color("b07cff"),
+		"pieces": ["chaos_fang", "abyss_aegis", "eclipse_crown", "void_amulet", "void_seal", "ghost_step"],
+		"bonus": {"crit": 10.0},
+		"effect": "void_burst",
+		"effect_text": "Los enemigos que matás tienen 25% de chance de estallar y dañar a los que están cerca",
+	},
+	"caverns": {
+		"name": "CAVERNAS ROTAS", "chapter": 2, "color": Color("7fe3ff"),
+		"pieces": ["blade_focus", "unbreakable_soul", "warded_helm", "soul_amulet", "gale_ring", "wind_wings"],
+		"bonus": {"block": 8.0},
+		"effect": "frost_touch",
+		"effect_text": "Tus golpes tienen 12% de chance de congelar 1 s",
+	},
+	"forge": {
+		"name": "FORJA DE EMBER", "chapter": 3, "color": Color("ff8a3c"),
+		"pieces": ["ember_fury", "iron_will", "dragonbone_helm", "forge_heart", "storm_ring", "comet_stride"],
+		"bonus": {"damage_pct": 10.0},
+		"effect": "burning_touch",
+		"effect_text": "Tus golpes tienen 25% de chance de quemar 3 s",
+	},
+}
+const VOID_BURST_CHANCE := 0.25
+const VOID_BURST_DAMAGE := 12
+const FROST_TOUCH_CHANCE := 0.12
+const FROST_TOUCH_TIME := 1.0
+const BURN_TOUCH_CHANCE := 0.25
+const BURN_TOUCH_TIME := 3.0
+const BURN_TOUCH_DAMAGE := 4
+
+## The set an item (or recipe id) belongs to, "" when none.
+static func set_of(recipe_id: String) -> String:
+	for set_id in SETS:
+		if (SETS[set_id]["pieces"] as Array).has(recipe_id):
+			return str(set_id)
+	return ""
+
+static func set_for_chapter(chapter: int) -> String:
+	for set_id in SETS:
+		if int(SETS[set_id]["chapter"]) == chapter:
+			return str(set_id)
+	return ""
+
+## "+10% Crítico" for a set's 2-piece bonus.
+static func set_bonus_text(set_id: String) -> String:
+	var parts := PackedStringArray()
+	var bonus: Dictionary = SETS.get(set_id, {}).get("bonus", {})
+	for stat in bonus:
+		parts.append(stat_text(str(stat), float(bonus[stat])))
+	return ", ".join(parts)
+
+## Random piece of a set (any recipe when the set is unknown).
+static func random_set_piece(set_id: String) -> String:
+	if not SETS.has(set_id):
+		return random_recipe()
+	return str((SETS[set_id]["pieces"] as Array).pick_random())
 
 static func recipe(recipe_id: String) -> Dictionary:
 	for entry in RECIPES:

@@ -523,6 +523,11 @@ func _refresh_basic_stats() -> void:
 		if stat in ["damage", "health"] or float(totals.get(stat, 0.0)) <= 0.0:
 			continue
 		parts.append(EquipmentCatalog.stat_text(stat, float(totals[stat])))
+	var pieces := GameState.equipped_set_pieces()
+	for set_id in pieces:
+		var count := int(pieces[set_id])
+		if count >= EquipmentCatalog.SET_BONUS_PIECES:
+			parts.append("Set %s %d/6%s" % [str(EquipmentCatalog.SETS[set_id]["name"]), count, " + efecto" if count >= EquipmentCatalog.SET_EFFECT_PIECES else ""])
 	_equip_summary.text = "  ·  ".join(parts)
 	_equip_summary.visible = _summary_open and not parts.is_empty()
 	_summary_toggle.visible = not parts.is_empty()
