@@ -56,6 +56,17 @@ func _ready() -> void:
 	column.add_theme_constant_override("separation", 10)
 	scroll.add_child(column)
 
+	var heroes := AbilityCatalog.WEAPON_CHALLENGES.keys()
+	var unlocked_weapons := 0
+	for hero_id in heroes:
+		if GameState.is_weapon_unlocked(AbilityCatalog.weapon_id(StringName(hero_id))):
+			unlocked_weapons += 1
+	column.add_child(UiTheme.section_title("ARMAS", "%d/%d" % [unlocked_weapons, heroes.size()]))
+	var weapon_grid := _make_grid()
+	for hero_id in heroes:
+		weapon_grid.add_child(_weapon_tile(str(hero_id)))
+	column.add_child(weapon_grid)
+
 	var actives := AbilityCatalog.ACTIVES.keys()
 	column.add_child(UiTheme.section_title("ACTIVAS", "%d/%d" % [_count_seen(actives), actives.size()]))
 	var active_grid := _make_grid()
@@ -81,7 +92,7 @@ func _ready() -> void:
 	column.add_child(enemy_grid)
 
 	root.add_child(_build_detail_panel())
-	_show_detail(null, "CÓDEX", "Tocá una habilidad o un enemigo para ver su detalle. Lo que todavía no descubriste aparece como ???.", UiTheme.TEXT)
+	_show_detail(null, "CÓDEX", "Tocá un arma, una habilidad o un enemigo para ver su detalle. Lo que todavía no descubriste aparece como ???.", UiTheme.TEXT)
 
 func _count_seen(ids: Array) -> int:
 	var seen := 0
@@ -169,6 +180,27 @@ func _ability_tile(id: String) -> Control:
 			else:
 				text += "\nEvolución: nivel %d + %s → ???" % [AbilityCatalog.MAX_LEVEL, partner]
 		_show_detail(AbilityCatalog.icon(id, evolved_seen), AbilityCatalog.display_name(id, evolved_seen), text, GOLD if evolved_seen else UiTheme.TEXT))
+
+## A hero's weapon: "???" until its challenge (played with that hero)
+## unlocks it for every hero.
+func _weapon_tile(hero_id: String) -> Control:
+	var id := AbilityCatalog.weapon_id(StringName(hero_id))
+	var hero := AbilityCatalog.weapon_hero(id)
+	var hero_name := hero.display_name.capitalize() if hero != null else hero_id
+	var challenge := AbilityCatalog.weapon_challenge(hero_id)
+	var progress := GameState.weapon_challenge_progress(hero_id)
+	var goal := "%s (%d/%d)" % [str(challenge.get("text", "")), mini(int(progress[0]), int(progress[1])), int(progress[1])]
+	if not GameState.is_weapon_unlocked(id):
+		var hint := "Arma de %s. Desafío jugando con %s: %s." % [hero_name, hero_name, goal]
+		if not GameState.owns_character(StringName(hero_id)):
+			hint = "Arma de %s. Primero desbloqueá a %s; después: %s." % [hero_name, hero_name, str(challenge.get("text", ""))]
+		return _tile(UiTheme.BORDER_SOFT, _picture(AbilityCatalog.icon(id), 46.0, LOCKED_TINT), "???", UiTheme.TEXT_MUTED, func():
+			_show_detail(null, "???", hint, UiTheme.TEXT_MUTED))
+	var color := AbilityCatalog.color(id)
+	return _tile(color, _picture(AbilityCatalog.icon(id), 46.0, Color.WHITE), AbilityCatalog.display_name(id), UiTheme.TEXT, func():
+		var text := "Arma de %s. La pueden usar todos los héroes.
+Niveles: %s." % [hero_name, ", ".join(PackedStringArray([2, 3, 4, 5].map(func(l): return AbilityCatalog.weapon_level_text(l).to_lower())))]
+		_show_detail(AbilityCatalog.icon(id), AbilityCatalog.display_name(id), text, color))
 
 func _enemy_tile(entry: Dictionary) -> Control:
 	var key := str(entry["key"])

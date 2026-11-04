@@ -38,6 +38,10 @@ var _left_slots: VBoxContainer
 var _right_slots: VBoxContainer
 var _hero_sprite: AnimatedSprite2D
 var _hero_attack_label: Label
+## Selection mode: the focused hero's weapon and its challenge.
+var _weapon_icon: TextureRect
+var _weapon_name: Label
+var _weapon_goal: Label
 var _change_hero_button: Button
 var _basic_stats: HBoxContainer
 var _inventory_panel: Control
@@ -481,6 +485,7 @@ func _build_selection_state() -> Control:
 	_selected_hero_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_selected_hero_name.add_theme_font_size_override("font_size", 16)
 	col.add_child(_selected_hero_name)
+	col.add_child(_build_weapon_info())
 
 	var buttons_row := HBoxContainer.new()
 	buttons_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -499,6 +504,48 @@ func _build_selection_state() -> Control:
 	buttons_row.add_child(_back_button)
 
 	return state
+
+func _build_weapon_info() -> Control:
+	var center := CenterContainer.new()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	center.add_child(row)
+	_weapon_icon = TextureRect.new()
+	_weapon_icon.custom_minimum_size = Vector2(40, 40)
+	_weapon_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_weapon_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_weapon_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_weapon_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_weapon_icon)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 0)
+	row.add_child(text)
+	_weapon_name = Label.new()
+	_weapon_name.add_theme_font_override("font", UiTheme.bold_font())
+	_weapon_name.add_theme_font_size_override("font_size", 15)
+	text.add_child(_weapon_name)
+	_weapon_goal = Label.new()
+	_weapon_goal.add_theme_font_size_override("font_size", 13)
+	_weapon_goal.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	_weapon_goal.custom_minimum_size = Vector2(230, 0)
+	_weapon_goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.add_child(_weapon_goal)
+	return center
+
+func _refresh_weapon_info(hero_id: String) -> void:
+	var weapon := AbilityCatalog.weapon_id(StringName(hero_id))
+	_weapon_icon.texture = AbilityCatalog.icon(weapon)
+	var hero := AbilityCatalog.weapon_hero(weapon)
+	_weapon_name.text = "Arma: %s" % (hero.attack_name if hero != null else AbilityCatalog.display_name(weapon))
+	_weapon_name.add_theme_color_override("font_color", AbilityCatalog.color(weapon))
+	if GameState.is_weapon_unlocked(weapon):
+		_weapon_goal.text = "✓ Desbloqueada para todos los héroes"
+		_weapon_goal.add_theme_color_override("font_color", UiTheme.GOLD)
+		return
+	var challenge := AbilityCatalog.weapon_challenge(hero_id)
+	var progress := GameState.weapon_challenge_progress(hero_id)
+	_weapon_goal.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	_weapon_goal.text = "Para todos: %s · %d/%d" % [str(challenge.get("text", "")), mini(int(progress[0]), int(progress[1])), int(progress[1])]
 
 func _build_carousel_cards() -> void:
 	for hero in _characters:
@@ -596,6 +643,7 @@ func _update_selection_info() -> void:
 	var id := StringName(str(hero.get("id", "")))
 	var owned := GameState.owns_character(id)
 	_selected_hero_name.text = str(hero.get("name", ""))
+	_refresh_weapon_info(str(id))
 	if owned:
 		_select_button.text = "SELECCIONAR"
 		_select_button.disabled = false
