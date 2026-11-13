@@ -255,10 +255,7 @@ func _label(font_size: int) -> Label:
 	label.add_theme_color_override("font_color", UiTheme.TEXT)
 	label.add_theme_color_override("font_outline_color", Color("080e20"))
 	label.add_theme_constant_override("outline_size", 3)
-	var bold := FontVariation.new()
-	bold.base_font = ThemeDB.fallback_font
-	bold.variation_embolden = 1.0
-	label.add_theme_font_override("font", bold)
+	label.add_theme_font_override("font", UiTheme.bold_font())
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 

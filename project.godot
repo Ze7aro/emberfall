@@ -8,12 +8,20 @@
 
 config_version=5
 
+[admob]
+
+general/android/app_id="ca-app-pub-4856775590726819~9395850037"
+
 [application]
 
 config/name="Emberfall"
 run/main_scene="res://scenes/MainLayout.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7")
+boot_splash/bg_color=Color(0.086, 0.027, 0.188, 1)
+boot_splash/image="res://assets/ui/icono/splash_1024.png"
+config/icon="res://assets/ui/icono/icon_512.png"
+boot_splash/minimum_display_time=600
 
 [audio]
 
@@ -24,6 +32,8 @@ buses/default_bus_layout="res://resources/audio/default_bus_layout.tres"
 GameState="*res://scripts/systems/game_state.gd"
 MusicDirector="*res://scripts/systems/music_director.gd"
 SfxPlayer="*res://scripts/systems/sfx_player.gd"
+Monetization="*res://scripts/systems/monetization.gd"
+Localization="*res://scripts/systems/localization.gd"
 
 [display]
 
@@ -34,10 +44,18 @@ window/size/window_height_override=844
 window/stretch/mode="canvas_items"
 window/handheld/orientation=1
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg", "res://addons/admob/plugin.cfg")
+
 [gui]
 
 theme/default_font_multichannel_signed_distance_field=true
 theme/custom_font="res://assets/ui/fuentes/texto.tres"
+
+[internationalization]
+
+locale/fallback="es"
 
 [rendering]
 

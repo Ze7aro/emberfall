@@ -16,10 +16,10 @@ class_name EmberfallOrbitalWave
 const MOON_SCRIPT := preload("res://scripts/components/orbital_moon.gd")
 const MIN_MOONS := 2
 const MAX_MOONS := 6
-const RADIUS_X := 78.0
-const RADIUS_Y := 44.0
+const RADIUS_X := 96.0
+const RADIUS_Y := 56.0
 const ANGULAR_SPEED := 1.8 # radians/sec
-const HIT_DISTANCE := 34.0 # moon radius + a typical enemy's half-size
+const HIT_DISTANCE := 38.0 # moon radius + a typical enemy's half-size
 const HIT_COOLDOWN := 0.6 # seconds of simulated time, see _check_hits
 
 var game_ref: Node
@@ -93,7 +93,7 @@ func _draw() -> void:
 		return
 	var orbit := EmberfallFx.ellipse(Vector2.ZERO, RADIUS_X * radius_scale, RADIUS_Y * radius_scale, 48)
 	orbit.append(orbit[0])
-	draw_polyline(orbit, Color(0.55, 0.9, 1.0, 0.14), 1.2)
+	draw_polyline(orbit, Color(0.55, 0.9, 1.0, 0.30), 2.0)
 
 ## Cooldown state lives as metadata on the enemy itself (same trick
 ## spawn_projectile already uses for pierce tracking), keyed per moon, so it

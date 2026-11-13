@@ -43,8 +43,27 @@ static func title_font() -> Font:
 static func bold_font() -> Font:
 	return _font(BOLD_FONT)
 
+## Words that stay fully plain inside a title ("Criptas del Vacío").
+const TITLE_MINOR_WORDS := ["de", "del", "la", "las", "el", "los", "y", "en", "a", "un", "una", "por", "con"]
+
+## The display face keeps its flourished letters in the capitals and plain
+## engraved capitals in the lowercase slots. Set in all caps every letter is
+## a flourish (hard to read, and they collide); this keeps the flourish for
+## each word's initial only, which is how the face is meant to be set.
+static func title_text(text: String) -> String:
+	var words := text.split(" ")
+	for i in words.size():
+		var word := words[i].to_lower()
+		if word.length() > 0 and (i == 0 or not TITLE_MINOR_WORDS.has(word)):
+			word = word.substr(0, 1).to_upper() + word.substr(1)
+		words[i] = word
+	return " ".join(words)
+
 ## Applies the display face plus a dark outline so titles sit on any backdrop.
+## The label's current text is re-cased with `title_text`; text assigned later
+## should go through `title_text` too.
 static func style_title(label: Label, size: int, color: Color = TEXT) -> void:
+	label.text = title_text(label.text)
 	label.add_theme_font_override("font", title_font())
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
@@ -306,9 +325,11 @@ static func apply_secondary(button: Button, h_margin: float = 12.0) -> void:
 ## art would be squashed.
 static func apply_primary_flat(button: Button) -> void:
 	button.add_theme_stylebox_override("normal", _primary_flat())
-	button.add_theme_stylebox_override("hover", button_pressed())
-	button.add_theme_stylebox_override("pressed", button_pressed())
-	button.add_theme_color_override("font_color", Color("102013"))
+	var pressed := _primary_flat()
+	pressed.bg_color = Color("0a3440")
+	button.add_theme_stylebox_override("hover", _primary_flat())
+	button.add_theme_stylebox_override("pressed", pressed)
+	_primary_text(button)
 	install_press_feedback(button)
 
 ## Primary call-to-action (turquoise) with per-state variants.
@@ -373,8 +394,9 @@ static func _tinted_kit(id: String, fallback: StyleBox, tint: Color) -> StyleBox
 
 static func _primary_flat() -> StyleBoxFlat:
 	var style := slot(true, 10)
-	style.bg_color = ACCENT
-	style.border_color = Color("87f4ec")
+	style.bg_color = Color("0f4a59")
+	style.border_color = ACCENT
+	style.set_border_width_all(2)
 	return style
 
 static func button_pressed() -> StyleBox:
@@ -529,7 +551,11 @@ static func make_theme() -> Theme:
 	theme.set_color("font_disabled_color", "Button", TEXT_MUTED)
 	theme.set_font_size("font_size", "Button", 16)
 	theme.set_stylebox("panel", "PanelContainer", kit("panel_default", panel()))
-	theme.set_stylebox("background", "ProgressBar", bar(Color("100b18")))
+	var track := bar(Color("0b0914"))
+	track.border_color = Color(BORDER_SOFT, 0.7)
+	track.set_border_width_all(1)
+	track.set_corner_radius_all(3)
+	theme.set_stylebox("background", "ProgressBar", track)
 	theme.set_stylebox("fill", "ProgressBar", bar(ACCENT))
 	theme.set_color("font_color", "Label", TEXT)
 	theme.set_color("font_outline_color", "Label", Color("080b16"))

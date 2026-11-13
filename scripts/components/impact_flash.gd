@@ -8,7 +8,7 @@ class_name EmberfallImpactFlash
 ## by the caller before this is even spawned.
 
 var color := Color(0.2, 0.95, 0.85)
-var lifetime := 0.16
+var lifetime := 0.20
 var _elapsed := 0.0
 
 func _process(delta: float) -> void:
@@ -23,5 +23,8 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var progress := _elapsed / lifetime
 	var alpha := 1.0 - progress
-	draw_circle(Vector2.ZERO, 5.0 + progress * 6.0, Color(color.r, color.g, color.b, alpha * 0.8))
-	draw_arc(Vector2.ZERO, 8.0 + progress * 8.0, 0.0, TAU, 16, Color(1.0, 1.0, 1.0, alpha * 0.7), 2.0)
+	EmberfallFx.glow(self, Vector2.ZERO, 22.0 + progress * 10.0, color, 0.5 * alpha)
+	draw_circle(Vector2.ZERO, 7.0 + progress * 7.0, Color(color.r, color.g, color.b, alpha * 0.85))
+	draw_circle(Vector2.ZERO, 4.0 * alpha, Color(1, 1, 1, alpha))
+	draw_arc(Vector2.ZERO, 11.0 + progress * 13.0, 0.0, TAU, 20, Color(1.0, 1.0, 1.0, alpha * 0.75), 2.5)
+	EmberfallFx.burst(self, Vector2.ZERO, 20.0, color.lightened(0.5), progress, 6, 0.4)

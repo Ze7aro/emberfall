@@ -71,16 +71,17 @@ func _draw() -> void:
 		var a := TAU * float(i) / float(EDGE_POINTS)
 		var wobble := 1.0 + 0.05 * sin(a * 3.0 + _elapsed * 2.0) + 0.03 * sin(a * 5.0 - _elapsed * 3.0)
 		edge.append(Vector2.from_angle(a) * r * wobble)
-	draw_colored_polygon(edge, Color(_color, 0.10 * alpha))
-	draw_circle(Vector2.ZERO, r * 0.55, Color(_color, 0.05 * alpha))
+	draw_colored_polygon(edge, Color(_color, 0.20 * alpha))
+	EmberfallFx.glow(self, Vector2.ZERO, r * 0.7, _color, 0.22 * alpha)
 	edge.append(edge[0])
-	draw_polyline(edge, Color(_color, 0.4 * alpha), 1.5)
+	draw_polyline(edge, Color(_color, 0.3 * alpha), 6.0)
+	draw_polyline(edge, Color(_color.lightened(0.25), 0.75 * alpha), 2.5)
 	# Bubbles: grow for most of their cycle, then pop as a thin ring.
 	for bubble in _bubbles:
 		var t := fposmod(_elapsed * 0.7 + bubble.z, 1.0)
 		var at := Vector2(bubble.x, bubble.y) * r
 		if t < 0.8:
-			draw_circle(at, 1.0 + 2.5 * (t / 0.8), Color(_color, 0.45 * alpha))
+			draw_circle(at, 1.5 + 4.0 * (t / 0.8), Color(_color.lightened(0.2), 0.6 * alpha))
 		else:
 			var pop := (t - 0.8) / 0.2
-			draw_arc(at, 3.5 + 3.0 * pop, 0.0, TAU, 10, Color(1, 1, 1, 0.4 * (1.0 - pop) * alpha), 1.0)
+			draw_arc(at, 5.5 + 5.0 * pop, 0.0, TAU, 12, Color(1, 1, 1, 0.6 * (1.0 - pop) * alpha), 1.5)

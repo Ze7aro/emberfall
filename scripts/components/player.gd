@@ -4,7 +4,7 @@ class_name EmberfallPlayer
 signal died
 const BASE_MAX_HP := 6 # 3 hearts, 2 half-heart units each
 const DEFAULT_SPRITE_FOLDER := "variante_01_baculo (Vaelor)"
-const SPRITE_SCALE := 0.2 # 256px source frames down to ~50px on screen
+const SPRITE_SCALE := 0.38 # 256px source frames down to ~97px on screen
 const BASE_ATTACK_INTERVAL := 1.1 # seconds between weapon attacks; game_world scales it (Celeridad, hero, weapon level)
 
 var hp := BASE_MAX_HP
@@ -41,9 +41,9 @@ func setup(owner: Node) -> void:
 	collision_mask = 1
 	var feet := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = 9.0
+	circle.radius = 14.0
 	feet.shape = circle
-	feet.position = Vector2(0, 10)
+	feet.position = Vector2(0, 19)
 	add_child(feet)
 	var hero_data := GameState.get_character_data(GameState.selected_character_id)
 	max_hp += GameState.permanent_health + GameState.get_equipped_bonus("health")
@@ -69,7 +69,7 @@ func setup(owner: Node) -> void:
 
 	projectile_origin = Marker2D.new()
 	projectile_origin.name = "ProjectileOrigin"
-	projectile_origin.position = Vector2(10, -8) # slightly forward/up from center, not the feet
+	projectile_origin.position = Vector2(19, -15) # slightly forward/up from center, not the feet
 	add_child(projectile_origin)
 	queue_redraw()
 

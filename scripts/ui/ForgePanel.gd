@@ -47,7 +47,7 @@ func _init(icon_for_item: Callable) -> void:
 	body.add_child(UiTheme.modal_header("FORJA", close, 24))
 
 	var hint := Label.new()
-	hint.text = "Juntá 3 objetos iguales de la misma rareza para subirla. De Épico+ a Legendario alcanzan 2. Se queda el de nivel más alto."
+	hint.text = "Junta 3 objetos iguales de la misma rareza para subirla. De Épico+ a Legendario alcanzan 2. Se queda el de nivel más alto."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 12)
@@ -148,7 +148,7 @@ func _refresh_fusion() -> void:
 		for _i in 3:
 			_input_row.add_child(EquipmentSlot.new())
 		_result_text.text = ""
-		_status.text = "Elegí un objeto de la lista."
+		_status.text = "Elige un objeto de la lista."
 		return
 	var item: Dictionary = copies[0]
 	var rarity := str(item.get("rarity", "common"))
@@ -171,7 +171,7 @@ func _refresh_fusion() -> void:
 	_result_text.add_theme_color_override("font_color", EquipmentCatalog.RARITY_COLORS[next])
 	if selection.is_empty():
 		var missing := need - copies.size()
-		_status.text = "Tenés %d de %d. Te %s %d más igual%s." % [copies.size(), need, "falta" if missing == 1 else "faltan", missing, "" if missing == 1 else "es"]
+		_status.text = "Tienes %d de %d. Te %s %d más igual%s." % [copies.size(), need, "falta" if missing == 1 else "faltan", missing, "" if missing == 1 else "es"]
 		return
 	var main_stat := str(item.get("main", {}).get("stat", ""))
 	var gains := "%s %s → %s" % [EquipmentCatalog.stat_label(main_stat), EquipmentCatalog.value_text(main_stat, EquipmentCatalog.main_value(item)), EquipmentCatalog.value_text(main_stat, EquipmentCatalog.main_value(preview))]

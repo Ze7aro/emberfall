@@ -45,5 +45,5 @@ func _draw() -> void:
 	for i in _pos.size():
 		var k := 1.0 - _age[i] / LIFETIME
 		var tail := _vel[i] * 0.035
-		draw_line(_pos[i] - tail, _pos[i], Color(_colors[i], k), 2.5)
-		draw_circle(_pos[i], 1.4, Color(1, 1, 1, k))
+		draw_line(_pos[i] - tail * 1.4, _pos[i], Color(_colors[i], k), 3.5)
+		draw_circle(_pos[i], 2.2, Color(1, 1, 1, k))

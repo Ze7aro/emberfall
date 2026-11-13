@@ -4,5 +4,6 @@
 
 [resource]
 base_font = ExtResource("1")
+opentype_features = {1819178349: 1}
 spacing_space = 1
 spacing_glyph = 0

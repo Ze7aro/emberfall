@@ -38,14 +38,11 @@ func _ready() -> void:
 
 ## Floating side shortcut to the existing Misiones screen (left edge), with the
 ## same "something to claim" indicator the footer uses.
-## Floating shortcuts in a row beside the settings button (top right):
-## Misiones, Notificaciones, then Configuración, each with its "something new"
-## indicator.
+## Floating shortcuts in a row under the HUD (side by side, so the stage
+## title below never runs under them): Misiones, then Notificaciones, each with its "something new" indicator.
 func _build_missions_side() -> void:
-	# Same row as the TopHud settings button (top 64, 50 px wide, 6 px from the
-	# right edge): Avisos and Misiones sit to its left, 8 px apart.
-	var top := 64.0
-	_side_button(Vector2(64, top), "res://assets/ui/icons/mail.png", "Avisos", func():
+	var top := UiTheme.CONTENT_TOP + 8.0
+	_side_button(Vector2(80, top), "res://assets/ui/icons/mail.png", "Avisos", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"notifications")

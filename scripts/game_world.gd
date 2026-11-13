@@ -473,18 +473,27 @@ func skill_level(id: String) -> int:
 func is_evolved(id: String) -> bool:
 	return evolved.has(id)
 
-## Dagas Rúnicas: a fan toward where the player faces (not auto-aimed — the
-## direction is the player's to choose, unlike every other active).
+const DAGGER_SPEED := 640.0
+const DAGGER_LIFETIME := 0.6
+
+## Dagas Rúnicas: a fan aimed at the nearest enemy that is on screen and
+## within the daggers' reach. With nobody to aim at they still fly toward
+## where the player faces.
 func _fire_daggers(lvl: int) -> void:
 	var count := 1 + (lvl - 1) / 2 + amount_bonus() + (1 if is_evolved("daggers") else 0)
 	var aim := player.facing_direction
+	var reach := DAGGER_SPEED * proj_speed_multiplier() * DAGGER_LIFETIME
+	var visible_enemies := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and is_on_screen(e.global_position))
+	var target := nearest_from(visible_enemies, player.global_position, reach)
+	if target != null and target.global_position != player.global_position:
+		aim = player.global_position.direction_to(target.global_position)
 	for i in count:
 		var spread := deg_to_rad(9.0) * (float(i) - float(count - 1) / 2.0)
 		var dagger := _make_skill_projectile(EmberfallSkillProjectile.Style.DAGGER, "daggers")
 		dagger.direction = aim.rotated(spread)
-		dagger.speed = 640.0 * proj_speed_multiplier()
+		dagger.speed = DAGGER_SPEED * proj_speed_multiplier()
 		dagger.damage = 9 + 4 * lvl
-		dagger.lifetime = 0.6
+		dagger.lifetime = DAGGER_LIFETIME
 		dagger.pierce = -1 if is_evolved("daggers") else 0
 		add_child(dagger)
 	SfxPlayer.play("combat/basic_projectile.wav")
@@ -1283,6 +1292,13 @@ func weapon_range(id: String) -> float:
 	var stats := AbilityCatalog.weapon_stats(skill_level(id))
 	return PROJECTILE_SPEED * PROJECTILE_BASE_LIFETIME * range_scale * float(stats["range"])
 
+## Whether a world position is inside the visible screen, `inset` px in from
+## the edges so a target counts only once it is properly in view. Uses the
+## real canvas transform, so it follows the camera (smoothing, shake, zoom).
+func is_on_screen(world_position: Vector2, inset: float = 16.0) -> bool:
+	var screen := get_viewport_rect().grow(-inset)
+	return screen.has_point(get_viewport().get_canvas_transform() * world_position)
+
 ## Attacks per weapon, for every-Nth effects and alternating swing frames.
 var _weapon_attack_counts := {}
 
@@ -1309,7 +1325,10 @@ func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bo
 	# Gate candidates by the real attack range instead of just picking the
 	# globally nearest, which read as infinite range.
 	var attack_range := weapon_range(id)
-	var living_enemies := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and e.global_position.distance_to(player.global_position) <= attack_range)
+	# ...and by what the player can actually see: the phone screen is much
+	# narrower than the weapon's reach, so without this the hero sniped
+	# enemies that were still off-screen to the sides.
+	var living_enemies := enemies.filter(func(e): return is_instance_valid(e) and not e.dead and e.global_position.distance_to(player.global_position) <= attack_range and is_on_screen(e.global_position))
 	if living_enemies.is_empty():
 		return false
 	living_enemies.sort_custom(func(a, b):

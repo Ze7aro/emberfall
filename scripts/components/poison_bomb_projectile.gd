@@ -42,8 +42,8 @@ func _draw() -> void:
 	var lift := sin(PI * progress)
 	# Shadow on the ground track, smaller while the flask is at its peak.
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.4))
-	draw_circle(Vector2.ZERO, 7.0 * (1.0 - 0.3 * lift), Color(0, 0, 0, 0.3))
-	draw_set_transform(Vector2(0, -ARC_HEIGHT * lift), progress * TAU * 1.5, Vector2.ONE)
+	draw_circle(Vector2.ZERO, 11.0 * (1.0 - 0.3 * lift), Color(0, 0, 0, 0.3))
+	draw_set_transform(Vector2(0, -ARC_HEIGHT * lift), progress * TAU * 1.5, Vector2.ONE * 1.7)
 	# Small round flask: glow, body, neck, highlight.
 	EmberfallFx.glow(self, Vector2.ZERO, 11.0, _color, 0.35)
 	draw_circle(Vector2(0, 1), 5.0, Color(_color, 0.9))

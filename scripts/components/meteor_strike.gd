@@ -47,12 +47,13 @@ func _draw() -> void:
 	var fire := Color(1.0, 0.32, 0.22) if cataclysm else Color(1.0, 0.55, 0.2)
 	draw_circle(Vector2.ZERO, radius, Color(fire, 0.08 + progress * 0.10))
 	draw_circle(Vector2.ZERO, radius * progress, Color(fire, 0.16))
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(1.0, 0.65, 0.3, 0.45 + progress * 0.5), 2.0)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(1.0, 0.65, 0.3, 0.2 + progress * 0.2), 7.0)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 40, Color(1.0, 0.65, 0.3, 0.45 + progress * 0.5), 3.0)
 	# Eight rune ticks around the edge, turning slowly and closing in.
 	for i in 8:
 		var a := TAU * float(i) / 8.0 + _age * 1.5
 		var dir := Vector2.from_angle(a)
-		draw_line(dir * radius * 0.82, dir * radius * (0.82 - 0.12 * progress) , Color(1.0, 0.8, 0.45, 0.4 + 0.5 * progress), 2.0)
+		draw_line(dir * radius * 0.82, dir * radius * (0.82 - 0.12 * progress) , Color(1.0, 0.8, 0.45, 0.4 + 0.5 * progress), 3.5)
 	if cataclysm:
 		# Second rune ring outside, turning the other way.
 		for i in 12:
@@ -61,7 +62,7 @@ func _draw() -> void:
 	# The rock: big trail of fire behind it, dark core with a hot rim.
 	var start := Vector2(-60.0, -220.0)
 	var rock := start * (1.0 - progress * progress)
-	var size := 6.0 + radius * 0.09
+	var size := 10.0 + radius * 0.12
 	var back := start.normalized()
 	for i in 6:
 		var k := float(i) / 6.0

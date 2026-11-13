@@ -99,24 +99,6 @@ func setup(owner: Node) -> void:
 	pause_button.pressed.connect(_toggle_pause)
 	add_child(pause_button)
 
-	# Testing aid, editor/debug builds only (never in an exported release).
-	if OS.is_debug_build():
-		var debug_column := VBoxContainer.new()
-		debug_column.anchor_left = 1.0; debug_column.anchor_right = 1.0
-		debug_column.offset_left = -76; debug_column.offset_right = -16
-		debug_column.offset_top = top + XP_BAR_HEIGHT + 90
-		debug_column.add_theme_constant_override("separation", 4)
-		add_child(debug_column)
-		for entry in [["JEFE", "boss"], ["ÉLITE", "elite"], ["MINI", "miniboss"], ["HORDA", "horde"], ["DROPS", "drops"], ["HAB ›", "ability_next"], ["NV +", "ability_up"]]:
-			var debug_button := Button.new()
-			debug_button.text = str(entry[0])
-			debug_button.focus_mode = Control.FOCUS_NONE
-			debug_button.add_theme_font_size_override("font_size", 10)
-			debug_button.custom_minimum_size = Vector2(60, 26)
-			var action := str(entry[1])
-			debug_button.pressed.connect(func(): world.debug_action(action))
-			debug_column.add_child(debug_button)
-
 	_announce_label = Label.new()
 	_announce_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_announce_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -176,7 +158,7 @@ func _build_tutorial_hint() -> void:
 	_tutorial_hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
 	_tutorial_hint.add_theme_constant_override("shadow_offset_x", 1)
 	_tutorial_hint.add_theme_constant_override("shadow_offset_y", 1)
-	_tutorial_hint.text = "Sobreviví y derrotá al jefe.\nTocá y arrastrá en cualquier parte de la pantalla para moverte."
+	_tutorial_hint.text = "Sobrevive y derrota al jefe.\nTocá y arrastra en cualquier parte de la pantalla para moverte."
 	add_child(_tutorial_hint)
 
 func _toggle_pause() -> void:
@@ -236,6 +218,9 @@ func show_level_up() -> void:
 	panel.anchor_top = 0.5; panel.anchor_bottom = 0.5
 	panel.offset_left = -LEVEL_UP_SIZE.x / 2.0; panel.offset_right = LEVEL_UP_SIZE.x / 2.0
 	panel.offset_top = -LEVEL_UP_SIZE.y / 2.0; panel.offset_bottom = LEVEL_UP_SIZE.y / 2.0
+	# Si el contenido pide más lugar, crece parejo: el panel sigue centrado.
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	panel.add_child(box)
@@ -248,7 +233,7 @@ func show_level_up() -> void:
 	box.add_child(slots)
 	if _tutorial_active:
 		var hint := Label.new()
-		hint.text = "Elegí una para mejorar a tu personaje"
+		hint.text = "Elige una para mejorar a tu personaje"
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		hint.add_theme_font_size_override("font_size", 11)
@@ -331,6 +316,9 @@ func _build_power_card(option: String) -> Control:
 		desc_text = AbilityCatalog.weapon_level_text(current_level + 1)
 	var desc := _card_label(desc_text, 10, UiTheme.TEXT_MUTED)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Tope de líneas: una descripción larga no estira la carta ni mueve los botones.
+	desc.max_lines_visible = 5
+	desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stack.add_child(desc)
 	# Every active card names its evolution partner, so the player learns
 	# recipes while playing instead of needing a wiki.
@@ -470,7 +458,10 @@ func show_pause_panel() -> void:
 	_build_pause_content()
 
 func _build_pause_content() -> void:
+	# Removed right away (not just queued) so the old content doesn't count
+	# towards the panel's minimum size when it is refitted below.
 	for child in pause_panel.get_children():
+		pause_panel.remove_child(child)
 		child.queue_free()
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
@@ -483,21 +474,20 @@ func _build_pause_content() -> void:
 	if _confirm_exit:
 		title.text = "¿SALIR?"
 		var warning := Label.new()
-		warning.text = "Perdés el progreso de esta partida."
+		warning.text = "Pierdes el progreso de esta partida."
 		warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# No autowrap: a wrapping label reports a huge minimum height before
+		# layout, which stretched the dialog. The line fits the panel width.
 		warning.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		box.add_child(warning)
 		var confirm := Button.new()
 		confirm.text = "SÍ, SALIR"
-		confirm.icon = UiTheme.icon("confirm.png")
 		confirm.custom_minimum_size = Vector2(0, 52)
 		confirm.add_theme_color_override("font_color", UiTheme.DANGER)
 		confirm.pressed.connect(_exit_run)
 		box.add_child(confirm)
 		var cancel := Button.new()
 		cancel.text = "CANCELAR"
-		cancel.icon = UiTheme.icon("cancel.png")
 		cancel.custom_minimum_size = Vector2(0, 52)
 		cancel.pressed.connect(func():
 			_confirm_exit = false
@@ -530,7 +520,6 @@ func _build_pause_content() -> void:
 			build_list.add_child(_build_row(id))
 		var resume := Button.new()
 		resume.text = "REANUDAR"
-		resume.icon = UiTheme.icon("play.png")
 		resume.custom_minimum_size = Vector2(0, 52)
 		UiTheme.apply_primary(resume)
 		resume.pressed.connect(_toggle_pause)
@@ -543,6 +532,18 @@ func _build_pause_content() -> void:
 			_build_pause_content()
 		)
 		box.add_child(exit)
+	_fit_pause_panel()
+
+## The pause view keeps its tall fixed size (it holds the build list); the
+## exit confirmation shrinks to just its title, warning and two buttons.
+func _fit_pause_panel() -> void:
+	var height := 520.0
+	if _confirm_exit:
+		pause_panel.custom_minimum_size = Vector2(330, 0)
+		height = pause_panel.get_combined_minimum_size().y
+	pause_panel.custom_minimum_size = Vector2(330, height)
+	pause_panel.offset_top = -height / 2.0
+	pause_panel.offset_bottom = height / 2.0
 
 ## Run-so-far numbers plus the top damage sources, so the pause doubles as
 ## a quick check of how the build is performing.

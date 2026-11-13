@@ -150,7 +150,7 @@ func _upgrade_tile(id: String) -> Control:
 	var max_level := UpgradeCatalog.max_level(id)
 	var maxed := level >= max_level
 	var affordable := not maxed and GameState.gold >= UpgradeCatalog.cost(id, level)
-	var border := GOLD if maxed else (UiTheme.ACCENT if affordable else Color("4a3f5c"))
+	var border := GOLD if maxed else (UiTheme.ACCENT_DIM if affordable else Color("4a3f5c"))
 	var footer := "MÁX" if maxed else "%d/%d" % [level, max_level]
 	return _tile("up:" + id, UpgradeCatalog.icon(id), str(entry["name"]), footer, border, false)
 

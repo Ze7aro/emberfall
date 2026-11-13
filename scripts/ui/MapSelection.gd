@@ -1,6 +1,7 @@
 extends MarginContainer
 
 const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+const StageDiorama := preload("res://scripts/ui/StageDiorama.gd")
 
 signal previous_map_requested
 signal next_map_requested
@@ -14,8 +15,7 @@ var _map_id: StringName = &"void_crypts"
 var _map_data: Dictionary = {}
 var _title: Label
 var _chapter: Label
-var _preview: TextureRect
-var _lock_overlay: ColorRect
+var _diorama: Control
 var _lock_icon: TextureRect
 var _rewards: Label
 var _modifier: Label
@@ -79,44 +79,22 @@ func _build() -> void:
 	column.add_child(_chapter)
 
 	var card := Control.new()
-	card.custom_minimum_size = Vector2(0, 270)
+	card.custom_minimum_size = Vector2(0, 290)
 	column.add_child(card)
 
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", _preview_style())
-	panel.clip_contents = true
-	card.add_child(panel)
+	# Sin marco: la escena se funde con el fondo de la pantalla.
 	var art := Control.new()
-	art.clip_contents = true
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(art)
-	_preview = TextureRect.new()
-	_preview.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_preview.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art.add_child(_preview)
-	# Darkened edges so the art reads as a lit stage, not a flat tile.
-	var shade := TextureRect.new()
-	shade.texture = _vignette_texture()
-	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	shade.stretch_mode = TextureRect.STRETCH_SCALE
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art.add_child(shade)
+	card.add_child(art)
+	_diorama = StageDiorama.new()
+	art.add_child(_diorama)
 
 	_art = art
 	if show_hero:
 		_build_hero(art)
+	art.add_child(_diorama.front_layer())
 
-	_lock_overlay = ColorRect.new()
-	_lock_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_lock_overlay.color = Color(0.02, 0.01, 0.05, 0.7)
-	_lock_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_lock_overlay.visible = false
-	art.add_child(_lock_overlay)
 	_lock_icon = TextureRect.new()
 	_lock_icon.texture = load("res://assets/ui/icons/lock.png")
 	_lock_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -227,7 +205,7 @@ func _build_start_content() -> void:
 	_cost_box.add_child(cost)
 
 func _set_start_text(title: String) -> void:
-	_start_title.text = title
+	_start_title.text = UiTheme.title_text(title)
 	_start_sub.text = start_subtitle
 	_start_sub.visible = start_subtitle != ""
 	_cost_box.visible = energy_cost > 0 and not _start_button.disabled
@@ -243,7 +221,7 @@ func set_map(data: Dictionary) -> void:
 	_map_data = data
 	if not is_instance_valid(_title):
 		return
-	_title.text = str(data.get("name", "MAPA"))
+	_title.text = UiTheme.title_text(str(data.get("name", "MAPA")))
 	_chapter.text = "Capítulo %s · Nivel %s" % [str(data.get("chapter", 1)), str(data.get("level", 1))]
 	_rewards.visible = show_rewards
 	_rewards.text = "Recompensas: %d oro · %d esmeraldas" % [int(data.get("gold_reward", 0)), int(data.get("gems_reward", 0))]
@@ -251,13 +229,14 @@ func set_map(data: Dictionary) -> void:
 	_modifier.text = modifier_label
 	_modifier.visible = modifier_label != ""
 	_info_panel.visible = show_rewards or _modifier.visible
-	var texture = load(str(data.get("preview", "res://assets/ui/escenarios/game_bg.png")))
-	if texture is Texture2D:
-		_preview.texture = texture
+	_diorama.set_chapter(int(data.get("chapter", 1)))
 	var unlocked: bool = unlock_check.call(data)
 	_start_button.disabled = not unlocked
 	_set_start_text(start_label if unlocked else "BLOQUEADO")
-	_lock_overlay.visible = not unlocked
+	# Bloqueada: la escena queda en penumbra en vez de taparse con un velo.
+	var tint := Color.WHITE if unlocked else Color(0.3, 0.28, 0.4)
+	_diorama.modulate = tint
+	_diorama.front_layer().modulate = tint
 	_lock_icon.visible = not unlocked
 	if is_instance_valid(_hero_sprite):
 		_hero_sprite.visible = unlocked
@@ -334,8 +313,8 @@ func enable_hero() -> void:
 	show_hero = true
 	if is_instance_valid(_art) and not is_instance_valid(_hero_sprite):
 		_build_hero(_art)
-		# Keep the lock veil above the hero.
-		_art.move_child(_hero_sprite, 2)
+		# Entre el fondo de la escena y lo que va delante del héroe.
+		_art.move_child(_hero_sprite, 1)
 
 ## The selected hero standing on a rune circle in the middle of the card,
 ## breathing slowly.
@@ -349,8 +328,8 @@ func _build_hero(parent: Control) -> void:
 	rune.set_anchors_preset(Control.PRESET_CENTER)
 	rune.offset_left = -80.0
 	rune.offset_right = 80.0
-	rune.offset_top = -50.0
-	rune.offset_bottom = 110.0
+	rune.offset_top = -15.0
+	rune.offset_bottom = 145.0
 	# Flattened so the circle lies on the floor under the hero's feet.
 	rune.pivot_offset = Vector2(80.0, 80.0)
 	rune.scale = Vector2(1.0, 0.38)
@@ -372,34 +351,11 @@ func _build_hero(parent: Control) -> void:
 	hero.set_anchors_preset(Control.PRESET_CENTER)
 	hero.offset_left = -95.0
 	hero.offset_right = 95.0
-	hero.offset_top = -130.0
-	hero.offset_bottom = 60.0
+	hero.offset_top = -95.0
+	hero.offset_bottom = 95.0
 	hero.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(hero)
 	hero.pivot_offset = Vector2(95.0, 160.0)
 	var tween := hero.create_tween().set_loops()
 	tween.tween_property(hero, "scale", Vector2(1.0, 1.015), 1.6).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(hero, "scale", Vector2.ONE, 1.6).set_trans(Tween.TRANS_SINE)
-
-static var _vignette: GradientTexture2D
-
-static func _vignette_texture() -> GradientTexture2D:
-	if _vignette != null:
-		return _vignette
-	var g := Gradient.new()
-	g.set_color(0, Color(0, 0, 0, 0.0))
-	g.set_color(1, Color(0.02, 0.01, 0.05, 0.85))
-	g.add_point(0.45, Color(0, 0, 0, 0.05))
-	_vignette = GradientTexture2D.new()
-	_vignette.gradient = g
-	_vignette.fill = GradientTexture2D.FILL_RADIAL
-	_vignette.fill_from = Vector2(0.5, 0.5)
-	_vignette.fill_to = Vector2(1.0, 1.0)
-	_vignette.width = 64
-	_vignette.height = 64
-	return _vignette
-
-func _preview_style() -> StyleBox:
-	var style := UiTheme.slot(true, 4)
-	style.bg_color = UiTheme.BG_PANEL
-	return UiTheme.kit("panel_default", style, 6.0)
