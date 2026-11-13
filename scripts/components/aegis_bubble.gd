@@ -5,7 +5,7 @@ class_name EmberfallAegisBubble
 ## stored (a second, outer one for Bastión's second charge). game_world
 ## owns the charges; breaking it spawns a ring and sparks there.
 
-const RADIUS := 30.0
+const RADIUS := 46.0
 
 var game_ref: Node
 var evolved := false
@@ -32,15 +32,16 @@ func _draw() -> void:
 	for layer in maxi(charges, 1):
 		var r := (RADIUS + layer * 7.0) * (0.85 + 0.15 * _shown)
 		var points := _hexagon(r, _time * 0.4 * (1.0 if layer == 0 else -1.0))
-		draw_colored_polygon(points, Color(color, 0.07 * _shown))
+		draw_colored_polygon(points, Color(color, 0.12 * _shown))
 		points.append(points[0])
-		draw_polyline(points, Color(color, 0.55 * _shown), 2.0)
+		draw_polyline(points, Color(color, 0.25 * _shown), 7.0)
+		draw_polyline(points, Color(color.lightened(0.3), 0.8 * _shown), 2.5)
 		# A highlight that runs around the edge so the shield feels alive.
 		var k := fposmod(_time * 0.8 + layer * 0.5, 1.0) * 6.0
 		var i := int(k)
 		var spot := points[i].lerp(points[i + 1], k - i)
-		draw_circle(spot, 2.5, Color(1, 1, 1, 0.9 * _shown))
-		EmberfallFx.glow(self, spot, 8.0, color, 0.5 * _shown)
+		draw_circle(spot, 3.5, Color(1, 1, 1, 0.95 * _shown))
+		EmberfallFx.glow(self, spot, 14.0, color, 0.6 * _shown)
 
 func _hexagon(r: float, spin: float) -> PackedVector2Array:
 	var points := PackedVector2Array()

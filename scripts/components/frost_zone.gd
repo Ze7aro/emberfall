@@ -57,20 +57,21 @@ func _draw() -> void:
 	if lifetime < INF:
 		alpha *= clampf((lifetime - _elapsed) / FADE_OUT, 0.0, 1.0)
 	var r := radius * (0.85 + 0.15 * minf(1.0, _elapsed / FADE_IN))
-	draw_circle(Vector2.ZERO, r, Color(_color, 0.07 * alpha))
-	draw_circle(Vector2.ZERO, r * 0.6, Color(_color, 0.04 * alpha))
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(_color, 0.35 * alpha), 1.5)
+	draw_circle(Vector2.ZERO, r, Color(_color, 0.10 * alpha))
+	EmberfallFx.glow(self, Vector2.ZERO, r * 0.7, _color, 0.16 * alpha)
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(_color, 0.25 * alpha), 6.0)
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(_color.lightened(0.3), 0.7 * alpha), 2.0)
 	# Slow rotating dashes just inside the edge: the "wind" of the blizzard.
 	var spin := _elapsed * 0.6
 	for i in 6:
 		var a := spin + TAU * float(i) / 6.0
-		draw_arc(Vector2.ZERO, r * 0.82, a, a + 0.45, 8, Color(1, 1, 1, 0.18 * alpha), 1.2)
+		draw_arc(Vector2.ZERO, r * 0.82, a, a + 0.6, 10, Color(1, 1, 1, 0.38 * alpha), 2.5)
 	if evolved:
 		for i in 6:
 			var at := Vector2.from_angle(-spin * 0.7 + TAU * float(i) / 6.0) * r * 0.9
 			for arm in 3:
 				var d := Vector2.from_angle(spin * 2.0 + PI * float(arm) / 3.0) * 4.5
-				draw_line(at - d, at + d, Color(1, 1, 1, 0.55 * alpha), 1.2)
+				draw_line(at - d * 1.6, at + d * 1.6, Color(1, 1, 1, 0.75 * alpha), 2.0)
 	# Snow falling diagonally, wrapped inside the disc.
 	for flake in _flakes:
 		var y := fposmod(flake.y + _elapsed * 0.35 + flake.z, 2.0) - 1.0
@@ -80,4 +81,4 @@ func _draw() -> void:
 		if edge <= 0.0:
 			continue
 		var k := minf(1.0, edge * 4.0) * alpha
-		draw_circle(p * r, 1.3, Color(1, 1, 1, 0.7 * k))
+		draw_circle(p * r, 2.2, Color(1, 1, 1, 0.85 * k))

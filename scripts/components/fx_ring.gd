@@ -32,5 +32,9 @@ func _draw() -> void:
 	if fill:
 		draw_colored_polygon(points, Color(color, 0.18 * alpha))
 	points.append(points[0])
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, flatten))
+	EmberfallFx.glow(self, Vector2.ZERO, r * 0.7, color, 0.22 * alpha)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_polyline(points, Color(color, 0.25 * alpha), width * 2.6 * (1.0 - t * 0.6))
 	draw_polyline(points, Color(color, 0.8 * alpha), width * (1.0 - t * 0.6))
 	draw_polyline(points, Color(1, 1, 1, 0.6 * alpha), maxf(1.0, width * 0.3))

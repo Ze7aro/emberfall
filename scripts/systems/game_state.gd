@@ -33,22 +33,39 @@ const RARITY_LABELS := EquipmentCatalog.RARITY_LABELS
 const DAY_SECONDS := 86400.0
 const WEEK_SECONDS := 604800.0
 
-## `type` selects which period counter tracks progress toward `target`.
-## Progress and "claimed" state both reset when their period rolls over.
-## "route" is where the MissionsScreen's IR button sends the player —
-## PROMPT_MISIONES_EMBERFALL.md's "El botón IR navega al sistema relacionado
-## con el objetivo".
-const DAILY_MISSIONS := [
-	{"id": "daily_kills", "period": "daily", "name": "CACERÍA DIARIA", "description": "Elimina 30 enemigos hoy", "type": "daily_kills", "target": 30, "gold": 30, "gems": 0, "route": "home"},
-	{"id": "daily_gold", "period": "daily", "name": "BOTÍN DIARIO", "description": "Conseguí 150 de oro hoy", "type": "daily_gold", "target": 150, "gold": 0, "gems": 1, "route": "home"},
-	{"id": "daily_runs", "period": "daily", "name": "AVENTURA DIARIA", "description": "Superá 1 pantalla o mazmorra hoy", "type": "daily_runs", "target": 1, "gold": 50, "gems": 0, "route": "home"},
+## Missions. `type` is the period counter that tracks progress toward
+## `target`: one of the built-in ones (daily_kills, weekly_gold…) or
+## "stat:<name>", a generic per-period counter fed by track_mission_stat().
+## `tier` (1 easy, 2 medium, 3 hard) decides which slot of the daily rotation
+## a mission can fill; `points` are the activity points it adds to the
+## period's chest track. "route" is where the card's IR button sends the player.
+##
+## Every day DAILY_SLOTS missions are drawn from DAILY_POOL (seeded by the
+## day's reset time, so the set is stable until the next reset): two easy,
+## two medium and one hard, always worth 100 activity points in total.
+const DAILY_POOL := [
+	{"id": "daily_kills", "period": "daily", "tier": 1, "points": 15, "name": "CACERÍA DIARIA", "description": "Elimina 30 enemigos", "type": "daily_kills", "target": 30, "gold": 30, "gems": 0, "route": "home"},
+	{"id": "daily_play", "period": "daily", "tier": 1, "points": 15, "name": "A LAS CRIPTAS", "description": "Juega 1 partida", "type": "stat:plays", "target": 1, "gold": 25, "gems": 0, "route": "home"},
+	{"id": "daily_time", "period": "daily", "tier": 1, "points": 15, "name": "AGUANTE", "description": "Sobrevive 3 minutos en total", "type": "stat:seconds", "target": 180, "unit": "time", "gold": 30, "gems": 0, "route": "home"},
+	{"id": "daily_gold", "period": "daily", "tier": 2, "points": 20, "name": "BOTÍN DIARIO", "description": "Consigue 150 de oro", "type": "daily_gold", "target": 150, "gold": 0, "gems": 1, "route": "home"},
+	{"id": "daily_level", "period": "daily", "tier": 2, "points": 20, "name": "PODER CRECIENTE", "description": "Llega a nivel 8 en una partida", "type": "stat:best_level", "target": 8, "gold": 45, "gems": 0, "route": "home"},
+	{"id": "daily_elites", "period": "daily", "tier": 2, "points": 20, "name": "CAZA MAYOR", "description": "Derrota 2 élites", "type": "stat:elites", "target": 2, "gold": 45, "gems": 0, "route": "home"},
+	{"id": "daily_chests", "period": "daily", "tier": 2, "points": 20, "name": "SAQUEO", "description": "Abre 1 cofre", "type": "daily_chests", "target": 1, "gold": 40, "gems": 0, "route": "shop"},
+	{"id": "daily_runs", "period": "daily", "tier": 3, "points": 30, "name": "AVENTURA DIARIA", "description": "Supera 1 pantalla o mazmorra", "type": "daily_runs", "target": 1, "gold": 50, "gems": 1, "route": "home"},
+	{"id": "daily_slaughter", "period": "daily", "tier": 3, "points": 30, "name": "MATANZA", "description": "Elimina 150 enemigos", "type": "daily_kills", "target": 150, "gold": 60, "gems": 1, "route": "home"},
+	{"id": "daily_evolve", "period": "daily", "tier": 3, "points": 30, "name": "FORMA FINAL", "description": "Evoluciona 1 habilidad", "type": "stat:evolutions", "target": 1, "gold": 60, "gems": 1, "route": "home"},
 ]
+## How many missions of each tier the daily rotation draws.
+const DAILY_SLOTS := {1: 2, 2: 2, 3: 1}
 
+## Weekly missions are fixed (100 activity points in total).
 const WEEKLY_MISSIONS := [
-	{"id": "weekly_kills", "period": "weekly", "name": "EXTERMINIO SEMANAL", "description": "Eliminá 200 enemigos esta semana", "type": "weekly_kills", "target": 200, "gold": 150, "gems": 3, "route": "home"},
-	{"id": "weekly_gold", "period": "weekly", "name": "FORTUNA SEMANAL", "description": "Conseguí 800 de oro esta semana", "type": "weekly_gold", "target": 800, "gold": 0, "gems": 6, "route": "home"},
-	{"id": "weekly_runs", "period": "weekly", "name": "CAMPAÑA SEMANAL", "description": "Superá 7 pantallas o mazmorras esta semana", "type": "weekly_runs", "target": 7, "gold": 300, "gems": 8, "route": "dungeons"},
-	{"id": "weekly_chests", "period": "weekly", "name": "BÓVEDA SEMANAL", "description": "Abrí 4 cofres esta semana", "type": "weekly_chests", "target": 4, "gold": 0, "gems": 5, "route": "shop"},
+	{"id": "weekly_kills", "period": "weekly", "tier": 1, "points": 10, "name": "EXTERMINIO SEMANAL", "description": "Elimina 200 enemigos", "type": "weekly_kills", "target": 200, "gold": 150, "gems": 3, "route": "home"},
+	{"id": "weekly_gold", "period": "weekly", "tier": 2, "points": 15, "name": "FORTUNA SEMANAL", "description": "Consigue 800 de oro", "type": "weekly_gold", "target": 800, "gold": 0, "gems": 6, "route": "home"},
+	{"id": "weekly_elites", "period": "weekly", "tier": 2, "points": 15, "name": "VERDUGO DE ÉLITES", "description": "Derrota 12 élites", "type": "stat:elites", "target": 12, "gold": 120, "gems": 2, "route": "home"},
+	{"id": "weekly_chests", "period": "weekly", "tier": 2, "points": 15, "name": "BÓVEDA SEMANAL", "description": "Abre 4 cofres", "type": "weekly_chests", "target": 4, "gold": 0, "gems": 5, "route": "shop"},
+	{"id": "weekly_upgrades", "period": "weekly", "tier": 3, "points": 20, "name": "LEGADO", "description": "Compra 3 mejoras permanentes", "type": "stat:upgrades", "target": 3, "gold": 0, "gems": 4, "route": "upgrades"},
+	{"id": "weekly_runs", "period": "weekly", "tier": 3, "points": 25, "name": "CAMPAÑA SEMANAL", "description": "Supera 7 pantallas o mazmorras", "type": "weekly_runs", "target": 7, "gold": 300, "gems": 8, "route": "dungeons"},
 ]
 
 var screen := "menu"
@@ -80,6 +97,8 @@ var vibration_enabled := true
 var reduce_motion := false
 ## 0 small, 1 normal, 2 large — see JOYSTICK_SCALES.
 var joystick_size := 1
+## "auto" (idioma del dispositivo), "es" o "en" — ver Localization.
+var language := "auto"
 const JOYSTICK_SCALES := [0.8, 1.0, 1.3]
 var boss_encounter_active := false
 
@@ -123,6 +142,8 @@ var weekly_runs := 0
 var weekly_chests := 0
 var claimed_daily_missions: Array = []
 var claimed_weekly_missions: Array = []
+## Generic mission counters ("stat:<name>" mission types), per period.
+var mission_stats := {"daily": {}, "weekly": {}}
 
 # Context for the run currently starting/in progress, and the last one used
 # (kept after the run ends so the result screen can offer "retry").
@@ -180,6 +201,8 @@ func _check_period_resets() -> void:
 		daily_kills = 0; daily_gold = 0; daily_runs = 0; daily_chests = 0
 		claimed_daily_missions = []
 		claimed_daily_milestones = []
+		mission_stats["daily"] = {}
+		_daily_cache_seed = -1
 		missions_changed.emit()
 		save()
 	if now < weekly_reset_at:
@@ -189,6 +212,7 @@ func _check_period_resets() -> void:
 		weekly_kills = 0; weekly_gold = 0; weekly_runs = 0; weekly_chests = 0
 		claimed_weekly_missions = []
 		claimed_weekly_milestones = []
+		mission_stats["weekly"] = {}
 		missions_changed.emit()
 		save()
 
@@ -468,6 +492,10 @@ func set_reduce_motion(value: bool) -> void:
 	reduce_motion = value
 	save()
 
+func set_language(value: String) -> void:
+	language = value
+	save()
+
 func set_joystick_size(value: int) -> void:
 	joystick_size = clampi(value, 0, JOYSTICK_SCALES.size() - 1)
 	save()
@@ -499,14 +527,14 @@ const COIN_OFFERS := [
 	{"id": "recarga_oro_gratis", "amount": 100, "cost": 0, "art": "COINS"},
 	{"id": "recarga_oro_baja", "amount": 500, "cost": -1, "usd": "0,99", "ad_first": true, "art": "STACK"},
 	{"id": "recarga_oro_media", "amount": 1200, "cost": -1, "usd": "1,99", "art": "PILE"},
-	{"id": "bolsa_oro_media", "amount": 2500, "cost": -1, "usd": "3,99", "art": "BAG"},
-	{"id": "cofre_oro_medio", "amount": 6500, "cost": -1, "usd": "3,99", "art": "CHEST"},
-	{"id": "cofre_oro_grande", "amount": 14000, "cost": -1, "usd": "74,99", "art": "CHEST"},
+	{"id": "bolsa_oro_media", "amount": 3200, "cost": -1, "usd": "4,99", "art": "BAG"},
+	{"id": "cofre_oro_medio", "amount": 7000, "cost": -1, "usd": "9,99", "art": "CHEST"},
+	{"id": "cofre_oro_grande", "amount": 15000, "cost": -1, "usd": "19,99", "art": "CHEST"},
 ]
 const ENERGY_OFFERS := [
 	{"id": "recarga_energia_gratuita", "amount": 20, "cost": 0, "art": "ENERGY"},
 	{"id": "recarga_energia_media", "amount": 60, "cost": -1, "usd": "0,99", "ad_first": true, "art": "BOTTLE"},
-	{"id": "recarga_energia_grande", "amount": 120, "cost": -1, "usd": "1,99", "art": "BOTTLES"},
+	{"id": "recarga_energia_grande", "amount": 150, "cost": -1, "usd": "1,99", "art": "BOTTLES"},
 ]
 const CHEST_TIERS := [
 	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["COMÚN", "POCO COMÚN"], "art": "COMMON",
@@ -582,6 +610,82 @@ func buy_energy_offer(index: int) -> bool:
 	save()
 	return true
 
+## -- Real-money and rewarded-ad offers (driven by the Monetization autoload) --
+
+## Bought/ad-granted energy may exceed MAX_ENERGY (a paid refill must never be
+## lost to the cap); it just stops regenerating until it drops below it.
+const ENERGY_OVERFLOW_CAP := 999
+## Purchase tokens already granted, so a purchase the store re-delivers
+## (app closed before it was consumed) is never paid out twice.
+const PROCESSED_PURCHASES_KEPT := 200
+var processed_purchases: Array = []
+
+## {"kind": "coin"|"energy", "index": int, "offer": Dictionary}, or {} when
+## `offer_id` isn't a real-money offer.
+func find_store_offer(offer_id: String) -> Dictionary:
+	for kind in ["coin", "energy"]:
+		var offers: Array = COIN_OFFERS if kind == "coin" else ENERGY_OFFERS
+		for i in offers.size():
+			if str(offers[i].get("id", "")) == offer_id and offers[i].has("usd"):
+				return {"kind": kind, "index": i, "offer": offers[i]}
+	return {}
+
+## Product ids to register in the store console: one per real-money offer.
+func store_offer_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for offer in COIN_OFFERS + ENERGY_OFFERS:
+		if offer.has("usd"):
+			ids.append(str(offer.id))
+	return ids
+
+## Key in claimed_free_offers marking an offer's one-time "watch an ad" claim.
+func ad_offer_key(kind: String, index: int) -> String:
+	return "ad_%s_%d" % [kind, index]
+
+## Whether this offer's first claim is still through a rewarded ad.
+func is_ad_offer_pending(offer_id: String) -> bool:
+	var found := find_store_offer(offer_id)
+	if found.is_empty() or not bool(found.offer.get("ad_first", false)):
+		return false
+	return not claimed_free_offers.has(ad_offer_key(str(found.kind), int(found.index)))
+
+func _deliver_store_offer(found: Dictionary) -> void:
+	var amount := int(found.offer.get("amount", 0))
+	if str(found.kind) == "coin":
+		gold += amount
+		gold_changed.emit(gold)
+	else:
+		energy = mini(ENERGY_OVERFLOW_CAP, energy + amount)
+		energy_changed.emit(energy)
+		energy_countdown_changed.emit(seconds_until_next_energy())
+	SfxPlayer.play("economy/purchase_success.wav", false)
+
+## Delivers a paid offer. `purchase_token` identifies the store purchase: the
+## same token is granted only once. Returns false for unknown offers.
+func grant_store_offer(offer_id: String, purchase_token: String) -> bool:
+	var found := find_store_offer(offer_id)
+	if found.is_empty():
+		return false
+	if purchase_token != "":
+		if processed_purchases.has(purchase_token):
+			return true
+		processed_purchases.append(purchase_token)
+		while processed_purchases.size() > PROCESSED_PURCHASES_KEPT:
+			processed_purchases.pop_front()
+	_deliver_store_offer(found)
+	save()
+	return true
+
+## Delivers an "ad first" offer after its rewarded ad was watched (once).
+func grant_ad_offer(offer_id: String) -> bool:
+	if not is_ad_offer_pending(offer_id):
+		return false
+	var found := find_store_offer(offer_id)
+	_mark_free_offer_claimed(ad_offer_key(str(found.kind), int(found.index)))
+	_deliver_store_offer(found)
+	save()
+	return true
+
 func open_chest_with_gems(tier_index: int) -> Dictionary:
 	if tier_index < 0 or tier_index >= CHEST_TIERS.size():
 		return {}
@@ -604,6 +708,7 @@ func buy_upgrade(kind: String) -> bool:
 		return false
 	gold -= cost
 	set_upgrade_level(kind, level_value + 1)
+	track_mission_stat("upgrades", 1)
 	gold_changed.emit(gold)
 	SfxPlayer.play("economy/purchase_success.wav", false)
 	save()
@@ -735,6 +840,11 @@ func record_run(stats: Dictionary) -> Array[String]:
 	run_stats["evolutions_done"] = int(run_stats.get("evolutions_done", 0)) + int(stats.get("evolutions", 0))
 	run_stats["best_level"] = maxi(int(run_stats.get("best_level", 0)), int(stats.get("level", 0)))
 	run_stats["best_time"] = maxi(int(run_stats.get("best_time", 0)), int(stats.get("time", 0)))
+	track_mission_stat("plays", 1)
+	track_mission_stat("seconds", int(stats.get("time", 0)))
+	track_mission_stat("elites", int(stats.get("elites", 0)))
+	track_mission_stat("evolutions", int(stats.get("evolutions", 0)))
+	track_mission_stat("best_level", int(stats.get("level", 0)), true)
 	_record_discoveries(stats)
 	var unlocked: Array[String] = []
 	for id in AbilityCatalog.UNLOCKS:
@@ -1039,8 +1149,49 @@ func get_equipped_bonus(stat: String) -> int:
 
 ## -- Missions --
 
+## Adds to a generic mission counter in both periods; with `as_max` the
+## counter keeps the best single value instead (e.g. level reached in a run).
+func track_mission_stat(stat: String, amount: int, as_max: bool = false) -> void:
+	if amount <= 0:
+		return
+	for period in ["daily", "weekly"]:
+		var bucket: Dictionary = mission_stats[period]
+		bucket[stat] = maxi(int(bucket.get(stat, 0)), amount) if as_max else int(bucket.get(stat, 0)) + amount
+	missions_changed.emit()
+
+var _daily_cache_seed := -1
+var _daily_cache: Array = []
+
+## Today's missions: DAILY_SLOTS drawn from DAILY_POOL, easiest first.
+func daily_missions() -> Array:
+	var day_seed := int(daily_reset_at)
+	if day_seed == _daily_cache_seed:
+		return _daily_cache
+	var rng := RandomNumberGenerator.new()
+	rng.seed = day_seed
+	var picked: Array = []
+	for tier in [1, 2, 3]:
+		var candidates: Array = DAILY_POOL.filter(func(m): return int(m.tier) == tier)
+		for i in int(DAILY_SLOTS.get(tier, 0)):
+			if candidates.is_empty():
+				break
+			picked.append(candidates.pop_at(rng.randi_range(0, candidates.size() - 1)))
+	_daily_cache_seed = day_seed
+	_daily_cache = picked
+	return picked
+
+func weekly_missions() -> Array:
+	return WEEKLY_MISSIONS
+
+func missions_for(period: String) -> Array:
+	return weekly_missions() if period == "weekly" else daily_missions()
+
 func mission_progress(mission: Dictionary) -> int:
-	match str(mission.get("type", "")):
+	var type := str(mission.get("type", ""))
+	if type.begins_with("stat:"):
+		var bucket: Dictionary = mission_stats["weekly" if str(mission.get("period", "")) == "weekly" else "daily"]
+		return int(bucket.get(type.trim_prefix("stat:"), 0))
+	match type:
 		"daily_kills": return daily_kills
 		"daily_gold": return daily_gold
 		"daily_runs": return daily_runs
@@ -1063,7 +1214,7 @@ func can_claim_mission(mission: Dictionary) -> bool:
 	return mission_progress(mission) >= int(mission.get("target", 0))
 
 func find_mission(id: String) -> Dictionary:
-	for entry in DAILY_MISSIONS:
+	for entry in DAILY_POOL:
 		if str(entry.get("id", "")) == id:
 			return entry
 	for entry in WEEKLY_MISSIONS:
@@ -1075,7 +1226,14 @@ func claim_mission(id: String) -> bool:
 	var mission := find_mission(id)
 	if mission.is_empty() or not can_claim_mission(mission):
 		return false
-	_claimed_list(mission).append(id)
+	_grant_mission(mission)
+	SfxPlayer.play("economy/purchase_success.wav", false)
+	missions_changed.emit()
+	save()
+	return true
+
+func _grant_mission(mission: Dictionary) -> void:
+	_claimed_list(mission).append(str(mission.get("id", "")))
 	var reward_gold := int(mission.get("gold", 0))
 	var reward_gems := int(mission.get("gems", 0))
 	if reward_gold > 0:
@@ -1084,50 +1242,83 @@ func claim_mission(id: String) -> bool:
 	if reward_gems > 0:
 		gems += reward_gems
 		gems_changed.emit(gems)
-	missions_changed.emit()
-	save()
-	return true
 
-func has_claimable_missions() -> bool:
-	for mission in DAILY_MISSIONS:
+## Claims every finished mission of a period at once; returns how many.
+func claim_all_missions(period: String) -> int:
+	var count := 0
+	for mission in missions_for(period):
 		if can_claim_mission(mission):
-			return true
-	for mission in WEEKLY_MISSIONS:
+			_grant_mission(mission)
+			count += 1
+	if count > 0:
+		SfxPlayer.play("economy/purchase_success.wav", false)
+		missions_changed.emit()
+		save()
+	return count
+
+func claimable_mission_count(period: String) -> int:
+	var count := 0
+	for mission in missions_for(period):
 		if can_claim_mission(mission):
+			count += 1
+	return count
+
+## Whether a period has anything to collect: a finished mission or a chest.
+func has_claimables(period: String) -> bool:
+	if claimable_mission_count(period) > 0:
+		return true
+	for milestone in milestones_for(period):
+		if can_claim_milestone(period, int(milestone.threshold)):
 			return true
 	return false
 
-## PROMPT_MISIONES_EMBERFALL.md's cumulative "PROGRESO DIARIO/SEMANAL" strip:
-## a milestone chest every N missions claimed *this period*, on top of each
-## mission's own reward. Thresholds are scaled to how many missions actually
-## exist per period (3 daily, 4 weekly) rather than the spec's illustrative
-## 1/3/5/7/10 (which assumes a bigger catalogue than DAILY_MISSIONS has) —
-## same shape, real numbers.
+func has_claimable_missions() -> bool:
+	return has_claimables("daily") or has_claimables("weekly")
+
+## Activity track: every claimed mission adds its `points`; chests unlock at
+## these point thresholds, on top of each mission's own reward. Both periods
+## add up to ACTIVITY_MAX when everything is claimed.
+const ACTIVITY_MAX := 100
 const DAILY_MILESTONES := [
-	{"threshold": 1, "gold": 30, "gems": 0, "essence": 10},
-	{"threshold": 2, "gold": 60, "gems": 1, "essence": 20},
-	{"threshold": 3, "gold": 120, "gems": 2, "essence": 40},
+	{"threshold": 20, "gold": 30, "gems": 0, "essence": 0},
+	{"threshold": 40, "gold": 40, "gems": 0, "essence": 10},
+	{"threshold": 60, "gold": 0, "gems": 1, "essence": 20},
+	{"threshold": 80, "gold": 60, "gems": 0, "essence": 0},
+	{"threshold": 100, "gold": 100, "gems": 2, "essence": 40},
 ]
 const WEEKLY_MILESTONES := [
-	{"threshold": 1, "gold": 80, "gems": 0, "essence": 30},
-	{"threshold": 2, "gold": 160, "gems": 2, "essence": 50},
-	{"threshold": 3, "gold": 280, "gems": 4, "essence": 80},
-	{"threshold": 4, "gold": 450, "gems": 8, "item": "weekly_milestone"},
+	{"threshold": 25, "gold": 80, "gems": 0, "essence": 30},
+	{"threshold": 50, "gold": 160, "gems": 2, "essence": 50},
+	{"threshold": 75, "gold": 280, "gems": 4, "essence": 80},
+	{"threshold": 100, "gold": 450, "gems": 8, "item": "weekly_milestone"},
 ]
 var claimed_daily_milestones: Array = []
 var claimed_weekly_milestones: Array = []
 
-func daily_missions_claimed_count() -> int:
-	return claimed_daily_missions.size()
+func milestones_for(period: String) -> Array:
+	return WEEKLY_MILESTONES if period == "weekly" else DAILY_MILESTONES
 
-func weekly_missions_claimed_count() -> int:
-	return claimed_weekly_missions.size()
+func claimed_milestones_for(period: String) -> Array:
+	return claimed_weekly_milestones if period == "weekly" else claimed_daily_milestones
+
+## Activity points earned this period (sum of the claimed missions' points).
+func activity_points(period: String) -> int:
+	var total := 0
+	for id in (claimed_weekly_missions if period == "weekly" else claimed_daily_missions):
+		total += int(find_mission(str(id)).get("points", 0))
+	return mini(total, ACTIVITY_MAX)
+
+func can_claim_milestone(period: String, threshold: int) -> bool:
+	return not claimed_milestones_for(period).has(threshold) and activity_points(period) >= threshold
+
+func claim_milestone(period: String, threshold: int) -> bool:
+	return claim_weekly_milestone(threshold) if period == "weekly" else claim_daily_milestone(threshold)
 
 func can_claim_daily_milestone(threshold: int) -> bool:
-	return not claimed_daily_milestones.has(threshold) and daily_missions_claimed_count() >= threshold
+	return can_claim_milestone("daily", threshold)
 
 func can_claim_weekly_milestone(threshold: int) -> bool:
-	return not claimed_weekly_milestones.has(threshold) and weekly_missions_claimed_count() >= threshold
+	return can_claim_milestone("weekly", threshold)
 
 func claim_daily_milestone(threshold: int) -> bool:
 	if not can_claim_daily_milestone(threshold):
@@ -1185,7 +1376,13 @@ func refresh_energy() -> void:
 		energy_changed.emit(energy)
 		save()
 
+## Las pruebas automáticas (tools/run_tests.gd) lo apagan para no tocar el
+## guardado real del jugador.
+var persistence_enabled := true
+
 func save() -> void:
+	if not persistence_enabled:
+		return
 	var data := _read_save()
 	data.merge({
 		"save_version": SAVE_FORMAT_VERSION,
@@ -1195,13 +1392,14 @@ func save() -> void:
 		"hero_stats": hero_stats, "unlocked_weapons": unlocked_weapons,
 		"discovered_abilities": discovered_abilities, "discovered_evolutions": discovered_evolutions, "bestiary": bestiary,
 		"music": music_enabled, "effects": effects_enabled, "tutorial_completed": tutorial_completed,
-		"vibration": vibration_enabled, "reduce_motion": reduce_motion, "joystick_size": joystick_size,
+		"vibration": vibration_enabled, "reduce_motion": reduce_motion, "joystick_size": joystick_size, "language": language,
 		"level": level, "experience": experience, "experience_to_next": experience_to_next,
 		"selected_character_id": str(selected_character_id), "selected_character_texture": selected_character_texture,
 		"selected_character_sprite_folder": selected_character_sprite_folder,
 		"selected_map_id": str(selected_map_id), "notifications": notifications,
 		"highest_stage_cleared": highest_stage_cleared, "dungeons_cleared": dungeons_cleared, "first_clears": first_clears,
 		"claimed_free_offers": claimed_free_offers,
+		"processed_purchases": processed_purchases,
 		"owned_characters": owned_characters.map(func(id): return str(id)),
 		"equipment_inventory": equipment_inventory, "equipped_by_type": equipped_by_type,
 		"next_item_uid": _next_item_uid,
@@ -1209,6 +1407,7 @@ func save() -> void:
 		"daily_kills": daily_kills, "daily_gold": daily_gold, "daily_runs": daily_runs, "daily_chests": daily_chests,
 		"weekly_kills": weekly_kills, "weekly_gold": weekly_gold, "weekly_runs": weekly_runs, "weekly_chests": weekly_chests,
 		"claimed_daily_missions": claimed_daily_missions, "claimed_weekly_missions": claimed_weekly_missions,
+		"mission_stats": mission_stats,
 		"claimed_daily_milestones": claimed_daily_milestones, "claimed_weekly_milestones": claimed_weekly_milestones,
 	}, true)
 	_write_save(data)
@@ -1249,7 +1448,7 @@ func _migrate_save(data: Dictionary) -> Dictionary:
 
 func load_save() -> void:
 	var data := _migrate_save(_read_save())
-	energy = clampi(_safe_int(data.get("energy"), MAX_ENERGY), 0, MAX_ENERGY)
+	energy = clampi(_safe_int(data.get("energy"), MAX_ENERGY), 0, ENERGY_OVERFLOW_CAP)
 	energy_timestamp = _safe_float(data.get("energy_timestamp"), Time.get_unix_time_from_system())
 	gold = maxi(0, _safe_int(data.get("gold"), 0))
 	gems = maxi(0, _safe_int(data.get("gems"), 0))
@@ -1304,6 +1503,9 @@ func load_save() -> void:
 	vibration_enabled = _safe_bool(data.get("vibration"), true)
 	reduce_motion = _safe_bool(data.get("reduce_motion"), false)
 	joystick_size = clampi(_safe_int(data.get("joystick_size"), 1), 0, JOYSTICK_SCALES.size() - 1)
+	language = str(data.get("language", "auto"))
+	if not language in ["auto", "es", "en"]:
+		language = "auto"
 	level = maxi(1, _safe_int(data.get("level"), 1))
 	experience = maxi(0, _safe_int(data.get("experience"), 0))
 	experience_to_next = maxi(1, _safe_int(data.get("experience_to_next"), 100))
@@ -1318,6 +1520,8 @@ func load_save() -> void:
 	dungeons_cleared = maxi(0, _safe_int(data.get("dungeons_cleared"), 0))
 	var stored_first_clears = data.get("first_clears", [])
 	first_clears = (stored_first_clears as Array).filter(func(v): return v is String) if stored_first_clears is Array else []
+	var stored_purchases = data.get("processed_purchases", [])
+	processed_purchases = (stored_purchases as Array).filter(func(v): return v is String) if stored_purchases is Array else []
 	var stored_claimed_free_offers = data.get("claimed_free_offers", [])
 	claimed_free_offers = (stored_claimed_free_offers as Array).filter(func(v): return v is String) if stored_claimed_free_offers is Array else []
 	var stored_owned = data.get("owned_characters", [])
@@ -1365,6 +1569,15 @@ func load_save() -> void:
 	claimed_daily_missions = stored_daily_claimed if stored_daily_claimed is Array else []
 	var stored_weekly_claimed = data.get("claimed_weekly_missions", [])
 	claimed_weekly_missions = stored_weekly_claimed if stored_weekly_claimed is Array else []
+	mission_stats = {"daily": {}, "weekly": {}}
+	var stored_mission_stats = data.get("mission_stats", {})
+	if stored_mission_stats is Dictionary:
+		for period in ["daily", "weekly"]:
+			var bucket = stored_mission_stats.get(period, {})
+			if bucket is Dictionary:
+				for key in bucket:
+					mission_stats[period][str(key)] = maxi(0, _safe_int(bucket[key], 0))
+	_daily_cache_seed = -1
 	var stored_daily_milestones = data.get("claimed_daily_milestones", [])
 	claimed_daily_milestones = (stored_daily_milestones as Array).filter(func(v): return v is int or v is float) if stored_daily_milestones is Array else []
 	var stored_weekly_milestones = data.get("claimed_weekly_milestones", [])

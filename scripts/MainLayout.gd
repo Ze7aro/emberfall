@@ -175,6 +175,11 @@ func open_modal(modal_id: StringName, payload: Variant = null) -> void:
 				close_active_modal()
 				open_modal(&"settings")
 			)
+		if content.has_signal("credits_requested"):
+			content.credits_requested.connect(func():
+				close_active_modal()
+				open_modal(&"credits")
+			)
 	active_modal = blocker
 	_active_modal_content = content
 	modal_opened.emit(modal_id)
@@ -206,6 +211,7 @@ func _modal_for(modal_id: StringName) -> Control:
 	match modal_id:
 		&"profile": return preload("res://scenes/ui/ProfileModal.tscn").instantiate()
 		&"settings": return preload("res://scenes/ui/SettingsModal.tscn").instantiate()
+		&"credits": return preload("res://scenes/ui/CreditsModal.tscn").instantiate()
 		&"notifications": return preload("res://scenes/ui/NotificationsModal.tscn").instantiate()
 		&"missions": return _missions_modal()
 		_: return null
@@ -236,7 +242,7 @@ func start_run(map_data: Dictionary) -> void:
 		GameState.energy_changed.emit(GameState.energy)
 		_show_toast("[debug] Energía recargada")
 	if not GameState.can_start():
-		_show_toast("Sin energía: necesitás %d y tenés %d.\nSe recarga con el tiempo o en la Tienda." % [GameState.ENERGY_COST, GameState.energy])
+		_show_toast("Sin energía: necesitas %d y tienes %d.\nSe recarga con el tiempo o en la Tienda." % [GameState.ENERGY_COST, GameState.energy])
 		SfxPlayer.play_ui("economy/purchase_failed.wav")
 		return
 	if not GameState.begin_stage(map_data):

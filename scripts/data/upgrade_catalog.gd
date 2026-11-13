@@ -17,7 +17,7 @@ const UPGRADES := [
 	{"id": "health", "name": "Vitalidad", "desc": "+½ corazón de vida máxima por nivel.", "icon": "corazon_extra.png", "max": 10, "base": 40, "step": 35},
 	{"id": "speed", "name": "Movilidad", "desc": "+5% de velocidad de movimiento por nivel.", "icon": "velocidad_de_movimiento.png", "max": 10, "base": 40, "step": 35},
 	{"id": "armor", "name": "Armadura", "desc": "+3% de probabilidad de bloquear un golpe por nivel.", "icon": "mejora_armadura.png", "max": 3, "base": 120, "step": 120},
-	{"id": "regen", "name": "Regeneración", "desc": "Recuperás vida poco a poco (+½ corazón cada 30 s por nivel).", "icon": "corazon_extra_II.png", "max": 3, "base": 150, "step": 150},
+	{"id": "regen", "name": "Regeneración", "desc": "Recuperas vida poco a poco (+½ corazón cada 30 s por nivel).", "icon": "corazon_extra_II.png", "max": 3, "base": 150, "step": 150},
 	{"id": "haste", "name": "Celeridad", "desc": "-4% de tiempo entre ataques básicos por nivel.", "icon": "velocidad_de_ataque.png", "max": 3, "base": 100, "step": 100},
 	{"id": "area", "name": "Amplitud", "desc": "+5% de área de las habilidades por nivel.", "icon": "area.png", "max": 3, "base": 100, "step": 100},
 	{"id": "cooldown", "name": "Enfriamiento", "desc": "-3% de enfriamiento de las habilidades por nivel.", "icon": "cooldown.png", "max": 3, "base": 150, "step": 150},
@@ -34,7 +34,7 @@ const UPGRADES := [
 	{"id": "invuln", "name": "Resguardo", "desc": "+0,15 s de invencibilidad después de recibir daño por nivel.", "icon": "invencible_tras_dano.png", "max": 3, "base": 120, "step": 120},
 	{"id": "reroll", "name": "Cambiar", "desc": "+1 uso de Cambiar por partida por nivel.", "icon": "rerolls.png", "max": 3, "base": 150, "step": 150},
 	{"id": "banish", "name": "Descartar", "desc": "+1 uso de Descartar por partida por nivel.", "icon": "mejora_bloqueada.png", "max": 3, "base": 150, "step": 150},
-	{"id": "revival", "name": "Revivir", "desc": "Una vez por partida, al caer revivís con media vida.", "icon": "revivir.png", "max": 1, "base": 1000, "step": 0},
+	{"id": "revival", "name": "Revivir", "desc": "Una vez por partida, al caer revives con media vida.", "icon": "revivir.png", "max": 1, "base": 1000, "step": 0},
 ]
 
 ## The 3 upgrades that existed before the grid; GameState keeps them in

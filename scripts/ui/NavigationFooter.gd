@@ -176,7 +176,11 @@ func _select(index: int) -> void:
 		_apply_button_styles(_buttons[i], i == selected_index)
 	navigation_requested.emit(index, StringName(entries[index].get("id", &"")))
 
+## Pantallas que no tienen ícono propio y a cuál pertenecen.
+const PARENT_ROUTES := {&"codex": &"upgrades", &"character": &"inventory", &"missions": &"home", &"result": &"home"}
+
 func select_by_id(id: StringName) -> void:
+	id = PARENT_ROUTES.get(id, id)
 	for i in entries.size():
 		if StringName(entries[i].get("id", &"")) == id:
 			selected_index = i

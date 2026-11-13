@@ -359,8 +359,8 @@ func _build_inventory_panel() -> Control:
 	title.text = "MOCHILA"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_size_override("font_size", 16)
-	title.add_theme_color_override("font_color", UiTheme.ACCENT)
+	UiTheme.style_title(title, 16, UiTheme.GOLD)
+	title.add_theme_constant_override("outline_size", 4)
 	header.add_child(title)
 	var essence_box := HBoxContainer.new()
 	essence_box.custom_minimum_size = Vector2(104, 0)
@@ -579,7 +579,7 @@ func _refresh_hero_area() -> void:
 	if folder != "" and is_instance_valid(_hero_sprite):
 		_hero_sprite.sprite_frames = CharacterAnimations.build_sprite_frames(folder)
 		_hero_sprite.play("idle_right")
-	_hero_name_label.text = str(hero.get("name", ""))
+	_hero_name_label.text = UiTheme.title_text(str(hero.get("name", "")))
 	var attack_name := str(hero.get("attack_name", ""))
 	_hero_attack_label.text = attack_name
 	_hero_attack_label.visible = attack_name != ""
@@ -606,8 +606,7 @@ func _build_selection_state() -> Control:
 	var title := Label.new()
 	title.text = "SELECCIONAR HÉROE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", UiTheme.ACCENT)
+	UiTheme.style_title(title, 22)
 	col.add_child(title)
 
 	_carousel_area = Control.new()

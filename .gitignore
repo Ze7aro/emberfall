@@ -19,3 +19,14 @@ build/
 # OS/editor cruft
 .DS_Store
 Thumbs.db
+
+# Android Gradle build template (reinstalled from the editor: Project > Install Android Build Template)
+android/build/
+android/.build_version
+# AdMob native libraries (downloaded per Godot version)
+addons/admob/android/bin/
+
+# Signing keys never belong in the repository
+*.keystore
+*.jks
+build/

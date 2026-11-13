@@ -6,7 +6,7 @@ class_name EmberfallSlashFx
 ## cutting edge. Visual only — game_world applies the damage over the same
 ## rectangle (`half_width` × `half_height`).
 
-const LIFETIME := 0.26
+const LIFETIME := 0.30
 const SEGMENTS := 14
 
 var half_width := 70.0
@@ -32,7 +32,7 @@ func _draw() -> void:
 	# Fast sweep out, then hold and fade.
 	var reach := 1.0 - pow(1.0 - minf(1.0, t * 2.2), 3.0)
 	var alpha := 1.0 - maxf(0.0, t - 0.35) / 0.65
-	var thickness := (14.0 if evolved else 10.0) * (1.0 - t * 0.5)
+	var thickness := (26.0 if evolved else 19.0) * (1.0 - t * 0.5)
 	for side: float in [-1.0, 1.0]:
 		var outer := PackedVector2Array()
 		var inner := PackedVector2Array()
@@ -49,6 +49,8 @@ func _draw() -> void:
 		var shape := outer.duplicate()
 		inner.reverse()
 		shape.append_array(inner)
-		draw_colored_polygon(shape, Color(color, 0.55 * alpha))
-		draw_polyline(outer, Color(1, 1, 1, 0.9 * alpha), 2.0)
-		EmberfallFx.glow(self, outer[SEGMENTS >> 1], 20.0, color, 0.5 * alpha)
+		draw_colored_polygon(shape, Color(color, 0.7 * alpha))
+		draw_polyline(outer, Color(color.lightened(0.4), 0.8 * alpha), 6.0)
+		draw_polyline(outer, Color(1, 1, 1, 0.95 * alpha), 2.5)
+		for index: int in [SEGMENTS >> 2, SEGMENTS >> 1, SEGMENTS - (SEGMENTS >> 2)]:
+			EmberfallFx.glow(self, outer[index], 26.0, color, 0.45 * alpha)

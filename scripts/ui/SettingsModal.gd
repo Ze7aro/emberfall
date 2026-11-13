@@ -3,15 +3,21 @@ extends PanelContainer
 const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 
 signal closed
+## Opens the "Créditos y licencias" modal (MainLayout closes this one first).
+signal credits_requested
 
 const WIDTH := 340.0
+## TODO antes de publicar: poner la URL pública de la política de privacidad.
+## Mientras esté vacía, el botón "POLÍTICA DE PRIVACIDAD" queda oculto.
+const PRIVACY_POLICY_URL := "https://ze7aro.github.io/emberfall-privacy/"
 
 var _joystick_buttons: Array[Button] = []
+var _language_buttons: Array[Button] = []
 
 func _ready() -> void:
 	theme = UiTheme.make_theme()
 	anchor_left = 0.5; anchor_right = 0.5; anchor_top = 0.5; anchor_bottom = 0.5
-	offset_left = -WIDTH / 2.0; offset_right = WIDTH / 2.0; offset_top = -250; offset_bottom = 250
+	offset_left = -WIDTH / 2.0; offset_right = WIDTH / 2.0; offset_top = -300; offset_bottom = 300
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
 	custom_minimum_size = Vector2(WIDTH, 0)
@@ -32,14 +38,51 @@ func _build() -> void:
 
 	box.add_child(UiTheme.modal_header("CONFIGURACIÓN", func(): closed.emit()))
 
-	box.add_child(UiTheme.section_title("AUDIO", "", UiTheme.GOLD))
-	box.add_child(_toggle_row("Música", "Melodías del menú y de combate", GameState.music_enabled, GameState.set_music_enabled))
-	box.add_child(_toggle_row("Efectos de sonido", "Golpes, habilidades y botones", GameState.effects_enabled, GameState.set_effects_enabled))
+	# Only the options scroll; the header stays fixed at the top.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
 
-	box.add_child(UiTheme.section_title("JUEGO", "", UiTheme.GOLD))
-	box.add_child(_toggle_row("Vibración", "Al recibir daño", GameState.vibration_enabled, GameState.set_vibration_enabled))
-	box.add_child(_toggle_row("Menos movimiento", "Reduce temblores y destellos", GameState.reduce_motion, GameState.set_reduce_motion))
-	box.add_child(_joystick_row())
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 8)
+	scroll.add_child(body)
+
+	body.add_child(UiTheme.section_title("AUDIO", "", UiTheme.GOLD))
+	body.add_child(_toggle_row("Música", "Melodías del menú y de combate", GameState.music_enabled, GameState.set_music_enabled))
+	body.add_child(_toggle_row("Efectos de sonido", "Golpes, habilidades y botones", GameState.effects_enabled, GameState.set_effects_enabled))
+
+	body.add_child(UiTheme.section_title("JUEGO", "", UiTheme.GOLD))
+	body.add_child(_toggle_row("Vibración", "Al recibir daño", GameState.vibration_enabled, GameState.set_vibration_enabled))
+	body.add_child(_toggle_row("Menos movimiento", "Reduce temblores y destellos", GameState.reduce_motion, GameState.set_reduce_motion))
+	body.add_child(_joystick_row())
+	body.add_child(_language_row())
+
+	body.add_child(UiTheme.section_title("INFORMACIÓN", "", UiTheme.GOLD))
+	var credits := Button.new()
+	credits.text = "CRÉDITOS Y LICENCIAS"
+	credits.custom_minimum_size = Vector2(0, 44)
+	UiTheme.apply_secondary(credits)
+	credits.pressed.connect(func(): credits_requested.emit())
+	body.add_child(credits)
+
+	var privacy := Button.new()
+	privacy.text = "POLÍTICA DE PRIVACIDAD"
+	privacy.custom_minimum_size = Vector2(0, 44)
+	UiTheme.apply_secondary(privacy)
+	privacy.pressed.connect(func(): OS.shell_open(PRIVACY_POLICY_URL))
+	privacy.visible = PRIVACY_POLICY_URL != ""
+	body.add_child(privacy)
+
+	# Reopens Google's ad-consent form; only shown where Google requires it.
+	var ad_privacy := Button.new()
+	ad_privacy.text = "PRIVACIDAD DE ANUNCIOS"
+	ad_privacy.custom_minimum_size = Vector2(0, 44)
+	UiTheme.apply_secondary(ad_privacy)
+	ad_privacy.pressed.connect(Monetization.show_ad_privacy_options)
+	ad_privacy.visible = Monetization.ad_privacy_options_required()
+	body.add_child(ad_privacy)
 
 	var version := Label.new()
 	version.text = "Emberfall %s" % str(ProjectSettings.get_setting("application/config/version", "")).strip_edges()
@@ -47,7 +90,7 @@ func _build() -> void:
 	version.add_theme_font_size_override("font_size", 12)
 	version.add_theme_color_override("font_color", Color(UiTheme.TEXT_MUTED, 0.6))
 	version.visible = version.text.strip_edges() != "Emberfall"
-	box.add_child(version)
+	body.add_child(version)
 
 ## Card row: title + hint on the left, pill switch on the right. The whole
 ## row is the CheckButton, so any tap on it toggles.
@@ -110,11 +153,49 @@ func _joystick_row() -> Control:
 	_select_joystick(GameState.joystick_size, false)
 	return panel
 
+## Idioma: automático (el del dispositivo), español o inglés. Los nombres de
+## los idiomas no se traducen.
+func _language_row() -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _row_style())
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	panel.add_child(row)
+	var label := Label.new()
+	label.text = "Idioma"
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_font_override("font", UiTheme.bold_font())
+	label.add_theme_font_size_override("font_size", 17)
+	row.add_child(label)
+	var options := ["Auto", "Español", "English"]
+	for i in options.size():
+		var button := Button.new()
+		button.text = options[i]
+		button.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		button.custom_minimum_size = Vector2(66, 38)
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_size_override("font_size", 14)
+		button.pressed.connect(_select_language.bind(i))
+		row.add_child(button)
+		_language_buttons.append(button)
+	_select_language(Localization.LANGUAGES.find(Localization.language), false)
+	return panel
+
+func _select_language(index: int, save: bool = true) -> void:
+	index = clampi(index, 0, _language_buttons.size() - 1)
+	if save:
+		Localization.set_language(Localization.LANGUAGES[index])
+	_highlight(_language_buttons, index)
+
 func _select_joystick(index: int, save: bool = true) -> void:
 	if save:
 		GameState.set_joystick_size(index)
-	for i in _joystick_buttons.size():
-		var button := _joystick_buttons[i]
+	_highlight(_joystick_buttons, index)
+
+## Marca el botón elegido de un grupo de segmentos.
+func _highlight(buttons: Array[Button], index: int) -> void:
+	for i in buttons.size():
+		var button := buttons[i]
 		var active := i == index
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color("1b6f7a") if active else Color("1a1528")

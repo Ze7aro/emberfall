@@ -6,7 +6,7 @@ class_name EmberfallSpectralFamiliar
 ## game_world owns the stats and re-syncs them on every level/evolution.
 
 const RANGE := 300.0
-const ORBIT_RADIUS := 46.0
+const ORBIT_RADIUS := 62.0
 
 var game_ref: Node
 var player_node: Node2D
@@ -18,7 +18,7 @@ var _clock := 0.0
 var _time := 0.0
 ## Legión Espectral: gold halo and eyes.
 var evolved := false
-const FAMILIAR_HEIGHT := 30.0
+const FAMILIAR_HEIGHT := 44.0
 
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing" or not is_instance_valid(player_node):
@@ -57,8 +57,7 @@ func _draw() -> void:
 	if not art.is_empty():
 		# Sprite art (assets/vfx/familiar), looping 0-1-2-1 with the bob.
 		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		if evolved:
-			EmberfallFx.glow(self, Vector2(0, bob - 4.0), 15.0, EmberfallFx.GOLD, 0.18)
+		EmberfallFx.glow(self, Vector2(0, bob - 8.0), 22.0, EmberfallFx.GOLD if evolved else Color("8ff0d0"), 0.26 if evolved else 0.2)
 		var cycle := [0, 1, 2, 1]
 		var tex: Texture2D = art[mini(cycle[int(_time * 6.0) % cycle.size()], art.size() - 1)]
 		var k := FAMILIAR_HEIGHT / float(tex.get_height())

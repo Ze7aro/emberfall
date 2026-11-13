@@ -286,7 +286,7 @@ func _draw() -> void:
 	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * ratio, bar_height), Color("d96168"))
 	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * ratio, 3.0), Color(1.0, 0.62, 0.62, 0.8))
 	var font := ThemeDB.fallback_font
-	var label := display_name.to_upper()
+	var label := Localization.t(display_name).to_upper()
 	var font_size := 12
 	var text_width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	var text_pos := Vector2(-text_width / 2.0, bar_y - 6.0)

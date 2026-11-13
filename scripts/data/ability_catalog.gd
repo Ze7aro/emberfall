@@ -20,12 +20,12 @@ const EVOLUTION_PREFIX := "evo:"
 ## Locked actives and what unlocks them (lifetime stats in GameState). The
 ## other 6 are available from the start.
 const UNLOCKS := {
-	"boomerang": {"stat": "lifetime_kills", "target": 1000, "text": "Eliminá 1000 enemigos en total"},
-	"slash": {"stat": "bosses_defeated", "target": 1, "text": "Derrotá a un jefe"},
-	"meteor": {"stat": "best_level", "target": 20, "text": "Llegá al nivel 20 en una partida"},
-	"shard": {"stat": "chests_opened", "target": 5, "text": "Abrí 5 cofres de élite"},
-	"familiar": {"stat": "evolutions_done", "target": 1, "text": "Evolucioná una habilidad"},
-	"aegis": {"stat": "best_time", "target": 600, "text": "Sobreviví 10 minutos en una partida"},
+	"boomerang": {"stat": "lifetime_kills", "target": 1000, "text": "Elimina 1000 enemigos en total"},
+	"slash": {"stat": "bosses_defeated", "target": 1, "text": "Derrota a un jefe"},
+	"meteor": {"stat": "best_level", "target": 20, "text": "Llega al nivel 20 en una partida"},
+	"shard": {"stat": "chests_opened", "target": 5, "text": "Abre 5 cofres de élite"},
+	"familiar": {"stat": "evolutions_done", "target": 1, "text": "Evoluciona una habilidad"},
+	"aegis": {"stat": "best_time", "target": 600, "text": "Sobrevive 10 minutos en una partida"},
 }
 
 const ICON_DIR := "res://assets/habilidades/iconos"
@@ -50,7 +50,7 @@ const EVOLUTION_ICONS := {
 const ACTIVES := {
 	"daggers": {
 		"name": "DAGAS RÚNICAS",
-		"desc": "Ráfaga de dagas hacia donde mirás",
+		"desc": "Ráfaga de dagas al enemigo más cercano",
 		"fallback_icon": "proyectiles.png",
 		"color": Color("2de1d0"),
 		"evolution": {"passive": "haste", "name": "TORMENTA DE FILOS", "desc": "Dagas sin pausa que atraviesan a todos"},
@@ -85,7 +85,7 @@ const ACTIVES := {
 	},
 	"blizzard": {
 		"name": "VENTISCA",
-		"desc": "Zona helada cerca tuyo que daña y ralentiza",
+		"desc": "Zona helada cerca de ti que daña y ralentiza",
 		"fallback_icon": "",
 		"color": Color("bfe9ff"),
 		"evolution": {"passive": "armor", "name": "INVIERNO PERPETUO", "desc": "La ventisca te sigue y congela por completo"},
@@ -137,7 +137,7 @@ const ACTIVES := {
 const PASSIVES := {
 	"might": {"name": "FUERZA", "desc": "+10% de daño de todo", "fallback_icon": "dano.png"},
 	"vitality": {"name": "VITALIDAD", "desc": "+1 corazón y te cura", "fallback_icon": "corazon_extra.png"},
-	"regen": {"name": "REGENERACIÓN", "desc": "Recuperás vida con el tiempo", "fallback_icon": "corazon_extra_II.png"},
+	"regen": {"name": "REGENERACIÓN", "desc": "Recuperas vida con el tiempo", "fallback_icon": "corazon_extra_II.png"},
 	"armor": {"name": "ARMADURA", "desc": "+8% de probabilidad de bloquear un golpe", "fallback_icon": "mejora_armadura.png"},
 	"haste": {"name": "CELERIDAD", "desc": "+8% de velocidad de ataque", "fallback_icon": "velocidad_de_ataque.png"},
 	"cooldown": {"name": "ENFRIAMIENTO", "desc": "-8% de tiempo de reutilización", "fallback_icon": "cooldown.png"},
@@ -146,7 +146,7 @@ const PASSIVES := {
 	"amount": {"name": "AMPLITUD", "desc": "+1 proyectil en ataques y habilidades", "fallback_icon": "proyectiles.png"},
 	"proj_speed": {"name": "VELOCIDAD DE PROYECTIL", "desc": "+15% de velocidad de proyectiles", "fallback_icon": "velocidad_de_proyectil.png"},
 	"crit": {"name": "CRÍTICO", "desc": "+8% de probabilidad y +20% de daño crítico", "fallback_icon": "probabilidad_de_critico.png"},
-	"magnet": {"name": "MAGNETISMO", "desc": "Recogés orbes desde más lejos", "fallback_icon": "area_recoleccion_experiencia.png"},
+	"magnet": {"name": "MAGNETISMO", "desc": "Recoges orbes desde más lejos", "fallback_icon": "area_recoleccion_experiencia.png"},
 }
 
 ## Hero weapons: each hero's basic attack is an active with id
@@ -168,20 +168,20 @@ const WEAPON_LEVEL_TEXT := {
 ## playing that hero. `stat` is a per-hero stat in GameState.hero_stats:
 ## the ones starting with "best_" keep the best run, the rest add up.
 const WEAPON_CHALLENGES := {
-	"variante_01": {"stat": "best_time", "target": 300, "text": "Sobreviví 5 minutos"},
-	"variante_02": {"stat": "frozen", "target": 300, "text": "Congelá 300 enemigos"},
-	"variante_03": {"stat": "poison_kills", "target": 300, "text": "Eliminá 300 enemigos envenenados"},
-	"variante_04": {"stat": "best_level", "target": 15, "text": "Llegá al nivel 15"},
-	"variante_05": {"stat": "kills", "target": 500, "text": "Eliminá 500 enemigos"},
-	"variante_06": {"stat": "best_time", "target": 480, "text": "Sobreviví 8 minutos"},
-	"variante_07": {"stat": "elites", "target": 3, "text": "Eliminá 3 élites"},
-	"variante_08": {"stat": "bosses", "target": 1, "text": "Derrotá a un jefe"},
-	"variante_09": {"stat": "kills", "target": 800, "text": "Eliminá 800 enemigos"},
-	"variante_10": {"stat": "best_clean_time", "target": 600, "text": "Sobreviví 10 minutos sin perder más de 3 corazones"},
-	"variante_11": {"stat": "best_level", "target": 20, "text": "Llegá al nivel 20"},
-	"variante_12": {"stat": "evolutions", "target": 1, "text": "Evolucioná una habilidad"},
-	"variante_13": {"stat": "kills", "target": 1000, "text": "Eliminá 1000 enemigos"},
-	"variante_14": {"stat": "bosses", "target": 2, "text": "Derrotá a 2 jefes"},
+	"variante_01": {"stat": "best_time", "target": 300, "text": "Sobrevive 5 minutos"},
+	"variante_02": {"stat": "frozen", "target": 300, "text": "Congela 300 enemigos"},
+	"variante_03": {"stat": "poison_kills", "target": 300, "text": "Elimina 300 enemigos envenenados"},
+	"variante_04": {"stat": "best_level", "target": 15, "text": "Llega al nivel 15"},
+	"variante_05": {"stat": "kills", "target": 500, "text": "Elimina 500 enemigos"},
+	"variante_06": {"stat": "best_time", "target": 480, "text": "Sobrevive 8 minutos"},
+	"variante_07": {"stat": "elites", "target": 3, "text": "Elimina 3 élites"},
+	"variante_08": {"stat": "bosses", "target": 1, "text": "Derrota a un jefe"},
+	"variante_09": {"stat": "kills", "target": 800, "text": "Elimina 800 enemigos"},
+	"variante_10": {"stat": "best_clean_time", "target": 600, "text": "Sobrevive 10 minutos sin perder más de 3 corazones"},
+	"variante_11": {"stat": "best_level", "target": 20, "text": "Llega al nivel 20"},
+	"variante_12": {"stat": "evolutions", "target": 1, "text": "Evoluciona una habilidad"},
+	"variante_13": {"stat": "kills", "target": 1000, "text": "Elimina 1000 enemigos"},
+	"variante_14": {"stat": "bosses", "target": 2, "text": "Derrota a 2 jefes"},
 }
 
 ## Golden weapons: +WEAPON_EVO_DAMAGE damage and a trait applied by

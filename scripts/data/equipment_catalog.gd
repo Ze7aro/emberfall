@@ -124,7 +124,7 @@ const SETS := {
 		"pieces": ["chaos_fang", "abyss_aegis", "eclipse_crown", "void_amulet", "void_seal", "ghost_step"],
 		"bonus": {"crit": 10.0},
 		"effect": "void_burst",
-		"effect_text": "Los enemigos que matás tienen 25% de chance de estallar y dañar a los que están cerca",
+		"effect_text": "Los enemigos que matas tienen 25% de chance de estallar y dañar a los que están cerca",
 	},
 	"caverns": {
 		"name": "CAVERNAS ROTAS", "chapter": 2, "color": Color("7fe3ff"),

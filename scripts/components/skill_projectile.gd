@@ -36,6 +36,8 @@ var source_id := ""
 ## Evolved abilities draw bigger and shifted toward gold.
 var evolved := false
 
+## The drawn shapes were sized for the old, smaller hero.
+const FX_SCALE := 1.5
 const TRAIL_LENGTH := {Style.DAGGER: 6, Style.AXE: 0, Style.SHARD: 5, Style.BOLT: 6}
 var _trail: Array[Vector2] = [] # global positions, oldest first
 
@@ -145,15 +147,15 @@ func _draw() -> void:
 		local_trail.append(to_local(point))
 	match style:
 		Style.DAGGER:
-			EmberfallFx.trail(self, local_trail, color, 5.0 * visual_scale)
-			draw_set_transform(Vector2.ZERO, direction.angle(), Vector2.ONE * visual_scale)
+			EmberfallFx.trail(self, local_trail, color, 5.0 * (visual_scale * FX_SCALE))
+			draw_set_transform(Vector2.ZERO, direction.angle(), Vector2.ONE * (visual_scale * FX_SCALE))
 			EmberfallFx.glow(self, Vector2(2, 0), 13.0, color, 0.35)
 			# Long thin blade, a hilt, and a white edge down the middle.
 			draw_colored_polygon(PackedVector2Array([Vector2(16, 0), Vector2(-2, 3.2), Vector2(-7, 0), Vector2(-2, -3.2)]), color)
 			draw_line(Vector2(-6, 0), Vector2(13, 0), Color(1, 1, 1, 0.95), 1.4)
 			draw_line(Vector2(-7, -4.5), Vector2(-7, 4.5), color.lightened(0.3), 2.0)
 		Style.AXE:
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * (visual_scale * FX_SCALE))
 			var spin := _age * 15.0
 			var axe_frames := EmberfallVfxArt.frames("hacha")
 			if axe_frames.is_empty():
@@ -168,7 +170,7 @@ func _draw() -> void:
 				# 4 drawn angles; evolutions get the gold tint.
 				var axe: Texture2D = axe_frames[0]
 				var k := 42.0 / float(maxi(axe.get_width(), axe.get_height()))
-				draw_set_transform(Vector2.ZERO, spin, Vector2.ONE * visual_scale * k)
+				draw_set_transform(Vector2.ZERO, spin, Vector2.ONE * (visual_scale * FX_SCALE) * k)
 				draw_texture(axe, -axe.get_size() * 0.5, Color(1.0, 0.88, 0.62) if evolved else Color.WHITE)
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 				return
@@ -188,18 +190,18 @@ func _draw() -> void:
 			for i in local_trail.size():
 				var k := float(i + 1) / float(local_trail.size() + 1)
 				_draw_shard(local_trail[i], Color(tint, 0.35 * k), 0.75 + 0.25 * k, false)
-			EmberfallFx.glow(self, Vector2.ZERO, 16.0 * visual_scale, tint, 0.4)
+			EmberfallFx.glow(self, Vector2.ZERO, 16.0 * (visual_scale * FX_SCALE), tint, 0.4)
 			_draw_shard(Vector2.ZERO, tint, 1.0, true)
 		Style.BOLT:
-			EmberfallFx.trail(self, local_trail, color, 6.0 * visual_scale)
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * visual_scale)
+			EmberfallFx.trail(self, local_trail, color, 6.0 * (visual_scale * FX_SCALE))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * (visual_scale * FX_SCALE))
 			EmberfallFx.glow(self, Vector2.ZERO, 12.0, color, 0.5)
 			draw_circle(Vector2.ZERO, 4.5, color)
 			draw_circle(Vector2.ZERO, 2.4, Color.WHITE)
 
 ## Spinning crystal: colored rhombus with a white inner facet.
 func _draw_shard(at: Vector2, tint: Color, scale_factor: float, with_core: bool) -> void:
-	var s := scale_factor * visual_scale
+	var s := scale_factor * (visual_scale * FX_SCALE)
 	var r := Vector2.RIGHT.rotated(_age * 9.0)
 	var o := r.orthogonal()
 	draw_colored_polygon(PackedVector2Array([at + r * 12.0 * s, at + o * 6.0 * s, at - r * 12.0 * s, at - o * 6.0 * s]), tint)

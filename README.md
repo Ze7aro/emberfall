@@ -1,43 +1,94 @@
 # Emberfall
 
-Roguelike de supervivencia 2D vertical para Godot 4.7, pensado primero para Android.
+Roguelike de supervivencia 2D vertical (390 × 844) hecho en Godot 4.7, para Android. Gratis, con compras opcionales y anuncios recompensados. Español e inglés.
 
 ## Ejecutar
 
-1. Abrir `EmberfallGodot/project.godot` en Godot 4.7.
+1. Abrir `project.godot` en Godot 4.7.
 2. Ejecutar el proyecto (escena raíz `MainLayout`).
-3. En escritorio: mover con las flechas del teclado. En móvil: joystick dinámico, aparece donde el jugador toca la pantalla.
-4. Desde el menú principal: `JUGAR` inicia una partida (consume energía). El pie de navegación lleva a Inicio, Tienda, Personaje, Inventario y Mazmorras; Misiones se abre desde el acceso lateral de Inicio.
+3. En escritorio se mueve con las flechas; en el teléfono, con un joystick que aparece donde se toca la pantalla.
+
+En escritorio la tienda funciona en modo simulado: las compras y los anuncios se completan solos y muestran el prefijo `[simulada]`.
+
+## Pruebas
+
+Las dos se ejecutan sin abrir el editor y devuelven código 0 si todo está bien. Ninguna altera el progreso guardado.
+
+```
+godot --headless --path . --script tools/run_tests.gd
+godot --headless --path . --script tools/check_translations.gd
+```
+
+- `run_tests.gd`: energía, catálogo y entregas de la tienda, anuncios de un solo uso, misiones y puntos de actividad, mejoras permanentes e idioma.
+- `check_translations.gd`: recorre todas las pantallas en inglés y lista los textos que quedaron sin traducir.
+
+Lo que no cubren: el combate, las compras y los anuncios reales (solo se pueden probar en un teléfono con el juego subido a Play) y el rendimiento.
+
+## Generar la versión para Google Play
+
+```
+powershell -ExecutionPolicy Bypass -File tools\build_release.ps1 -VersionCode 2
+```
+
+Produce `build/android/Emberfall.aab` firmado. La clave de firma vive fuera del repositorio (`%USERPROFILE%\.emberfall\`) y la contraseña se escribe en el momento; nunca se guarda en el proyecto. Google Play exige un `VersionCode` mayor en cada envío. La clave se crea una sola vez con `tools\create_release_keystore.ps1`.
+
+Requiere la plantilla de compilación de Android (`Proyecto > Instalar plantilla de compilación de Android`), JDK 21 y el SDK de Android.
 
 ## Arquitectura
 
-- `MainLayout.gd` es el controlador raíz: mantiene el `TopHud` y el `NavigationFooter` persistentes, y enruta pantallas dentro de `content_host` vía `navigate_to(route_id)`.
-- `GameState` (autoload) es el único estado global persistente: energía, oro/gemas, nivel de cuenta, mejoras permanentes, personajes poseídos/equipados, misiones y progreso de campaña/mazmorras. Se guarda en `user://emberfall_save.json` con escritura atómica (temporal → verificar → reemplazar) y respaldo en `user://emberfall_save.bak.json`.
-- `game_world.gd` contiene el loop de una partida (spawn de enemigos, XP, poderes activos, jefe) y `ui.gd` genera su HUD (nivel, selección de poderes/mejoras).
-- `components/` agrupa jugador, enemigo, proyectil, orbes, joystick táctil y los efectos visuales reutilizables de habilidades/ataques.
-- `resources/characters/*.tres` (`CharacterData`) define cada héroe de forma data-driven: sprite, arma, costo/requisito de desbloqueo y su ataque básico (nombre, color, sprite propio si lo tiene).
-- Los assets están ordenados por tema: `audio`, `personajes`, `habilidades`, `mejoras`, `mundo` y `ui`. El detalle de cada carpeta está en `assets/README.md`.
+- `scripts/MainLayout.gd`: controlador raíz. Mantiene la barra superior y el pie de navegación, y cambia de pantalla con `navigate_to(route_id)` y de modal con `open_modal(id)`.
+- Autoloads (`scripts/systems/`):
+  - `GameState`: todo el estado persistente (energía, oro, gemas, héroes, equipo, misiones, campaña, ajustes). Guarda en `user://emberfall_save.json` con escritura atómica y respaldo.
+  - `Monetization`: compras (Google Play Billing) y anuncios recompensados (AdMob) con el formulario de consentimiento de Google. Las pantallas solo llaman a `buy()` y `show_rewarded()`.
+  - `Localization`: idioma del juego.
+  - `MusicDirector` y `SfxPlayer`: música por contexto y efectos.
+- `scripts/game_world.gd`: el bucle de una partida (enemigos, experiencia, habilidades, jefe). `scripts/ui.gd` dibuja su HUD, la subida de nivel y la pausa.
+- `scripts/components/`: jugador, enemigos, proyectiles y efectos visuales.
+- `scripts/data/`: catálogos de habilidades, equipo, mejoras, bestiario y héroes. Los héroes se definen en `resources/characters/*.tres`.
+- `scripts/ui/`: pantallas y modales, construidos por código con el tema de `UiTheme.gd`.
+- `assets/`: ordenados por tema; el detalle está en `assets/README.md`.
 
-## Implementado
+### Idiomas
 
-- Menú vertical con HUD persistente (nivel, energía con cuenta regresiva, oro, gemas, notificaciones).
-- Energía: 25 máximo, 5 por partida, 1 recuperada cada 5 minutos.
-- 14 personajes con animaciones propias (idle/walk/attack) y ataque básico propio; cada héroe empieza con su habilidad de identidad.
-- Habilidades: 12 activas y 12 pasivas, 4 espacios de cada una, nivel máximo 5 y una evolución por activa (activa al máximo + su pasiva). Barra de build en el HUD y cartas de subida de nivel con Cambiar, Descartar y Saltar.
-- Partida: élites con cofre cada 90–120 s, hordas en anillo, enjambres, mini-jefe a los 6 minutos, pociones, imanes y bombas, y 3 jefes con sprite y patrones propios.
-- Sensación de combate: destello y empuje al golpear, pausa breve en críticos, muertes con ceniza e iluminación con luces dinámicas.
-- Metaprogresión: cuadrícula de 21 mejoras permanentes (incluye revivir), 6 habilidades que se desbloquean con objetivos y un Códex con las habilidades y evoluciones descubiertas y un bestiario con bajas por enemigo.
-- Resultado detallado: tiempo, bajas, nivel, recompensas, ranking de daño por habilidad y próximo objetivo. La pausa muestra la build y el daño hasta el momento.
-- Audio: música por contexto (`MusicDirector`, con tema de jefe) y efectos (`SfxPlayer`), ambos desactivables.
-- Configuración: música, efectos, vibración, reducir temblor y destellos, y tamaño del joystick.
-- Economía: oro, gemas, equipo (6 espacios, 18 objetos, 3 rarezas), cofres y tienda.
-- Campaña y mazmorras con modificadores reales (enjambre, enemigos endurecidos, jefe adelantado) y bonus de primera vez.
-- Misiones diarias y semanales con reclamo persistente.
-- Android: preset de exportación, botón Atrás, pausa al perder el foco, guardado al pasar a segundo plano y áreas seguras. Pasos en `docs/PLAN_FINALIZACION.md` §7.
-- Guardado local resiliente (ver arquitectura) con reintento ante corrupción del archivo principal.
+El juego está escrito en español: los textos del código son la fuente. El inglés sale de `scripts/data/translations_en.gd`, una tabla español → inglés que Godot consulta sola cada vez que un `Label` o `Button` muestra un texto, así que las pantallas no llaman a `tr()`.
+
+- Para un texto nuevo: escribirlo en español en el código y agregar su línea a la tabla. `check_translations.gd` avisa si falta.
+- Los textos con partes variables usan la misma plantilla que el código: `"NIVEL %d": "LEVEL %d"`.
+- El texto dibujado a mano con `draw_string()` sí tiene que pasar por `Localization.t()`.
+- El idioma se elige en Configuración (automático, español o inglés). En automático, los dispositivos en español ven el original y el resto ve inglés.
+
+### Tienda
+
+Los paquetes están en `COIN_OFFERS` y `ENERGY_OFFERS` de `GameState`. El `id` de cada paquete de pago es el identificador del producto en Play Console. El precio que ve el jugador es el que devuelve Google en su moneda; el del catálogo solo se muestra mientras no hay conexión con la tienda.
+
+| Producto | Contenido | Precio de referencia |
+|---|---|---|
+| `recarga_oro_baja` | 500 monedas (la primera vez, con anuncio) | USD 0,99 |
+| `recarga_oro_media` | 1.200 monedas | USD 1,99 |
+| `bolsa_oro_media` | 3.200 monedas | USD 4,99 |
+| `cofre_oro_medio` | 7.000 monedas | USD 9,99 |
+| `cofre_oro_grande` | 15.000 monedas | USD 19,99 |
+| `recarga_energia_media` | 60 de energía (la primera vez, con anuncio) | USD 0,99 |
+| `recarga_energia_grande` | 150 de energía | USD 1,99 |
+
+## Contenido
+
+- 14 héroes con animaciones y arma propias. Cada arma se desbloquea para todos con un desafío y tiene su evolución.
+- 12 habilidades activas y 12 pasivas, 6 espacios de cada una, nivel máximo 5 y una evolución por activa.
+- Campaña de 10 etapas y 3 mazmorras con modificadores, 3 jefes, élites, hordas y un mini-jefe.
+- Equipo: 6 espacios, 24 objetos, 6 rarezas, 3 sets con bonus, forja y fusión.
+- 22 mejoras permanentes, misiones diarias y semanales con cofres de actividad, Códex y bestiario.
+- Configuración: música, efectos, vibración, menos movimiento, tamaño del joystick e idioma. Créditos, licencias y política de privacidad.
+
+## Documentación
+
+- `docs/tienda/ficha_google_play.md`: textos de la ficha, formularios de Play Console y lista de pendientes para publicar.
+- `docs/legal/`: política de privacidad (publicada en https://ze7aro.github.io/emberfall-privacy/).
+- `docs/PLAN_FINALIZACION.md`: plan de arte y contenido.
 
 ## Pendiente antes de publicar
 
-- Arte de enemigos, suelo y recolectables (prompts en `docs/PLAN_FINALIZACION.md` §6).
-- Rendimiento medido en un teléfono real; reutilización de nodos (pooling) solo si el perfil lo justifica.
-- Tests automatizados de guardado, energía, economía y transiciones críticas.
+- Probar en un teléfono real: rendimiento, controles, compras y anuncios.
+- Unidad de anuncio recompensado real en `Monetization.REWARDED_UNIT` (hoy usa la de prueba de Google).
+- Crear los productos de la tabla en Play Console.
+- Gráfico destacado y capturas para la ficha.

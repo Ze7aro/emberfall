@@ -42,8 +42,7 @@ func _ready() -> void:
 	title.text = "CÓDEX"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", UiTheme.ACCENT)
+	UiTheme.style_title(title, 26)
 	header_row.add_child(title)
 	root.add_child(header_row)
 
@@ -92,7 +91,7 @@ func _ready() -> void:
 	column.add_child(enemy_grid)
 
 	root.add_child(_build_detail_panel())
-	_show_detail(null, "CÓDEX", "Tocá un arma, una habilidad o un enemigo para ver su detalle. Lo que todavía no descubriste aparece como ???.", UiTheme.TEXT)
+	_show_detail(null, "CÓDEX", "Toca un arma, una habilidad o un enemigo para ver su detalle. Lo que todavía no descubriste aparece como ???.", UiTheme.TEXT)
 
 func _count_seen(ids: Array) -> int:
 	var seen := 0
@@ -193,7 +192,7 @@ func _weapon_tile(hero_id: String) -> Control:
 	if not GameState.is_weapon_unlocked(id):
 		var hint := "Arma de %s. Desafío jugando con %s: %s." % [hero_name, hero_name, goal]
 		if not GameState.owns_character(StringName(hero_id)):
-			hint = "Arma de %s. Primero desbloqueá a %s; después: %s." % [hero_name, hero_name, str(challenge.get("text", ""))]
+			hint = "Arma de %s. Primero desbloquea a %s; después: %s." % [hero_name, hero_name, str(challenge.get("text", ""))]
 		return _tile(UiTheme.BORDER_SOFT, _picture(AbilityCatalog.icon(id), 46.0, LOCKED_TINT), "???", UiTheme.TEXT_MUTED, func():
 			_show_detail(null, "???", hint, UiTheme.TEXT_MUTED))
 	var color := AbilityCatalog.color(id)

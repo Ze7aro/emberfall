@@ -95,7 +95,7 @@ func _rebuild() -> void:
 	if comparing:
 		_body.add_child(_label("Comparado con %s (Nv %d)" % [str(other.get("name", "")), int(other.get("level", 1))], 12, UiTheme.TEXT_MUTED))
 	elif not equipped:
-		_body.add_child(_label("No tenés nada equipado en este casillero", 12, UiTheme.TEXT_MUTED))
+		_body.add_child(_label("No tienes nada equipado en este casillero", 12, UiTheme.TEXT_MUTED))
 	_body.add_child(_stats_grid(item, other if comparing else {}))
 
 	var cost := EquipmentCatalog.upgrade_cost(item)
@@ -124,7 +124,7 @@ func _rebuild() -> void:
 		_body.add_child(_set_box(set_id))
 
 	_body.add_child(_buttons(item, equipped, cost))
-	_body.add_child(_label("Tenés %d de oro y %d de Esencia" % [GameState.gold, GameState.essence], 12, UiTheme.TEXT_MUTED))
+	_body.add_child(_label("Tienes %d de oro y %d de Esencia" % [GameState.gold, GameState.essence], 12, UiTheme.TEXT_MUTED))
 
 ## Set name, pieces equipped and its 2- and 4-piece bonuses (lit when active).
 func _set_box(set_id: String) -> Control:

@@ -15,6 +15,20 @@ var content: VBoxContainer
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.make_theme()
+	Monetization.purchase_finished.connect(_on_store_finished)
+	Monetization.rewarded_finished.connect(_on_store_finished)
+	Monetization.prices_updated.connect(_rebuild)
+	_rebuild()
+
+## Builds the whole screen; called again after a purchase/ad so every button
+## shows its current state. The scroll position is kept.
+func _rebuild() -> void:
+	var scroll_y := 0
+	for child in get_children():
+		if child is ScrollContainer:
+			scroll_y = child.scroll_vertical
+		remove_child(child)
+		child.queue_free()
 	var art := UiTheme.background("bg_tienda.png", 0.6)
 	if art != null:
 		add_child(art)
@@ -32,6 +46,13 @@ func _ready() -> void:
 	_add_section("BAÚLES")
 	var chests := HBoxContainer.new(); chests.add_theme_constant_override("separation", 5); content.add_child(chests)
 	for i in GameState.CHEST_TIERS.size(): chests.add_child(_chest_card(GameState.CHEST_TIERS[i], i))
+	if scroll_y > 0:
+		scroll.set_deferred("scroll_vertical", scroll_y)
+
+## Result of a real-money purchase or a rewarded ad.
+func _on_store_finished(_offer_id: String, success: bool, message: String) -> void:
+	_rebuild()
+	_show_toast(message, success)
 
 const SECTION_NOTES := {"MONEDAS": "Recursos para un guerrero sin límites", "ENERGÍA": "Sigue explorando", "BAÚLES": "Equipo, mejoras y más"}
 
@@ -96,8 +117,7 @@ func _product_card(offer: Dictionary, kind: String, index: int) -> Control:
 		_gem_icon(buy)
 	if is_usd:
 		# First purchase through a rewarded ad (when the offer has one), then USD.
-		var ad_pending: bool = bool(offer.get("ad_first", false)) and not GameState.claimed_free_offers.has("ad_%s_%d" % ["coin" if kind == "MONEDAS" else "energy", index])
-		buy.text = "ANUNCIO" if ad_pending else "USD %s" % str(offer.usd)
+		buy.text = "VER ANUNCIO" if GameState.is_ad_offer_pending(str(offer.id)) else Monetization.price_text(str(offer.id))
 	buy.disabled = already_claimed
 	buy.custom_minimum_size = Vector2(0, 36)
 	if already_claimed:
@@ -106,7 +126,7 @@ func _product_card(offer: Dictionary, kind: String, index: int) -> Control:
 	buy.clip_text = true
 	buy.add_theme_font_size_override("font_size", 14)
 	if is_usd:
-		buy.pressed.connect(_show_store_soon)
+		buy.pressed.connect(_buy_store_offer.bind(str(offer.id), buy))
 	else:
 		buy.pressed.connect(_buy_product.bind(kind, index))
 	box.add_child(buy)
@@ -121,29 +141,44 @@ func _chest_card(chest: Dictionary, index: int) -> Control:
 	var buy := Button.new(); buy.name = "Buy"; buy.text = str(int(chest.cost)); _gem_icon(buy); buy.custom_minimum_size = Vector2(0, 48); UiTheme.apply_primary(buy); buy.pressed.connect(_buy_chest.bind(index)); box.add_child(buy)
 	return card
 
-## No payment / rewarded-ads SDK is connected yet: tapping only explains that.
-## Nothing is granted. Hook the real purchase flow in here.
 func _gem_icon(button: Button) -> void:
 	button.icon = load(ART_DIR + "icons/gem.png") as Texture2D
 	button.expand_icon = true
 	button.add_theme_constant_override("icon_max_width", 20)
 	button.add_theme_constant_override("h_separation", 4)
 
-func _show_store_soon() -> void:
+## Real-money offer: its first claim may be a rewarded ad, after that it is a
+## store purchase. The result arrives in _on_store_finished.
+func _buy_store_offer(offer_id: String, button: Button) -> void:
+	if Monetization.is_busy():
+		return
+	button.disabled = true
+	button.text = "..."
+	if GameState.is_ad_offer_pending(offer_id):
+		Monetization.show_rewarded(offer_id)
+	else:
+		Monetization.buy(offer_id)
+
+func _show_toast(message: String, success: bool) -> void:
+	if message == "":
+		return
 	var toast := Label.new()
-	toast.text = "Próximamente"
+	toast.text = message
+	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	toast.add_theme_color_override("font_color", UiTheme.GOLD if success else UiTheme.TEXT)
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast.add_theme_font_size_override("font_size", 16)
 	toast.add_theme_color_override("font_outline_color", Color("0a0612"))
 	toast.add_theme_constant_override("outline_size", 8)
 	toast.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	toast.offset_left = -100.0; toast.offset_right = 100.0
-	toast.offset_top = -190.0; toast.offset_bottom = -150.0
+	toast.offset_left = -160.0; toast.offset_right = 160.0
+	toast.offset_top = -210.0; toast.offset_bottom = -150.0
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(toast)
-	SfxPlayer.play("economy/purchase_failed.wav", false)
+	if not success:
+		SfxPlayer.play("economy/purchase_failed.wav", false)
 	var tween := create_tween()
-	tween.tween_interval(1.0)
+	tween.tween_interval(1.8)
 	tween.tween_property(toast, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(toast.queue_free)
 
@@ -152,6 +187,7 @@ func _buy_product(kind: String, index: int) -> void:
 		GameState.buy_coin_offer(index)
 	else:
 		GameState.buy_energy_offer(index)
+	_rebuild()
 
 func _buy_chest(index: int) -> void:
 	GameState.open_chest_with_gems(index)

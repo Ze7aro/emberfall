@@ -3,7 +3,7 @@ class_name EmberfallProjectile
 
 const SPRITE_DIR := "res://assets/habilidades/proyectiles"
 const SPRITE_FPS := 10.0
-const SPRITE_SCALE := 0.16 # 256px source frames down to ~41px on screen
+const SPRITE_SCALE := 0.23 # 256px source frames down to ~59px on screen
 const DEFAULT_FRAME_NAMES: PackedStringArray = ["projectile_00.png", "projectile_01.png"]
 
 var direction := Vector2.RIGHT
@@ -71,7 +71,9 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 
 func _draw() -> void:
+	# Halo under the shot (this node draws before its sprite child).
+	EmberfallFx.glow(self, Vector2.ZERO, 18.0, color, 0.3)
 	if _use_sprite:
 		return
-	draw_circle(Vector2.ZERO, 7, color)
-	draw_circle(Vector2.ZERO, 2.5, Color.WHITE)
+	draw_circle(Vector2.ZERO, 10, color)
+	draw_circle(Vector2.ZERO, 4, Color.WHITE)
