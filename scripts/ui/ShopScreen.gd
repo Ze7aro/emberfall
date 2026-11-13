@@ -33,7 +33,7 @@ func _ready() -> void:
 	var chests := HBoxContainer.new(); chests.add_theme_constant_override("separation", 5); content.add_child(chests)
 	for i in GameState.CHEST_TIERS.size(): chests.add_child(_chest_card(GameState.CHEST_TIERS[i], i))
 
-const SECTION_NOTES := {"MONEDAS": "Recursos para un guerrero sin límites", "ENERGÍA": "Sigue explorando", "BAÚLES": "Equipo, mejoras y más"}
+const SECTION_NOTES := {"BAÚLES": "Equipo, mejoras y más"}
 
 func _add_section(text_value: String) -> void:
 	var row := UiTheme.section_title(text_value, str(SECTION_NOTES.get(text_value, "")), GOLD)

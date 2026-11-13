@@ -9,6 +9,10 @@ Roguelike de supervivencia 2D vertical para Godot 4.7, pensado primero para Andr
 3. En escritorio: mover con las flechas del teclado. En móvil: joystick dinámico, aparece donde el jugador toca la pantalla.
 4. Desde el menú principal: `JUGAR` inicia una partida (consume energía). El pie de navegación lleva a Inicio, Tienda, Personaje, Inventario y Mazmorras; Misiones se abre desde el acceso lateral de Inicio.
 
+## Flujo de trabajo
+
+El proyecto usa Organic Driven Development (ODD): explorar antes de modificar, mantener livianos los cambios acotados y registrar en `odd/tasks/` solamente el trabajo que necesite continuidad entre sesiones. Las reglas para colaboradores están en `AGENTS.md` y la guía del proyecto en `docs/ODD_EMBERFALL.md`.
+
 ## Arquitectura
 
 - `MainLayout.gd` es el controlador raíz: mantiene el `TopHud` y el `NavigationFooter` persistentes, y enruta pantallas dentro de `content_host` vía `navigate_to(route_id)`.

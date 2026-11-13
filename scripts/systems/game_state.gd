@@ -511,8 +511,8 @@ const ENERGY_OFFERS := [
 const CHEST_TIERS := [
 	{"id": "baul_comun", "title": "BAÚL COMÚN", "cost": 150, "rarities": ["COMÚN", "POCO COMÚN"], "art": "COMMON",
 		"weights": {"common": 65, "uncommon": 35}},
-	{"id": "baul_epico", "title": "BAÚL ÉPICO", "cost": 400, "rarities": ["RARO", "ÉPICO", "LEGENDARIO 3%"], "art": "EPIC",
-		"weights": {"rare": 70, "epic": 27, "legendary": 3}},
+	{"id": "baul_epico", "title": "BAÚL ÉPICO", "cost": 400, "rarities": ["RARO", "ÉPICO"], "art": "EPIC",
+		"weights": {"rare": 72, "epic": 28}},
 ]
 ## One-time "GRATIS" (cost 0) offers — without this they had no claimed-once
 ## guard, so the free-coins/free-energy buttons could be tapped indefinitely

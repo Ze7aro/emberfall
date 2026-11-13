@@ -38,28 +38,40 @@ func _ready() -> void:
 
 ## Floating side shortcut to the existing Misiones screen (left edge), with the
 ## same "something to claim" indicator the footer uses.
-## Floating side shortcuts on the left edge: Notificaciones (moved here from
-## the top HUD) above Misiones, each with its "something new" indicator.
+## Floating shortcuts in a row beside the settings button (top right):
+## Misiones, Notificaciones, then Configuración, each with its "something new"
+## indicator.
 func _build_missions_side() -> void:
-	var top := UiTheme.CONTENT_TOP + 8.0
-	_side_button(Vector2(12, top + 76.0), "res://assets/ui/icons/mail.png", "Avisos", func():
+	# Same row as the TopHud settings button (top 64, 50 px wide, 6 px from the
+	# right edge): Avisos and Misiones sit to its left, 8 px apart.
+	var top := 64.0
+	_side_button(Vector2(64, top), "res://assets/ui/icons/mail.png", "Avisos", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"notifications")
 			GameState.mark_notifications_read()
-	, func() -> bool: return GameState.unread_notification_count() > 0, GameState.notifications_changed)
-	_side_button(Vector2(12, top), "res://assets/ui/icons/missions.png", "Misiones", func():
+	, func() -> bool: return GameState.unread_notification_count() > 0, GameState.notifications_changed, true)
+	_side_button(Vector2(122, top), "res://assets/ui/icons/missions.png", "Misiones", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"missions")
-	, func() -> bool: return GameState.has_claimable_missions(), GameState.missions_changed)
+	, func() -> bool: return GameState.has_claimable_missions(), GameState.missions_changed, true)
 
-func _side_button(at: Vector2, icon_path: String, caption_text: String, on_press: Callable, has_news: Callable, changed: Signal) -> void:
+func _side_button(at: Vector2, icon_path: String, caption_text: String, on_press: Callable, has_news: Callable, changed: Signal, on_right := false) -> void:
 	var side := Control.new()
 	side.name = caption_text + "Side"
-	side.position = at
-	side.size = Vector2(50, 50)
 	add_child(side)
+	if on_right:
+		# Anchored to the right edge so it follows any screen width.
+		side.anchor_left = 1.0
+		side.anchor_right = 1.0
+		side.offset_left = -at.x - 50.0
+		side.offset_right = -at.x
+		side.offset_top = at.y
+		side.offset_bottom = at.y + 50.0
+	else:
+		side.position = at
+		side.size = Vector2(50, 50)
 	var ring := Panel.new()
 	var ring_style := StyleBoxFlat.new()
 	ring_style.bg_color = Color(0.06, 0.04, 0.12, 0.85)

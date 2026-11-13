@@ -4,6 +4,8 @@ extends Control
 
 var track_texture: Texture2D
 var fill_texture: Texture2D
+## false draws only the fill (no track border/frame).
+var show_track := true
 var ratio: float = 0.0:
 	set(value):
 		ratio = clampf(value, 0.0, 1.0)
@@ -20,7 +22,8 @@ func set_amount(current: float, maximum: float) -> void:
 func _draw() -> void:
 	if track_texture == null:
 		return
-	draw_texture_rect(track_texture, Rect2(Vector2.ZERO, size), false)
+	if show_track:
+		draw_texture_rect(track_texture, Rect2(Vector2.ZERO, size), false)
 	if fill_texture == null or ratio <= 0.0:
 		return
 	var inset := Vector2(size.x * 0.045, size.y * 0.20)

@@ -85,6 +85,7 @@ func _build() -> void:
 	frame.offset_right = -2
 	frame.offset_top = 4
 	frame.offset_bottom = 66
+	frame.visible = false # HUD without borders/boxes
 	_canvas.add_child(frame)
 	var row := HBoxContainer.new()
 	row.name = "Content"
@@ -103,17 +104,18 @@ func _build() -> void:
 	settings.name = "Settings"
 	settings.tooltip_text = "Configuración"
 	settings.accessibility_name = "Abrir configuración"
-	settings.icon = load(ART_DIR + "icons/settings.png") as Texture2D
-	settings.add_theme_constant_override("icon_max_width", 26)
+	settings.icon = load(ART_DIR + "icons/settings_gear.png") as Texture2D
+	settings.add_theme_constant_override("icon_max_width", 34)
 	settings.expand_icon = true
 	settings.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	settings.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	settings.offset_left = -50
+	settings.offset_left = -56
 	settings.offset_right = -6
 	settings.offset_top = 64
-	settings.offset_bottom = 106
+	settings.offset_bottom = 114
 	settings.focus_mode = Control.FOCUS_ALL
-	UiTheme.apply_secondary(settings, 4.0)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		settings.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	settings.pressed.connect(func(): settings_pressed.emit())
 	_canvas.add_child(settings)
 
@@ -124,6 +126,7 @@ func _level_tile() -> Control:
 	var art := _art("hud/level_xp_ring.png")
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.modulate = Color(0.2, 0.18, 0.32, 1.0)
+	art.visible = false # only the XP progress arc stays
 	tile.add_child(art)
 	var xp_ring := _art("hud/level_xp_ring.png")
 	xp_ring.name = "ExperienceRing"
@@ -167,11 +170,13 @@ func _resource_tile(icon_file: String, kind: String, width: float) -> Control:
 	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if kind == "energy":
 		_energy_bar = _bar("energy_fill.png")
+		_energy_bar.show_track = false
 		_center_strip(_energy_bar, 42)
 		tile.add_child(_energy_bar)
 	else:
 		var track := _art("track.png")
 		track.stretch_mode = TextureRect.STRETCH_SCALE
+		track.visible = false
 		_center_strip(track, 42)
 		tile.add_child(track)
 	var icon := _art(icon_file)
