@@ -284,15 +284,26 @@ func show_ad_privacy_options() -> void:
 		ump.show_privacy_options_form(func(_error): pass)
 
 var _ads_started := false
+var _ads_initialized := false
 
 func _start_ads() -> void:
 	if _ads_started:
 		return
 	_ads_started = true
-	_global_class("MobileAds").call("initialize")
-	_load_rewarded()
+	var mobile_ads: Script = _global_class("MobileAds")
+	var listener_script: Script = _global_class("OnInitializationCompleteListener")
+	if mobile_ads == null or listener_script == null:
+		push_warning("AdMob: falta la clase para confirmar la inicialización; anuncios desactivados.")
+		return
+	var listener: Object = listener_script.new()
+	listener.on_initialization_complete = func(_status):
+		_ads_initialized = true
+		_load_rewarded()
+	mobile_ads.call("initialize", listener)
 
 func _load_rewarded() -> void:
+	if not _ads_initialized:
+		return
 	var callback: Object = _global_class("RewardedAdLoadCallback").new()
 	callback.on_ad_failed_to_load = func(_error): _rewarded_ad = null
 	callback.on_ad_loaded = func(ad):
