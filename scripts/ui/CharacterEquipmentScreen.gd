@@ -17,14 +17,12 @@ signal selection_cancelled
 
 @export_enum("inventory", "character") var initial_section: String = "inventory"
 
-const ARC_RADIUS_X := 150.0
-const ARC_RADIUS_Y := 46.0
 const TRANSITION_TIME := 0.3
 
 var _characters: Array = []
 var _type_icons: Dictionary = {}
 var _equipment_slots: Dictionary = {}
-var _cards: Array[HeroCarouselCard] = []
+var _hero_portrait: TextureRect
 var _mode := "EQUIPMENT"
 var _transitioning := false
 var _focused_index := 0
@@ -45,7 +43,7 @@ var _weapon_goal: Label
 var _change_hero_button: Button
 var _forge_button: Button
 var _forge: ForgePanel
-var _basic_stats: HBoxContainer
+var _equipment_stats_panel: PanelContainer
 ## Equipment stats other than attack and health, in one short line.
 var _equip_summary: Label
 var _summary_toggle: Button
@@ -228,7 +226,7 @@ func _build_equipment_state() -> Control:
 	hero_buttons.add_child(_change_hero_button)
 	_forge_button = Button.new()
 	_forge_button.text = "FORJA"
-	_forge_button.icon = load("res://assets/ui/forge.png")
+	_forge_button.icon = load("res://assets/ui/icons/yunque.png")
 	_forge_button.add_theme_constant_override("icon_max_width", 26)
 	_forge_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_forge_button.add_theme_constant_override("h_separation", 4)
@@ -238,15 +236,11 @@ func _build_equipment_state() -> Control:
 	_forge_button.pressed.connect(func(): open_forge(""))
 	hero_buttons.add_child(_forge_button)
 
-	_basic_stats = HBoxContainer.new()
-	_basic_stats.alignment = BoxContainer.ALIGNMENT_CENTER
-	_basic_stats.add_theme_constant_override("separation", 24)
-	var stats_panel := PanelContainer.new()
-	stats_panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_default", UiTheme.slot(false, 8)))
-	stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_equipment_stats_panel = PanelContainer.new()
+	_equipment_stats_panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_default", UiTheme.slot(false, 8)))
+	_equipment_stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var stats_box := VBoxContainer.new()
 	stats_box.add_theme_constant_override("separation", 2)
-	stats_box.add_child(_basic_stats)
 	_equip_summary = Label.new()
 	_equip_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_equip_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -265,8 +259,9 @@ func _build_equipment_state() -> Control:
 		_summary_open = not _summary_open
 		_refresh_basic_stats())
 	stats_box.add_child(_summary_toggle)
-	stats_panel.add_child(stats_box)
-	col.add_child(stats_panel)
+	_equipment_stats_panel.add_child(stats_box)
+	_equipment_stats_panel.hide()
+	col.add_child(_equipment_stats_panel)
 
 	var inventory_wrap := Control.new()
 	inventory_wrap.custom_minimum_size = Vector2(0, 270)
@@ -507,31 +502,6 @@ func _build_inventory_slot(item: Dictionary) -> Control:
 	return slot
 
 func _refresh_basic_stats() -> void:
-	for child in _basic_stats.get_children():
-		child.queue_free()
-
-	var hero := _current_hero()
-	var damage_modifier := float(hero.get("damage_modifier", 1.0))
-	var hp_modifier := int(hero.get("hp_modifier", 0))
-	var attack := int(round((20 + (GameState.permanent_damage + GameState.get_equipped_bonus("damage")) * 2) * damage_modifier))
-	if attack > 0:
-		var sword_icon := UiTheme.icon_rect("icono_ataque.png", 22)
-		if sword_icon.texture == null:
-			sword_icon = TextureRect.new()
-			sword_icon.texture = _icon_for_type("weapon")
-			sword_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			sword_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			sword_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			sword_icon.custom_minimum_size = Vector2(18, 18)
-		_basic_stats.add_child(_stat_icon_row(sword_icon, "ATQ", str(attack)))
-		_basic_stats.add_child(_stat_divider())
-
-	var max_units := maxi(2, EmberfallPlayer.BASE_MAX_HP + GameState.permanent_health + GameState.get_equipped_bonus("health") + hp_modifier)
-	if max_units > 0:
-		var heart_icon := HeartsRow.new()
-		heart_icon.heart_size = 16.0
-		heart_icon.set_hearts(2, 2)
-		_basic_stats.add_child(_stat_icon_row(heart_icon, "VIDA", str(max_units)))
 	var totals := GameState.equipment_totals()
 	var parts := PackedStringArray()
 	for stat in EquipmentCatalog.STATS:
@@ -547,29 +517,7 @@ func _refresh_basic_stats() -> void:
 	_equip_summary.visible = _summary_open and not parts.is_empty()
 	_summary_toggle.visible = not parts.is_empty()
 	_summary_toggle.text = ("Ocultar stats del equipo ▲" if _summary_open else "Ver stats del equipo (%d) ▼" % parts.size())
-
-func _stat_icon_row(icon: Control, label_text: String, value: String) -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	row.add_child(icon)
-	var label := Label.new()
-	label.text = label_text
-	label.add_theme_font_size_override("font_size", 11)
-	label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
-	row.add_child(label)
-	var value_label := Label.new()
-	value_label.text = value
-	value_label.add_theme_font_size_override("font_size", 20)
-	value_label.add_theme_color_override("font_color", UiTheme.TEXT)
-	row.add_child(value_label)
-	return row
-
-func _stat_divider() -> Label:
-	var divider := Label.new()
-	divider.text = "|"
-	divider.add_theme_font_size_override("font_size", 18)
-	divider.add_theme_color_override("font_color", Color("4a3f5c"))
-	return divider
+	_equipment_stats_panel.visible = not parts.is_empty()
 
 func _refresh_hero_area() -> void:
 	var hero := _current_hero()
@@ -616,6 +564,16 @@ func _build_selection_state() -> Control:
 	_carousel_area.mouse_filter = Control.MOUSE_FILTER_STOP
 	_carousel_area.gui_input.connect(_on_carousel_gui_input)
 	col.add_child(_carousel_area)
+	_hero_portrait = TextureRect.new()
+	_hero_portrait.custom_minimum_size = Vector2(150, 190)
+	_hero_portrait.size = Vector2(150, 190)
+	_hero_portrait.set_anchors_preset(Control.PRESET_CENTER)
+	_hero_portrait.position = Vector2(-75, -95)
+	_hero_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_hero_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_hero_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_hero_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_carousel_area.add_child(_hero_portrait)
 
 	var prev_btn := Button.new()
 	prev_btn.text = ""
@@ -706,21 +664,18 @@ func _refresh_weapon_info(hero_id: String) -> void:
 	_weapon_goal.text = "Para todos: %s · %d/%d" % [str(challenge.get("text", "")), mini(int(progress[0]), int(progress[1])), int(progress[1])]
 
 func _build_carousel_cards() -> void:
-	for hero in _characters:
-		var card := HeroCarouselCard.new()
-		var idx := _cards.size()
-		_carousel_area.add_child(card)
-		card.pressed.connect(_on_card_pressed.bind(idx))
-		_cards.append(card)
 	_refresh_cards()
 	_carousel_area.resized.connect(func(): _layout_carousel(false))
 	call_deferred("_layout_carousel", false)
 
 func _refresh_cards() -> void:
-	for i in _cards.size():
-		var hero: Dictionary = _characters[i]
-		var owned := GameState.owns_character(StringName(str(hero.get("id", ""))))
-		_cards[i].setup(hero, owned, _card_condition_text(hero))
+	if _characters.is_empty() or not is_instance_valid(_hero_portrait):
+		return
+	var hero: Dictionary = _characters[_focused_index]
+	var owned := GameState.owns_character(StringName(str(hero.get("id", ""))))
+	var texture = load(str(hero.get("texture", "")))
+	_hero_portrait.texture = texture if texture is Texture2D else null
+	_hero_portrait.modulate = Color.WHITE if owned else Color("#17121f")
 
 func _requirement_text(hero: Dictionary) -> String:
 	var requirement := str(hero.get("requirement", ""))
@@ -749,41 +704,10 @@ func _card_condition_text(hero: Dictionary) -> String:
 		return _requirement_text(hero)
 	return _cost_text(hero)
 
-## Cards sit along a closed circular ring (angle step = 360° / card count) so
-## going past the last card wraps back to the first and vice versa — the ring
-## has no seam, so character 1 is reached both by going all the way forward
-## and all the way back.
 func _layout_carousel(animate: bool) -> void:
-	if _cards.is_empty() or _carousel_area.size.x <= 0.0:
+	if not is_instance_valid(_hero_portrait) or _carousel_area.size.x <= 0.0:
 		return
-	var count := _cards.size()
-	var half := count / 2
-	var angle_step_deg := 360.0 / count
-	var center_x := _carousel_area.size.x / 2.0
-	var center_y := _carousel_area.size.y / 2.0 - 8.0
-	for i in count:
-		var card: HeroCarouselCard = _cards[i]
-		var offset := wrapi(i - _focused_index, -half, count - half)
-		var is_center := offset == 0
-		var angle := deg_to_rad(offset * angle_step_deg)
-		var target_x := center_x + sin(angle) * ARC_RADIUS_X - HeroCarouselCard.CARD_SIZE.x / 2.0
-		var target_y := center_y + (1.0 - cos(angle)) * ARC_RADIUS_Y - HeroCarouselCard.CARD_SIZE.y / 2.0
-		var abs_offset := absi(offset)
-		var target_scale := clampf(1.0 - abs_offset * 0.11, 0.32, 1.0)
-		var target_alpha := clampf(1.0 - abs_offset * 0.08, 0.35, 1.0)
-		card.visible = true
-		card.z_index = 100 - abs_offset
-		card.set_focus_state(is_center)
-		if animate:
-			var tween := create_tween()
-			tween.set_parallel(true)
-			tween.tween_property(card, "position", Vector2(target_x, target_y), 0.28).set_trans(Tween.TRANS_CUBIC)
-			tween.tween_property(card, "scale", Vector2(target_scale, target_scale), 0.28)
-			tween.tween_property(card, "modulate:a", target_alpha, 0.28)
-		else:
-			card.position = Vector2(target_x, target_y)
-			card.scale = Vector2(target_scale, target_scale)
-			card.modulate.a = target_alpha
+	_hero_portrait.position = Vector2(_carousel_area.size.x / 2.0 - 75.0, _carousel_area.size.y / 2.0 - 95.0)
 
 func _update_indicators() -> void:
 	for child in _carousel_indicators.get_children():
@@ -798,6 +722,7 @@ func _update_selection_info() -> void:
 	if _characters.is_empty():
 		return
 	var hero: Dictionary = _characters[_focused_index]
+	_refresh_cards()
 	var id := StringName(str(hero.get("id", "")))
 	var owned := GameState.owns_character(id)
 	_selected_hero_name.text = str(hero.get("name", ""))
@@ -817,12 +742,13 @@ func _update_selection_info() -> void:
 	_update_indicators()
 
 func _move_focus(delta: int) -> void:
-	if _transitioning or _cards.is_empty():
+	if _transitioning or _characters.is_empty():
 		return
-	var new_index := wrapi(_focused_index + delta, 0, _cards.size())
+	var new_index := wrapi(_focused_index + delta, 0, _characters.size())
 	if new_index == _focused_index:
 		return
 	_focused_index = new_index
+	_refresh_cards()
 	_layout_carousel(true)
 	_update_selection_info()
 	hero_focused.emit(StringName(str(_characters[_focused_index].get("id", ""))))
@@ -861,17 +787,6 @@ func _index_of_id(id: StringName) -> int:
 		if StringName(str(_characters[i].get("id", ""))) == id:
 			return i
 	return 0
-
-func _on_card_pressed(index: int) -> void:
-	var hero: Dictionary = _characters[index]
-	var id := StringName(str(hero.get("id", "")))
-	if not GameState.owns_character(id):
-		locked_hero_pressed.emit(id)
-	if index != _focused_index:
-		_focused_index = index
-		_layout_carousel(true)
-	_update_selection_info()
-	hero_focused.emit(id)
 
 func _on_select_pressed() -> void:
 	if _characters.is_empty():
@@ -916,7 +831,6 @@ func _enter_selection_mode() -> void:
 	tween.tween_property(_inventory_panel, "modulate:a", 0.0, TRANSITION_TIME)
 	tween.tween_property(_change_hero_button, "modulate:a", 0.0, 0.2)
 	tween.tween_property(_forge_button, "modulate:a", 0.0, 0.2)
-	tween.tween_property(_basic_stats, "modulate:a", 0.0, 0.2)
 	tween.tween_property(_hero_attack_label, "modulate:a", 0.0, 0.2)
 	tween.set_parallel(false)
 	tween.tween_callback(_swap_to_selection_state)
@@ -957,7 +871,6 @@ func _exit_selection_mode(hero_changed: bool) -> void:
 	tween.tween_property(_inventory_panel, "modulate:a", 1.0, TRANSITION_TIME)
 	tween.tween_property(_change_hero_button, "modulate:a", 1.0, 0.2)
 	tween.tween_property(_forge_button, "modulate:a", 1.0, 0.2)
-	tween.tween_property(_basic_stats, "modulate:a", 1.0, 0.2)
 	tween.tween_property(_hero_attack_label, "modulate:a", 1.0, 0.2)
 	tween.set_parallel(false)
 	tween.tween_callback(func(): _transitioning = false)
@@ -968,5 +881,4 @@ func _reset_equipment_transform() -> void:
 	_inventory_panel.position.y = 0.0; _inventory_panel.modulate.a = 1.0
 	_change_hero_button.modulate.a = 1.0
 	_forge_button.modulate.a = 1.0
-	_basic_stats.modulate.a = 1.0
 	_hero_attack_label.modulate.a = 1.0

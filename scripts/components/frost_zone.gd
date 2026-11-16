@@ -24,12 +24,30 @@ var _flakes: Array[Vector3] = [] # x, y (unit disc), phase
 
 ## Callers set `radius`/`tick_damage`/`lifetime` right after `.new()` but
 ## before `add_child()`, so by _ready() they already hold their final value.
+## Set by apply_snapshot(): a restored zone already landed (and already hit
+## on landing) before the save, so it must not hit again on entering the tree.
+var _restored := false
+
+func to_snapshot() -> Dictionary:
+	return {"kind": "frost", "pos": [global_position.x, global_position.y], "radius": radius, "lifetime": lifetime,
+		"tick": tick_damage, "freeze": freeze_duration, "elapsed": _elapsed, "tick_clock": _tick_clock}
+
+func apply_snapshot(data: Dictionary) -> void:
+	radius = clampf(RunSnapshot.f(data.get("radius"), radius), 1.0, 600.0)
+	lifetime = clampf(RunSnapshot.f(data.get("lifetime"), lifetime), 0.0, 60.0)
+	tick_damage = maxi(0, RunSnapshot.i(data.get("tick"), tick_damage))
+	freeze_duration = clampf(RunSnapshot.f(data.get("freeze"), freeze_duration), 0.0, 10.0)
+	_elapsed = clampf(RunSnapshot.f(data.get("elapsed"), 0.0), 0.0, lifetime)
+	_tick_clock = RunSnapshot.f(data.get("tick_clock"), 0.0)
+	_restored = true
+
 func _ready() -> void:
 	material = EmberfallFx.additive()
 	_color = AbilityCatalog.color("blizzard")
 	for i in clampi(int(radius / 5.0), 10, 40):
 		_flakes.append(Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf()))
-	_apply_tick() # hits immediately on landing instead of waiting a full tick
+	if not _restored:
+		_apply_tick() # hits immediately on landing instead of waiting a full tick
 
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":

@@ -36,6 +36,12 @@ func setup(new_kind: int) -> void:
 	if ResourceLoader.exists(custom):
 		_texture = load(custom) as Texture2D
 
+func to_snapshot() -> Dictionary:
+	return {"pos": [global_position.x, global_position.y], "kind": kind, "age": _age}
+
+func apply_snapshot(data: Dictionary) -> void:
+	_age = maxf(0.0, RunSnapshot.f(data.get("age"), 0.0))
+
 func is_chest() -> bool:
 	return kind == Kind.CHEST or kind == Kind.EPIC_CHEST
 

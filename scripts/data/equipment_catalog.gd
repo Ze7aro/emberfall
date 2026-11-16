@@ -41,11 +41,10 @@ const MAIN_STAT := {
 	"weapon": "damage", "armor": "health", "helmet": "block",
 	"amulet": "cooldown", "ring": "crit", "boots": "speed",
 }
-const SUB_STATS := ["area", "magnet", "gold", "xp", "regen", "proj_speed"]
+const SUB_STATS := ["area", "magnet", "gold", "xp", "proj_speed"]
 
 ## Level-1 value per rarity (common, rare, epic, legendary). `pct` stats are
-## percentages; damage is flat attack, health is half-hearts, regen is
-## half-hearts per minute.
+## percentages; damage is flat attack and health is half-hearts.
 const STATS := {
 	"damage": {"label": "Daño", "values": [3, 5, 7, 10, 13, 16], "pct": false},
 	"health": {"label": "Vida", "values": [1, 1, 2, 2, 3, 4], "pct": false},
@@ -57,7 +56,6 @@ const STATS := {
 	"magnet": {"label": "Imán", "values": [8, 10, 12, 14, 16, 20], "pct": true},
 	"gold": {"label": "Oro", "values": [5, 6, 8, 10, 12, 15], "pct": true},
 	"xp": {"label": "Experiencia", "values": [4, 5, 6, 7, 8, 10], "pct": true},
-	"regen": {"label": "Regeneración", "values": [1, 1.2, 1.5, 2, 2.5, 3], "pct": false},
 	"proj_speed": {"label": "Vel. de proyectil", "values": [5, 6, 8, 10, 12, 15], "pct": true},
 	# Only from set bonuses (never rolled on an item): % on top of all damage.
 	"damage_pct": {"label": "Daño", "values": [0, 0, 0, 0, 0, 0], "pct": true},
@@ -303,22 +301,50 @@ static func item_stats(item: Dictionary) -> Dictionary:
 		result[str(main["stat"])] = value_at(float(main["base"]), level)
 	for sub in item.get("subs", []):
 		var stat := str(sub["stat"])
+		if stat == "regen": # Old saves may still contain this removed affix.
+			continue
 		result[stat] = float(result.get(stat, 0.0)) + value_at(float(sub["base"]), level)
 	return result
+
+## Removes the retired regeneration affix from saved gear and replaces it
+## with an available secondary stat, preserving the item's affix count.
+static func remove_regen_affix(item: Dictionary) -> void:
+	var original: Array = item.get("subs", [])
+	var subs: Array = []
+	var removed := false
+	for sub in original:
+		if sub is Dictionary and str(sub.get("stat", "")) == "regen":
+			removed = true
+			continue
+		subs.append(sub)
+	if not removed:
+		return
+	var rarity := str(item.get("rarity", "common"))
+	var seed := str(item.get("uid", "")).hash()
+	while subs.size() < int(SUB_COUNT.get(rarity, 0)):
+		var pool := SUB_STATS.filter(func(stat: String):
+			for sub in subs:
+				if str(sub.get("stat", "")) == stat:
+					return false
+			return true
+		)
+		if pool.is_empty():
+			break
+		var stat := str(pool[posmod(seed + subs.size(), pool.size())])
+		subs.append({"stat": stat, "base": base_value(stat, rarity)})
+	item["subs"] = subs
 
 ## "+12% Crítico", "+3 Vida".
 static func stat_text(stat: String, value: float) -> String:
 	var label := stat_label(stat)
-	if stat == "regen":
-		return "%s %s/min" % [value_text(stat, value), label]
 	return "%s %s" % [value_text(stat, value), label]
 
 static func stat_label(stat: String) -> String:
 	return str(STATS.get(stat, {}).get("label", stat))
 
-## Just the number: "+12%", "+3", "+1.5" (regen keeps one decimal).
+## Just the number: "+12%", "+3".
 static func value_text(stat: String, value: float) -> String:
-	var shown := snappedf(value, 0.1) if stat == "regen" else roundf(value)
+	var shown := roundf(value)
 	var number := str(int(shown)) if is_equal_approx(shown, roundf(shown)) else "%.1f" % shown
 	if bool(STATS.get(stat, {}).get("pct", false)):
 		return "+%s%%" % number
@@ -360,7 +386,7 @@ static func main_value(item: Dictionary) -> float:
 static func delta_text(stat: String, delta: float) -> String:
 	var info: Dictionary = STATS.get(stat, {})
 	# Small changes (one level up) keep one decimal so they don't read "+0".
-	var shown := snappedf(delta, 0.1) if stat == "regen" or absf(delta) < 1.0 else roundf(delta)
+	var shown := roundf(delta) if absf(delta) >= 1.0 else snappedf(delta, 0.1)
 	var number := str(int(absf(shown))) if is_equal_approx(shown, roundf(shown)) else "%.1f" % absf(shown)
 	var sign := "+" if shown >= 0.0 else "-"
 	if bool(info.get("pct", false)):

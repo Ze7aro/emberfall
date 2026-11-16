@@ -160,7 +160,7 @@ func _stats_grid(item: Dictionary, other: Dictionary) -> Control:
 		var name_label := _label(EquipmentCatalog.stat_label(stat), 14, UiTheme.TEXT if mine.has(stat) else UiTheme.TEXT_MUTED)
 		name_label.custom_minimum_size = Vector2(150, 0)
 		grid.add_child(name_label)
-		var value_text := EquipmentCatalog.value_text(stat, value) + ("/min" if stat == "regen" else "")
+		var value_text := EquipmentCatalog.value_text(stat, value)
 		var value_label := _label(value_text if mine.has(stat) else "—", 14, UiTheme.TEXT, true)
 		value_label.custom_minimum_size = Vector2(70, 0)
 		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -169,7 +169,7 @@ func _stats_grid(item: Dictionary, other: Dictionary) -> Control:
 		delta_label.custom_minimum_size = Vector2(80, 0)
 		if not other.is_empty():
 			var delta := value - float(theirs.get(stat, 0.0))
-			var shown := snappedf(delta, 0.1) if stat == "regen" else roundf(delta)
+			var shown := roundf(delta) if absf(delta) >= 1.0 else snappedf(delta, 0.1)
 			if is_zero_approx(shown):
 				delta_label.text = "="
 			else:
@@ -198,6 +198,8 @@ func _buttons(item: Dictionary, equipped: bool, cost: Dictionary) -> Control:
 		_rebuild())
 	top_row.add_child(equip)
 	var forge := Button.new()
+	forge.icon = load("res://assets/ui/icons/yunque.png") as Texture2D
+	forge.add_theme_constant_override("icon_max_width", 22)
 	var need := EquipmentCatalog.merge_count(str(item.get("rarity", "common")))
 	var copies := GameState.merge_copies(_uid).size()
 	forge.text = "FORJA · %d/%d" % [copies, need] if need > 0 else "FORJA"

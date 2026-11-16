@@ -54,7 +54,7 @@ func _on_store_finished(_offer_id: String, success: bool, message: String) -> vo
 	_rebuild()
 	_show_toast(message, success)
 
-const SECTION_NOTES := {"BAÚLES": "Equipo, mejoras y más"}
+const SECTION_NOTES := {}
 
 func _add_section(text_value: String) -> void:
 	var row := UiTheme.section_title(text_value, str(SECTION_NOTES.get(text_value, "")), GOLD)

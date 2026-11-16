@@ -21,6 +21,23 @@ var _tick_clock := 0.0
 var _color := Color("8ee05a")
 var _bubbles: Array[Vector3] = [] # x, y (unit disc), phase
 
+## Set by apply_snapshot(): a pool restored from a saved run skips its
+## landing burst (it already landed before the save).
+var _restored := false
+
+func to_snapshot() -> Dictionary:
+	return {"kind": "pool", "pos": [global_position.x, global_position.y], "radius": radius, "lifetime": lifetime,
+		"tick": tick_damage, "chase": chase_speed, "elapsed": _elapsed, "tick_clock": _tick_clock}
+
+func apply_snapshot(data: Dictionary) -> void:
+	radius = clampf(RunSnapshot.f(data.get("radius"), radius), 1.0, 600.0)
+	lifetime = clampf(RunSnapshot.f(data.get("lifetime"), lifetime), 0.0, 60.0)
+	tick_damage = maxi(0, RunSnapshot.i(data.get("tick"), tick_damage))
+	chase_speed = maxf(0.0, RunSnapshot.f(data.get("chase"), 0.0))
+	_elapsed = clampf(RunSnapshot.f(data.get("elapsed"), 0.0), 0.0, lifetime)
+	_tick_clock = RunSnapshot.f(data.get("tick_clock"), 0.0)
+	_restored = true
+
 ## Callers set `radius` right after `.new()` but before `add_child()`, so by
 ## _ready() it already holds its final value — no need to build in _init().
 func _ready() -> void:
@@ -31,7 +48,7 @@ func _ready() -> void:
 	for i in clampi(int(radius / 9.0), 5, 14):
 		var p := Vector2.from_angle(randf() * TAU) * sqrt(randf()) * 0.75
 		_bubbles.append(Vector3(p.x, p.y, randf()))
-	if is_instance_valid(game_ref):
+	if is_instance_valid(game_ref) and not _restored:
 		game_ref.spawn_ring(global_position, _color, radius * 1.1, 0.3, 4.0)
 		game_ref.spawn_sparks(global_position, _color, 8, 160.0)
 	# Shared loop, not one per puddle (see SfxPlayer.start_poison_loop).

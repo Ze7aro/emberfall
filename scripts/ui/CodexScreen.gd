@@ -1,9 +1,11 @@
 extends Control
 
 const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+const DragScroll := preload("res://scripts/ui/DragScroll.gd")
 
-## Códex: every ability and evolution the player has used, and a bestiary
-## of enemies with lifetime kill counts. Unseen entries show as "???".
+## Códex: every ability and evolution the player has used, a guide with the
+## recipe of each evolution already made at least once, and a bestiary of
+## enemies with lifetime kill counts. Unseen entries show as "???".
 ## Opened from Progreso; tapping a tile shows it in the bottom panel.
 
 signal back_requested
@@ -13,9 +15,14 @@ const COLUMNS := 4
 const TILE_SIZE := Vector2(82, 96)
 const LOCKED_TINT := Color(0.12, 0.10, 0.18)
 
+## Shown for an evolution the player hasn't made yet: the recipe stays
+## secret until then (it appears in the EVOLUCIONES guide afterwards).
+const UNKNOWN_EVOLUTION := "Evolución: ??? (evoluciónala una vez para registrar su receta)"
+
 var _detail_icon: CenterContainer
 var _detail_title: Label
 var _detail_desc: Label
+var _drag: DragScroll
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -50,6 +57,8 @@ func _ready() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
+	_drag = DragScroll.new(scroll)
+	add_child(_drag)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 10)
@@ -80,6 +89,8 @@ func _ready() -> void:
 		passive_grid.add_child(_ability_tile(str(id)))
 	column.add_child(passive_grid)
 
+	_build_evolution_guide(column)
+
 	var seen_enemies := 0
 	for entry in BestiaryCatalog.ENTRIES:
 		if int(GameState.bestiary.get(entry["key"], 0)) > 0:
@@ -91,7 +102,7 @@ func _ready() -> void:
 	column.add_child(enemy_grid)
 
 	root.add_child(_build_detail_panel())
-	_show_detail(null, "CÓDEX", "Toca un arma, una habilidad o un enemigo para ver su detalle. Lo que todavía no descubriste aparece como ???.", UiTheme.TEXT)
+	_show_detail(null, "CÓDEX", "Toca un arma, una habilidad, una evolución o un enemigo para ver su detalle. Lo que todavía no descubriste aparece como ???.", UiTheme.TEXT)
 
 func _count_seen(ids: Array) -> int:
 	var seen := 0
@@ -117,7 +128,7 @@ func _tile(border: Color, picture: Control, caption: String, caption_color: Colo
 	tile.add_theme_stylebox_override("normal", style)
 	tile.add_theme_stylebox_override("hover", style)
 	tile.add_theme_stylebox_override("pressed", style)
-	tile.pressed.connect(on_press)
+	_connect_tap(tile, on_press)
 	var box := VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	box.offset_top = 6; box.offset_bottom = -4; box.offset_left = 3; box.offset_right = -3
@@ -175,9 +186,9 @@ func _ability_tile(id: String) -> Control:
 			var evolution: Dictionary = AbilityCatalog.ACTIVES[id]["evolution"]
 			var partner := AbilityCatalog.display_name(str(evolution["passive"]))
 			if evolved_seen:
-				text += "\n★ %s: %s" % [str(evolution["name"]), str(evolution["desc"])]
+				text += "\n★ %s (nivel %d + %s): %s" % [str(evolution["name"]), AbilityCatalog.MAX_LEVEL, partner, str(evolution["desc"])]
 			else:
-				text += "\nEvolución: nivel %d + %s → ???" % [AbilityCatalog.MAX_LEVEL, partner]
+				text += "\n" + UNKNOWN_EVOLUTION
 		_show_detail(AbilityCatalog.icon(id, evolved_seen), AbilityCatalog.display_name(id, evolved_seen), text, GOLD if evolved_seen else UiTheme.TEXT))
 
 ## A hero's weapon: "???" until its challenge (played with that hero)
@@ -208,8 +219,104 @@ Niveles: %s." % [hero_name, ", ".join(PackedStringArray([2, 3, 4, 5].map(func(l)
 ★ %s (nivel %d + %s): %s" % [str(evolution["name"]), AbilityCatalog.MAX_LEVEL, partner, str(evolution["desc"])]
 			else:
 				text += "
-Evolución: nivel %d + %s → ???" % [AbilityCatalog.MAX_LEVEL, partner]
+" + UNKNOWN_EVOLUTION
 		_show_detail(AbilityCatalog.icon(id, evolved_seen), AbilityCatalog.display_name(id, evolved_seen), text, GOLD if evolved_seen else color))
+
+## Every Códex button: PASS so a drag that starts on it still scrolls, and
+## a finger lifted after scrolling isn't taken as a tap.
+func _connect_tap(button: Button, on_press: Callable) -> void:
+	button.mouse_filter = Control.MOUSE_FILTER_PASS
+	button.pressed.connect(func():
+		if not _drag.blocks_tap():
+			on_press.call())
+
+# --- Evolution guide --------------------------------------------------------
+
+## Recipe (ability/weapon + passive → evolution) of every evolution made at
+## least once in a run; the rest stay hidden behind a count.
+func _build_evolution_guide(column: VBoxContainer) -> void:
+	var sources: Array[String] = []
+	for id in AbilityCatalog.ACTIVES:
+		if AbilityCatalog.has_evolution(str(id)):
+			sources.append(str(id))
+	for hero_id in AbilityCatalog.WEAPON_EVOLUTIONS:
+		sources.append(AbilityCatalog.weapon_id(StringName(hero_id)))
+	var found: Array[String] = []
+	for id in sources:
+		if id in GameState.discovered_evolutions:
+			found.append(id)
+	column.add_child(UiTheme.section_title("EVOLUCIONES", "%d/%d" % [found.size(), sources.size()]))
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	for id in found:
+		list.add_child(_evolution_row(id))
+	var missing := sources.size() - found.size()
+	if missing > 0:
+		var note := Label.new()
+		note.text = ("Faltan %d por descubrir. " % missing) + ("Cada evolución que logres en una partida registra aquí su receta." if found.is_empty() else "Evoluciona otras habilidades o armas para completar la guía.")
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.add_theme_font_size_override("font_size", 11)
+		note.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+		list.add_child(note)
+	column.add_child(list)
+
+func _evolution_row(id: String) -> Control:
+	var evolution := AbilityCatalog.evolution_info(id)
+	var partner := str(evolution["passive"])
+	var evo_name := str(evolution["name"])
+	var recipe := "%s (nivel %d) + %s (nivel %d)" % [AbilityCatalog.display_name(id), AbilityCatalog.MAX_LEVEL, AbilityCatalog.display_name(partner), AbilityCatalog.MAX_LEVEL]
+	var row := Button.new()
+	row.custom_minimum_size = Vector2(0, 60)
+	row.focus_mode = Control.FOCUS_NONE
+	var style := UiTheme.slot(false, 4)
+	style.border_color = Color(GOLD, 0.7)
+	row.add_theme_stylebox_override("normal", style)
+	row.add_theme_stylebox_override("hover", style)
+	row.add_theme_stylebox_override("pressed", style)
+	_connect_tap(row, func():
+		_show_detail(AbilityCatalog.icon(id, true), evo_name, "%s\n%s" % [recipe, str(evolution["desc"])], GOLD))
+	var box := HBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 8; box.offset_right = -8
+	box.add_theme_constant_override("separation", 4)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(box)
+	box.add_child(_picture(AbilityCatalog.icon(id), 34.0, Color.WHITE, AbilityCatalog.display_name(id).left(1)))
+	box.add_child(_symbol("+"))
+	box.add_child(_picture(AbilityCatalog.icon(partner), 34.0, Color.WHITE, AbilityCatalog.display_name(partner).left(1)))
+	box.add_child(_symbol("→"))
+	box.add_child(_picture(AbilityCatalog.icon(id, true), 42.0, Color.WHITE, "★"))
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.alignment = BoxContainer.ALIGNMENT_CENTER
+	text.add_theme_constant_override("separation", 0)
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(text)
+	var title := Label.new()
+	title.text = evo_name
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_theme_font_override("font", UiTheme.bold_font())
+	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_color_override("font_color", GOLD)
+	text.add_child(title)
+	var sub := Label.new()
+	sub.text = "%s + %s" % [AbilityCatalog.display_name(id), AbilityCatalog.display_name(partner)]
+	sub.clip_text = true
+	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sub.add_theme_font_size_override("font_size", 9)
+	sub.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	text.add_child(sub)
+	return row
+
+func _symbol(value: String) -> Label:
+	var label := Label.new()
+	label.text = value
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", GOLD)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
 
 func _enemy_tile(entry: Dictionary) -> Control:
 	var key := str(entry["key"])

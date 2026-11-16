@@ -19,10 +19,10 @@ godot --headless --path . --script tools/run_tests.gd
 godot --headless --path . --script tools/check_translations.gd
 ```
 
-- `run_tests.gd`: energía, catálogo y entregas de la tienda, anuncios de un solo uso, misiones y puntos de actividad, mejoras permanentes e idioma.
+- `run_tests.gd`: energía, catálogo y entregas de la tienda, anuncios de un solo uso, misiones y puntos de actividad, mejoras permanentes, idioma y partidas guardadas (guardar, salir, reanudar, subida de nivel y jefe pendientes, derrota y abandono sin premio doble, instantáneas dañadas).
 - `check_translations.gd`: recorre todas las pantallas en inglés y lista los textos que quedaron sin traducir.
 
-Lo que no cubren: el combate, las compras y los anuncios reales (solo se pueden probar en un teléfono con el juego subido a Play) y el rendimiento.
+Lo que no cubren: el combate en sí, las compras y los anuncios reales (solo se pueden probar en un teléfono con el juego subido a Play) y el rendimiento.
 
 ## Generar la versión para Google Play
 
@@ -38,11 +38,12 @@ Requiere la plantilla de compilación de Android (`Proyecto > Instalar plantilla
 
 - `scripts/MainLayout.gd`: controlador raíz. Mantiene la barra superior y el pie de navegación, y cambia de pantalla con `navigate_to(route_id)` y de modal con `open_modal(id)`.
 - Autoloads (`scripts/systems/`):
-  - `GameState`: todo el estado persistente (energía, oro, gemas, héroes, equipo, misiones, campaña, ajustes). Guarda en `user://emberfall_save.json` con escritura atómica y respaldo.
+  - `GameState`: todo el estado persistente (energía, oro, gemas, héroes, equipo, misiones, campaña, ajustes). Guarda en `user://emberfall_save.json` con escritura atómica y respaldo. Ahí vive también la partida en curso (`active_run`), para poder cerrar el juego y reanudarla desde Inicio.
   - `Monetization`: compras (Google Play Billing) y anuncios recompensados (AdMob) con el formulario de consentimiento de Google. Las pantallas solo llaman a `buy()` y `show_rewarded()`.
   - `Localization`: idioma del juego.
   - `MusicDirector` y `SfxPlayer`: música por contexto y efectos.
 - `scripts/game_world.gd`: el bucle de una partida (enemigos, experiencia, habilidades, jefe). `scripts/ui.gd` dibuja su HUD, la subida de nivel y la pausa.
+- Partidas guardadas: `game_world.capture_snapshot()` describe la partida con datos simples (sin nodos) y `GameState` la escribe junto con el perfil en cada guardado: al pausar, al perder el foco, al subir de nivel, al aparecer el jefe y cada 20 s de juego. Reanudar no cobra energía ni repite el arma inicial; la partida vuelve en pausa (o en la misma elección de nivel). Los disparos y avisos que estaban en el aire no se guardan. Al ganar, perder o abandonar, la partida se borra en la misma escritura que entrega las recompensas. `scripts/systems/run_snapshot.gd` lee los valores con tolerancia a datos dañados.
 - `scripts/components/`: jugador, enemigos, proyectiles y efectos visuales.
 - `scripts/data/`: catálogos de habilidades, equipo, mejoras, bestiario y héroes. Los héroes se definen en `resources/characters/*.tres`.
 - `scripts/ui/`: pantallas y modales, construidos por código con el tema de `UiTheme.gd`.

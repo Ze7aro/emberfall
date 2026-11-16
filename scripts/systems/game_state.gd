@@ -118,7 +118,7 @@ var dungeons_cleared := 0
 ## once — drives the one-time first-clear bonus in finish_run().
 var first_clears: Array = []
 const FIRST_CLEAR_BONUS_GOLD := 40
-const FIRST_CLEAR_BONUS_GEMS := 1
+const FIRST_CLEAR_GEMS := 85
 var owned_characters: Array = [&"variante_01"]
 var equipment_inventory: Array = []
 ## Persistent counter for item uids (see _generate_item_uid) — never derived
@@ -160,6 +160,23 @@ var last_run_rewards: Dictionary = {}
 var _save_dirty := false
 var _last_dirty_save_at := 0.0
 const DIRTY_SAVE_INTERVAL := 5.0
+
+# RUN-RESUME: one run per profile can be left mid-way and continued later.
+# `active_run` is that run's snapshot (plain JSON data, never nodes; see
+# game_world.capture_snapshot()). It lives inside the same save file as the
+# profile, so gold already credited by the run and the snapshot of the orbs
+# still on the floor are always written together — a resumed run can never
+# hand out the same pickup twice.
+const RUN_SNAPSHOT_VERSION := 1
+const RUN_SNAPSHOT_PHASES := ["playing", "level_up"]
+var active_run: Dictionary = {}
+## Set by the live game_world: every save() during a run refreshes the
+## snapshot first, so profile and run never drift apart on disk.
+var _run_snapshot_provider := Callable()
+## While > 0, save() only marks the profile dirty; end_save_batch() writes it
+## once. Ending a run uses it so stats, rewards, loot and the cleared
+## snapshot land in one atomic write (no premio doble ni run fantasma).
+var _save_batch_depth := 0
 
 func _ready() -> void:
 	load_save()
@@ -237,10 +254,11 @@ func change_screen(value: String) -> void:
 	# is likeliest to suspend or kill the app (focus loss, phone call) — flush
 	# any gold collected this run before that can happen instead of waiting
 	# for the next throttled tick.
+	# RUN-RESUME: pausing (or opening a level-up) also stores the run snapshot.
 	var leaving_playing := screen == "playing" and value != "playing"
 	screen = value
 	screen_changed.emit(value)
-	if leaving_playing and _save_dirty:
+	if leaving_playing and (_save_dirty or _run_snapshot_provider.is_valid()):
 		save()
 		_last_dirty_save_at = Time.get_unix_time_from_system()
 
@@ -299,10 +317,20 @@ func add_gold(amount: int) -> void:
 func finish_run(victory: bool, kills: int) -> void:
 	if screen != "playing":
 		return
+	_settle_run(victory, kills, current_stage_context)
+	SfxPlayer.play("progression/victory.wav" if victory else "progression/player_defeat.wav", false)
+	change_screen("victory" if victory else "defeat")
+	run_finished.emit(victory)
+	missions_changed.emit()
+	current_stage_context = {}
+	save()
+
+## End-of-run rewards (kills, victory bonus, first clear, XP). Shared by
+## finish_run() and forfeit_pending_run(); callers save.
+func _settle_run(victory: bool, kills: int, context: Dictionary) -> void:
 	high_score = maxi(high_score, kills)
 	daily_kills += kills
 	weekly_kills += kills
-	var context := current_stage_context
 	last_run_rewards = {"gold": 0, "gems": 0, "xp": 0, "first_clear": false, "essence": 0, "items": []}
 	if victory:
 		var bonus_gold := int(context.get("gold_reward", 20 + kills / 2))
@@ -316,7 +344,7 @@ func finish_run(victory: bool, kills: int) -> void:
 		if not first_clears.has(clear_key):
 			first_clears.append(clear_key)
 			bonus_gold += FIRST_CLEAR_BONUS_GOLD
-			bonus_gems += FIRST_CLEAR_BONUS_GEMS
+			bonus_gems = FIRST_CLEAR_GEMS
 			last_run_rewards["first_clear"] = true
 			# First clear of a dungeon: an epic item or better.
 			if is_dungeon:
@@ -341,12 +369,138 @@ func finish_run(victory: bool, kills: int) -> void:
 	var xp_gain: int = (30 + kills) if victory else (10 + kills / 2)
 	last_run_rewards["xp"] = xp_gain
 	add_experience(xp_gain)
-	SfxPlayer.play("progression/victory.wav" if victory else "progression/player_defeat.wav", false)
-	change_screen("victory" if victory else "defeat")
-	run_finished.emit(victory)
-	missions_changed.emit()
-	current_stage_context = {}
+
+# --- Run snapshot (RUN-RESUME) -------------------------------------------------
+
+func has_resumable_run() -> bool:
+	return not active_run.is_empty()
+
+## Short facts for the menu's "REANUDAR" card: {name, time, level, hero}.
+func resumable_run_summary() -> Dictionary:
+	if active_run.is_empty():
+		return {}
+	var context: Dictionary = active_run.get("context", {})
+	var world: Dictionary = active_run.get("world", {})
+	return {
+		"name": _safe_string(context.get("name"), ""),
+		"type": _safe_string(context.get("type"), "stage"),
+		"time": maxi(0, int(_safe_float(world.get("elapsed"), 0.0))),
+		"level": maxi(1, _safe_int(world.get("level"), 1)),
+		"hero": _safe_string(active_run.get("hero", {}).get("id"), ""),
+	}
+
+## Stores a snapshot built by game_world (validated first) and saves.
+func save_run_snapshot(snapshot: Dictionary) -> bool:
+	if not is_valid_run_snapshot(snapshot):
+		return false
+	active_run = snapshot
 	save()
+	return true
+
+## Drops the pending run. `persist` false leaves the write to the caller
+## (end_run batches it with the rewards).
+func clear_run_snapshot(persist: bool = true) -> void:
+	active_run = {}
+	_save_dirty = true
+	if persist:
+		save()
+
+func set_run_snapshot_provider(provider: Callable) -> void:
+	_run_snapshot_provider = provider
+
+func clear_run_snapshot_provider(provider: Callable = Callable()) -> void:
+	if not provider.is_valid() or _run_snapshot_provider == provider:
+		_run_snapshot_provider = Callable()
+
+func begin_save_batch() -> void:
+	_save_batch_depth += 1
+
+func end_save_batch() -> void:
+	_save_batch_depth = maxi(0, _save_batch_depth - 1)
+	if _save_batch_depth == 0 and _save_dirty:
+		save()
+
+## Restores the run's own context (scenario and hero) without touching
+## energy or begin_stage(): a resumed run was already paid for. Returns the
+## snapshot to hand to game_world, or {} if it no longer validates (then it
+## is discarded so the menu goes back to normal).
+func prepare_resume() -> Dictionary:
+	if active_run.is_empty():
+		return {}
+	if not is_valid_run_snapshot(active_run):
+		push_warning("Emberfall: la partida guardada no es válida y se descarta")
+		clear_run_snapshot()
+		return {}
+	var context: Dictionary = active_run["context"]
+	current_stage_context = context.duplicate(true)
+	last_stage_context = context.duplicate(true)
+	var hero: Dictionary = active_run["hero"]
+	selected_character_id = StringName(str(hero["id"]))
+	selected_character_texture = _safe_string(hero.get("texture"), selected_character_texture)
+	selected_character_sprite_folder = _safe_string(hero.get("sprite_folder"), selected_character_sprite_folder)
+	selected_character_changed.emit(selected_character_id)
+	return active_run
+
+## Abandoning a saved run from the menu counts as the defeat it would have
+## been in-run (game_world.end_run(false)): lifetime stats, loot and defeat
+## XP, exactly once, in a single write together with the cleared snapshot.
+## Returns the rewards granted ({} when there was nothing to abandon).
+func forfeit_pending_run() -> Dictionary:
+	if active_run.is_empty():
+		return {}
+	var snapshot := active_run
+	active_run = {}
+	if not is_valid_run_snapshot(snapshot):
+		save()
+		return {}
+	var report: Dictionary = snapshot.get("report", {}) if snapshot.get("report", {}) is Dictionary else {}
+	var stats := report.duplicate(true)
+	stats["victory"] = false
+	var kills := maxi(0, _safe_int(stats.get("kills"), 0))
+	var loot_value = snapshot.get("loot", [])
+	var loot: Array = (loot_value as Array).filter(func(drop): return drop is Dictionary and EquipmentCatalog.recipe(str(drop.get("id", ""))) != {}) if loot_value is Array else []
+	begin_save_batch()
+	record_run(stats)
+	var items := grant_run_loot(loot)
+	_settle_run(false, kills, snapshot["context"])
+	last_run_rewards["items"] = items
+	missions_changed.emit()
+	_save_dirty = true
+	end_save_batch()
+	return last_run_rewards
+
+## Structural check for a stored/incoming snapshot: right version and phase,
+## a scenario the profile can still play and a hero it owns. Field-level
+## values are clamped again by game_world when restoring.
+func is_valid_run_snapshot(snapshot: Variant) -> bool:
+	if not snapshot is Dictionary or (snapshot as Dictionary).is_empty():
+		return false
+	var data: Dictionary = snapshot
+	if _safe_int(data.get("version"), -1) != RUN_SNAPSHOT_VERSION:
+		return false
+	if not _safe_string(data.get("phase"), "") in RUN_SNAPSHOT_PHASES:
+		return false
+	var context = data.get("context")
+	if not context is Dictionary or not str(context.get("type", "")) in ["stage", "dungeon"]:
+		return false
+	if not is_scenario_unlocked(context):
+		return false
+	var hero = data.get("hero")
+	if not hero is Dictionary or not (hero.get("id") is String) or not owns_character(StringName(str(hero["id"]))):
+		return false
+	var world = data.get("world")
+	var player = data.get("player")
+	if not world is Dictionary or not player is Dictionary:
+		return false
+	var elapsed := _safe_float(world.get("elapsed"), -1.0)
+	if elapsed < 0.0 or is_nan(elapsed) or is_inf(elapsed):
+		return false
+	if _safe_int(player.get("hp"), 0) <= 0 or _safe_int(player.get("max_hp"), 0) <= 0:
+		return false
+	for key in ["enemies", "orbs", "pickups", "zones"]:
+		if data.has(key) and not data[key] is Array:
+			return false
+	return true
 
 func _apply_stage_clear(context: Dictionary) -> void:
 	var type := str(context.get("type", "stage"))
@@ -1301,6 +1455,15 @@ func milestones_for(period: String) -> Array:
 func claimed_milestones_for(period: String) -> Array:
 	return claimed_weekly_milestones if period == "weekly" else claimed_daily_milestones
 
+## JSON may deserialize a saved threshold as either int or float. Compare the
+## numeric value explicitly so a claimed chest cannot become claimable again
+## after loading the save.
+func is_milestone_claimed(period: String, threshold: int) -> bool:
+	for value in claimed_milestones_for(period):
+		if (value is int or value is float) and int(value) == threshold:
+			return true
+	return false
+
 ## Activity points earned this period (sum of the claimed missions' points).
 func activity_points(period: String) -> int:
 	var total := 0
@@ -1309,7 +1472,7 @@ func activity_points(period: String) -> int:
 	return mini(total, ACTIVITY_MAX)
 
 func can_claim_milestone(period: String, threshold: int) -> bool:
-	return not claimed_milestones_for(period).has(threshold) and activity_points(period) >= threshold
+	return not is_milestone_claimed(period, threshold) and activity_points(period) >= threshold
 
 func claim_milestone(period: String, threshold: int) -> bool:
 	return claim_weekly_milestone(threshold) if period == "weekly" else claim_daily_milestone(threshold)
@@ -1336,7 +1499,31 @@ func claim_weekly_milestone(threshold: int) -> bool:
 	_grant_milestone_reward(entry)
 	return true
 
-func _grant_milestone_reward(entry: Dictionary) -> void:
+## Thresholds of a period's chests that are ready to open, lowest first.
+func claimable_milestones(period: String) -> Array[int]:
+	var ready: Array[int] = []
+	for milestone in milestones_for(period):
+		if can_claim_milestone(period, int(milestone.threshold)):
+			ready.append(int(milestone.threshold))
+	return ready
+
+## Opens every ready chest of a period at once (one sound, one save);
+## returns how many were opened.
+func claim_all_milestones(period: String) -> int:
+	var ready := claimable_milestones(period)
+	for threshold in ready:
+		var entry: Dictionary = milestones_for(period).filter(func(m): return int(m.threshold) == threshold)[0]
+		claimed_milestones_for(period).append(threshold)
+		_grant_milestone_reward(entry, false)
+	if not ready.is_empty():
+		SfxPlayer.play("economy/chest_open.wav", false)
+		missions_changed.emit()
+		save()
+	return ready.size()
+
+## `finish` plays the chest sound, notifies and saves; claim_all_milestones
+## turns it off to do that once for the whole batch.
+func _grant_milestone_reward(entry: Dictionary, finish: bool = true) -> void:
 	var reward_gold := int(entry.get("gold", 0))
 	var reward_gems := int(entry.get("gems", 0))
 	if reward_gold > 0:
@@ -1352,6 +1539,8 @@ func _grant_milestone_reward(entry: Dictionary) -> void:
 		var item := _grant_item(str(drop["rarity"]), str(drop["id"]))
 		inventory_changed.emit()
 		add_notification("Objeto obtenido: %s (%s)" % [str(item.get("name", "")), str(EquipmentCatalog.RARITY_LABELS.get(str(item["rarity"]), "")).to_lower()])
+	if not finish:
+		return
 	SfxPlayer.play("economy/chest_open.wav", false)
 	missions_changed.emit()
 	save()
@@ -1381,10 +1570,31 @@ func refresh_energy() -> void:
 var persistence_enabled := true
 
 func save() -> void:
+	if _save_batch_depth > 0:
+		_save_dirty = true
+		return
+	_refresh_run_snapshot()
 	if not persistence_enabled:
+		_save_dirty = false
 		return
 	var data := _read_save()
-	data.merge({
+	data.merge(save_payload(), true)
+	_write_save(data)
+	_save_dirty = false
+
+## A live run refreshes its snapshot right before every write; a run that
+## already ended returns {} and leaves active_run as end_run() set it.
+func _refresh_run_snapshot() -> void:
+	if not _run_snapshot_provider.is_valid():
+		return
+	var snapshot = _run_snapshot_provider.call()
+	if snapshot is Dictionary and is_valid_run_snapshot(snapshot):
+		active_run = snapshot
+
+## Everything save() persists, as the JSON-ready dictionary written to disk.
+func save_payload() -> Dictionary:
+	return {
+		"active_run": active_run if not active_run.is_empty() else null,
 		"save_version": SAVE_FORMAT_VERSION,
 		"energy": energy, "energy_timestamp": energy_timestamp, "gold": gold, "high_score": high_score,
 		"damage": permanent_damage, "health": permanent_health, "speed": permanent_speed, "gems": gems, "essence": essence,
@@ -1409,9 +1619,7 @@ func save() -> void:
 		"claimed_daily_missions": claimed_daily_missions, "claimed_weekly_missions": claimed_weekly_missions,
 		"mission_stats": mission_stats,
 		"claimed_daily_milestones": claimed_daily_milestones, "claimed_weekly_milestones": claimed_weekly_milestones,
-	}, true)
-	_write_save(data)
-	_save_dirty = false
+	}
 
 const SAVE_FORMAT_VERSION := 1
 
@@ -1447,8 +1655,12 @@ func _migrate_save(data: Dictionary) -> Dictionary:
 	return data
 
 func load_save() -> void:
-	var data := _migrate_save(_read_save())
-	energy = clampi(_safe_int(data.get("energy"), MAX_ENERGY), 0, ENERGY_OVERFLOW_CAP)
+	load_data(_migrate_save(_read_save()))
+
+## Applies a save dictionary (already migrated). Split from load_save() so
+## the tests can feed it data without touching the player's file.
+func load_data(data: Dictionary) -> void:
+	energy =clampi(_safe_int(data.get("energy"), MAX_ENERGY), 0, ENERGY_OVERFLOW_CAP)
 	energy_timestamp = _safe_float(data.get("energy_timestamp"), Time.get_unix_time_from_system())
 	gold = maxi(0, _safe_int(data.get("gold"), 0))
 	gems = maxi(0, _safe_int(data.get("gems"), 0))
@@ -1537,6 +1749,7 @@ func load_save() -> void:
 	for i in equipment_inventory.size():
 		if EquipmentCatalog.is_legacy(equipment_inventory[i]):
 			equipment_inventory[i] = EquipmentCatalog.convert_legacy(equipment_inventory[i])
+		EquipmentCatalog.remove_regen_affix(equipment_inventory[i])
 	# Never trust the stored counter alone — also scan existing items in case
 	# this save predates it (their uids came from the old, collision-prone
 	# Time.get_ticks_msec() scheme) or it was hand-edited to something stale.
@@ -1579,9 +1792,24 @@ func load_save() -> void:
 					mission_stats[period][str(key)] = maxi(0, _safe_int(bucket[key], 0))
 	_daily_cache_seed = -1
 	var stored_daily_milestones = data.get("claimed_daily_milestones", [])
-	claimed_daily_milestones = (stored_daily_milestones as Array).filter(func(v): return v is int or v is float) if stored_daily_milestones is Array else []
+	claimed_daily_milestones = []
+	if stored_daily_milestones is Array:
+		for value in stored_daily_milestones:
+			if (value is int or value is float) and not claimed_daily_milestones.has(int(value)):
+				claimed_daily_milestones.append(int(value))
 	var stored_weekly_milestones = data.get("claimed_weekly_milestones", [])
-	claimed_weekly_milestones = (stored_weekly_milestones as Array).filter(func(v): return v is int or v is float) if stored_weekly_milestones is Array else []
+	claimed_weekly_milestones = []
+	if stored_weekly_milestones is Array:
+		for value in stored_weekly_milestones:
+			if (value is int or value is float) and not claimed_weekly_milestones.has(int(value)):
+				claimed_weekly_milestones.append(int(value))
+	# Last: it checks scenario unlocks and owned heroes loaded above. A
+	# snapshot that is missing, broken or from another version is dropped
+	# without blocking the game (the profile itself still loads).
+	var stored_run = data.get("active_run")
+	active_run = stored_run if is_valid_run_snapshot(stored_run) else {}
+	if stored_run is Dictionary and active_run.is_empty():
+		push_warning("Emberfall: se descartó una partida guardada incompatible o dañada")
 
 const BACKUP_PATH := "user://emberfall_save.bak.json"
 const TEMP_PATH := "user://emberfall_save.tmp.json"

@@ -17,7 +17,7 @@ El esqueleto del juego está completo: menú, metaprogresión, misiones, equipo,
 
 | Juego | Patrón que vale la pena copiar |
 |---|---|
-| Vampire Survivors | Arma al nivel máximo + su pasiva emparejada = **evolución**. Casi cada pasiva existe para evolucionar un arma, así que toda elección importa. Hay 6 espacios de armas y 6 de pasivas. |
+| Vampire Survivors | Arma y pasiva emparejada al nivel máximo = **evolución**. Casi cada pasiva existe para evolucionar un arma, así que toda elección importa. Hay 6 espacios de armas y 6 de pasivas. |
 | Halls of Torment | Las habilidades secundarias salen de pergaminos que sueltan los élites. Las mejor valoradas son las auras (Radiant Aura), los orbes orbitales (Astronomer's Orbs) y los proyectiles automáticos (Arcane Splinters). |
 | Brotato / 20 Minutes Till Dawn | Las pasivas cambian el comportamiento (rebote, perforación, quemadura en cadena), no solo un número. |
 | Hades | Las bendiciones tienen elemento y estado propios, y las combinaciones dobles aparecen como cartas especiales. |
@@ -27,9 +27,9 @@ El conjunto de arquetipos que se repite en todos ellos es: proyectil dirigido, p
 ### 2.2 Reglas propuestas
 
 - **El ataque básico deja de ser una habilidad.** Hoy `directed` ocupa un espacio y es el ataque del héroe. Pasa a mejorarse solo con pasivas y con el equipo, y cada héroe conserva su sprite y su estado garantizado.
-- **4 espacios de activas y 4 de pasivas.** Con 6 y 6 una partida de 12 minutos en el móvil no llega a llenarlos. Cuando los espacios están llenos, solo se ofrecen mejoras de lo que ya tenés.
+- **4 espacios de activas y 4 de pasivas.** Con 6 y 6 una partida de 15 minutos en el móvil no llega a llenarlos. Cuando los espacios están llenos, solo se ofrecen mejoras de lo que ya tenés.
 - **Nivel máximo 5** para activas y pasivas (hoy es 6).
-- **Evolución:** activa al nivel 5 + su pasiva emparejada (a cualquier nivel). En la siguiente subida, o al abrir un cofre de élite, aparece una carta dorada de evolución. La activa se transforma y libera su potencial.
+- **Evolución:** activa al nivel 5 + su pasiva emparejada al nivel 5. En la siguiente subida, o al abrir un cofre de élite, aparece una carta dorada de evolución. La activa se transforma y libera su potencial.
 - **Se quita la alternancia rígida activas/pasivas.** Cada subida ofrece 3 cartas mezcladas (4 con la mejora permanente "Suerte"), con más peso para lo que ya tenés.
 - **Opciones en la subida de nivel:** Cambiar (ya existe), **Descartar** (la carta no vuelve en la partida) y **Saltar** (da un poco de oro o cura).
 - **Los estados vienen de las armas.** Se eliminan las pasivas "probabilidad de veneno, quemadura y congelamiento". El fuego quema, el hielo congela, el veneno envenena y el rayo electrocuta (un nuevo estado: el siguiente golpe recibido hace +25 % de daño).
@@ -40,7 +40,7 @@ El conjunto de arquetipos que se repite en todos ellos es: proyectil dirigido, p
 |---|---|---|---|---|---|
 | 1 | **Dagas Rúnicas** | Direccional (Knife) | Ráfaga rápida hacia donde mirás | +1 daga, +daño | **Tormenta de Filos** (+ Celeridad): sin enfriamiento y perforan |
 | 2 | **Lunas Orbitales** *(ya existe)* | Orbital (King Bible) | Lunas que giran a tu alrededor | +1 luna, +radio | **Eclipse Eterno** (+ Duración): giran siempre y empujan a los enemigos |
-| 3 | **Aura Ígnea** *(Fuego Constante)* | Aura (Garlic/Radiant) | Daño continuo cerca tuyo y quemadura | +radio, +daño | **Corona Solar** (+ Vitalidad): aura más grande y fuerte; cura medio corazón cada 6 s mientras quema |
+| 3 | **Aura Ígnea** *(Fuego Constante)* | Aura (Garlic/Radiant) | Daño continuo cerca tuyo y quemadura | +radio, +daño | **Corona Solar** (+ Vitalidad): aura más grande y fuerte, quema en una zona más amplia |
 | 4 | **Cadena Eléctrica** *(ya existe)* | Cadena | Rayo que salta entre enemigos y electrocuta | +1 salto | **Tormenta Viva** (+ Amplitud): saltos ilimitados en el radio |
 | 5 | **Frasco Tóxico** *(Bomba Venenosa)* | Zona (Santa Water) | Charco venenoso | +tamaño, +duración | **Plaga Abisal** (+ Área): los charcos persiguen a los enemigos |
 | 6 | **Ventisca** *(ya existe)* | Zona de control | Zona que ralentiza y congela | +radio | **Invierno Perpetuo** (+ Armadura): sigue al jugador y congela por completo |
@@ -109,7 +109,7 @@ Las 5 fusiones actuales se reemplazan por las 12 evoluciones. Se pueden conserva
 
 ### 4.2 Metaprogresión
 - **Mejoras permanentes al estilo PowerUps de VS:** pasar de 3 ramas a una cuadrícula que use los iconos ya hechos: daño, vida, armadura, velocidad, área, enfriamiento, duración, cantidad, magnetismo, crecimiento de XP, codicia de oro, suerte, revivir, rerolls, descartes, daño a jefes e invencibilidad tras el daño.
-- **Desbloqueo de habilidades:** empezar con 6 activas y desbloquear las otras 6 con logros ("Mata 500 enemigos con fuego" desbloquea Lluvia de Meteoros). Esto da objetivos de largo plazo.
+- **Desbloqueo de habilidades:** 6 activas disponibles de inicio en el catálogo y otras 6 desbloqueables con logros ("Mata 500 enemigos con fuego" desbloquea Lluvia de Meteoros). En cada run se pueden equipar hasta 4 activas y 4 pasivas.
 - **Arma o pasiva inicial por héroe**, que sea su identidad: Vaelor empieza con Aura Ígnea, Azyren con Ventisca, Orven con Frasco Tóxico, Sylven con Esquirla, Theron con Égida y Mordrak con Tajo.
 - **Bestiario y códex** de habilidades y evoluciones descubiertas: rejugabilidad barata.
 
@@ -338,7 +338,7 @@ Ya resuelto en el código: el botón Atrás cierra ventanas, pausa la partida y 
 4. **Evoluciones:** el detalle propio de cada una (Tormenta de Filos = anillo de dagas, Cataclismo = meteoro gigante, etc.).
 5. **Arte opcional (§6.5):** si llegan las tiras, reemplazan el dibujo por código sin tocar la lógica.
 
-**Para probar:** en builds de depuración, botones **HAB ›** (siguiente habilidad, sola, al nivel 1) y **NV +** (sube un nivel; pasado el 5, evoluciona).
+**Para probar:** en builds de depuración, botones **HAB ›** (siguiente habilidad, sola, al nivel 1) y **NV +** (sube la activa al 5, luego su pasiva emparejada al 5 y después evoluciona).
 
 **Estado:** fases 1 y 2 hechas (`fx_kit.gd`, `fx_sparks.gd`, `fx_ring.gd`, `fx_lightning.gd`, `aegis_bubble.gd`, y Dagas, Hacha, Esquirla, Familiar, Tajo, Meteoro, Cadena y Égida rehechos). Los sprites de habilidades ahora usan mipmaps. Fase 3 hecha: ventisca (disco helado con nieve), charco de veneno (borde ondulante con burbujas), frasco, aura de fuego (brasas) y explosiones (anillo con chispas, también el golpe del jefe) se dibujan en código; las esferas orbitales son más chicas. Los sprites de `emberfall_habilidades_sprites` quedaron sin uso. Fase 4 hecha: Eclipse Eterno (órbita visible y halo cian), Corona Solar (rayos dorados en el borde), Cataclismo (marca carmesí con segundo anillo rúnico e impacto más grande), Prisma Infinito (cristales arcoíris), Invierno Perpetuo (cristales de nieve girando en el borde) y Legión Espectral (halo y ojos dorados). El resto ya se distingue por su mecánica y el tinte dorado. Las áreas que dañan en círculo (meteoro) se dibujan en círculo para que lo que se ve sea lo que golpea.
 

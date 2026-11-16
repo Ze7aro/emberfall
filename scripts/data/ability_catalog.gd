@@ -5,13 +5,13 @@ extends RefCounted
 ## icons and evolution recipes, shared by game_world (rules) and ui.gd
 ## (cards, build bar, pause). See docs/PLAN_FINALIZACION.md §2 for the design.
 ##
-## Rules in short: 6 active slots + 6 passive slots, max level 5 each. An
-## active at max level whose paired passive is owned (any level) offers its
-## evolution as a golden card on the next level-up.
+## Rules in short: 4 active slots + 4 passive slots, max level 5 (Amplitud
+## is capped at 2). An active and its paired passive both at their max level
+## offer the evolution as a golden card on the next level-up.
 
 const MAX_LEVEL := 5
-const ACTIVE_SLOTS := 6
-const PASSIVE_SLOTS := 6
+const ACTIVE_SLOTS := 4
+const PASSIVE_SLOTS := 4
 const EVOLUTION_PREFIX := "evo:"
 
 ## Generated icons go here as `<id>.png` (and `evo_<id>.png` for
@@ -67,7 +67,7 @@ const ACTIVES := {
 		"desc": "Quema constantemente a los enemigos cercanos",
 		"fallback_icon": "",
 		"color": Color("ff9f4a"),
-		"evolution": {"passive": "vitality", "name": "CORONA SOLAR", "desc": "Aura más grande que te cura mientras quema"},
+		"evolution": {"passive": "vitality", "name": "CORONA SOLAR", "desc": "Aura más grande y poderosa que quema en una zona amplia"},
 	},
 	"chain": {
 		"name": "CADENA ELÉCTRICA",
@@ -294,6 +294,9 @@ static func is_active(id: String) -> bool:
 
 static func is_passive(id: String) -> bool:
 	return PASSIVES.has(id)
+
+static func passive_max_level(id: String) -> int:
+	return 2 if id == "amount" else MAX_LEVEL
 
 static func is_evolution(option_id: String) -> bool:
 	return option_id.begins_with(EVOLUTION_PREFIX)

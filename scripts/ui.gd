@@ -4,6 +4,10 @@ const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 
 const GOLD := Color("e8b84a")
 
+## "GUARDAR Y SALIR" in the pause menu: MainLayout stores the run and goes
+## back to Inicio, where it can be resumed (RUN-RESUME).
+signal suspend_requested
+
 var world: Node
 var xp_bar: ProgressBar
 var level_label: Label
@@ -311,6 +315,11 @@ func _build_power_card(option: String) -> Control:
 		stack.add_child(_card_label("%s + %s" % [AbilityCatalog.display_name(base_id), AbilityCatalog.display_name(paired)], 8, UiTheme.PURPLE))
 	else:
 		stack.add_child(_card_label("NV. %d → %d" % [current_level, current_level + 1], 11, UiTheme.PURPLE))
+	# Put the evolution recipe directly under the level line, where it is
+	# visible before the longer ability description.
+	if not is_evolution and AbilityCatalog.has_evolution(option):
+		var partner := AbilityCatalog.evolution_partner(option)
+		stack.add_child(_card_label("Evolución: NV. %d/%d + %s NV. %d/%d" % [current_level, AbilityCatalog.MAX_LEVEL, AbilityCatalog.display_name(partner), world.passive_level(partner), AbilityCatalog.passive_max_level(partner)], 8, Color(GOLD, 0.75)))
 	var desc_text := AbilityCatalog.description(option)
 	if AbilityCatalog.is_weapon(option) and current_level > 0:
 		desc_text = AbilityCatalog.weapon_level_text(current_level + 1)
@@ -320,11 +329,6 @@ func _build_power_card(option: String) -> Control:
 	desc.max_lines_visible = 5
 	desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stack.add_child(desc)
-	# Every active card names its evolution partner, so the player learns
-	# recipes while playing instead of needing a wiki.
-	if not is_evolution and AbilityCatalog.has_evolution(option):
-		var partner := AbilityCatalog.evolution_partner(option)
-		stack.add_child(_card_label("Evoluciona con %s" % AbilityCatalog.display_name(partner), 8, Color(GOLD, 0.75)))
 	# The whole card is the button.
 	var pick := Button.new()
 	pick.flat = true
@@ -472,16 +476,17 @@ func _build_pause_content() -> void:
 	title.add_theme_color_override("font_color", UiTheme.PURPLE)
 	box.add_child(title)
 	if _confirm_exit:
-		title.text = "¿SALIR?"
-		var warning := Label.new()
-		warning.text = "Pierdes el progreso de esta partida."
-		warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		# No autowrap: a wrapping label reports a huge minimum height before
-		# layout, which stretched the dialog. The line fits the panel width.
-		warning.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
-		box.add_child(warning)
+		title.text = "¿ABANDONAR?"
+		# One line per Label, no autowrap: a wrapping label reports a huge
+		# minimum height before layout, which stretched the dialog.
+		for line in ["Termina como derrota.", "No se podrá reanudar."]:
+			var warning := Label.new()
+			warning.text = line
+			warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			warning.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+			box.add_child(warning)
 		var confirm := Button.new()
-		confirm.text = "SÍ, SALIR"
+		confirm.text = "SÍ, ABANDONAR"
 		confirm.custom_minimum_size = Vector2(0, 52)
 		confirm.add_theme_color_override("font_color", UiTheme.DANGER)
 		confirm.pressed.connect(_exit_run)
@@ -524,14 +529,28 @@ func _build_pause_content() -> void:
 		UiTheme.apply_primary(resume)
 		resume.pressed.connect(_toggle_pause)
 		box.add_child(resume)
-		var exit := Button.new()
-		exit.text = "SALIR"
-		exit.custom_minimum_size = Vector2(0, 52)
-		exit.pressed.connect(func():
+		# Leaving keeps the run (resumable from Inicio); abandoning ends it.
+		var leave_row := HBoxContainer.new()
+		leave_row.add_theme_constant_override("separation", 8)
+		box.add_child(leave_row)
+		var save_exit := Button.new()
+		save_exit.text = "GUARDAR Y SALIR"
+		save_exit.custom_minimum_size = Vector2(0, 52)
+		save_exit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		save_exit.add_theme_font_size_override("font_size", 13)
+		save_exit.pressed.connect(func(): suspend_requested.emit())
+		leave_row.add_child(save_exit)
+		var abandon := Button.new()
+		abandon.text = "ABANDONAR"
+		abandon.custom_minimum_size = Vector2(0, 52)
+		abandon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		abandon.add_theme_font_size_override("font_size", 13)
+		abandon.add_theme_color_override("font_color", UiTheme.DANGER)
+		abandon.pressed.connect(func():
 			_confirm_exit = true
 			_build_pause_content()
 		)
-		box.add_child(exit)
+		leave_row.add_child(abandon)
 	_fit_pause_panel()
 
 ## The pause view keeps its tall fixed size (it holds the build list); the
@@ -569,8 +588,8 @@ func _pause_stats() -> Control:
 	box.add_child(_card_label("DAÑO: " + "  ·  ".join(parts), 10, UiTheme.TEXT_MUTED))
 	return box
 
-## One pause-screen line per owned ability; actives also show how close
-## they are to evolving (level + paired passive).
+## One pause-screen line per owned ability. Evolution recipes live in the
+## Códex guide (only the ones already made), not here.
 func _build_row(id: String) -> Control:
 	var evolved: bool = world.is_evolved(id)
 	var row := HBoxContainer.new()
@@ -587,13 +606,6 @@ func _build_row(id: String) -> Control:
 		var weapon_hint := _card_label("Arma · %s" % AbilityCatalog.description(id), 9, Color("8a7d9c"))
 		weapon_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		text.add_child(weapon_hint)
-	if AbilityCatalog.has_evolution(id) and not evolved:
-		var partner := AbilityCatalog.evolution_partner(id)
-		var ready_level: bool = world.ability_level(id) >= AbilityCatalog.MAX_LEVEL
-		var has_partner: bool = world.passive_level(partner) > 0
-		var hint := _card_label("%s Nv.%d/%d  ·  %s %s" % ["✓" if ready_level else "·", world.ability_level(id), AbilityCatalog.MAX_LEVEL, "✓" if has_partner else "·", AbilityCatalog.display_name(partner)], 9, Color("8a7d9c"))
-		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		text.add_child(hint)
 	return row
 
 func _exit_run() -> void:

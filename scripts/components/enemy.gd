@@ -132,13 +132,52 @@ func _add_feet_collision() -> void:
 ## a golden aura so it reads as "worth chasing" from across the screen.
 func make_elite(tier: int) -> void:
 	elite_tier = tier
-	var hp_mult := 22.0 if tier >= 2 else 8.0
+	# A mini-boss is a tougher elite, but the campaign boss must take at least
+	# twice as long to defeat (base boss: 600x difficulty; mini-boss: 300x).
+	var hp_mult := 4.0 if tier >= 2 else 8.0
 	hp = int(hp * hp_mult)
 	max_hp = hp
 	contact_damage += 1
 	move_speed *= 0.9 if tier >= 2 else 0.95
 	xp_value *= 8 if tier >= 2 else 5
 	gold_value *= 5 if tier >= 2 else 3
+
+## RUN-RESUME: plain data for the run snapshot (no node references). Visual
+## and transient detour/knockback state is left out on purpose.
+func to_snapshot() -> Dictionary:
+	return {
+		"pos": [global_position.x, global_position.y], "arch": archetype, "elite": elite_tier, "boss": is_boss,
+		"hp": hp, "max_hp": max_hp, "speed": move_speed, "contact": contact_damage, "xp": xp_value, "gold": gold_value,
+		"hit_clock": hit_clock, "poison": [poison_timer, poison_tick_clock, poison_damage],
+		"burn": [burn_timer, burn_tick_clock, burn_damage], "freeze": freeze_timer, "frozen_once": _was_frozen,
+		"shock": shock_timer, "shoot": _shoot_clock,
+		"charge": [_charge_clock, _charging, _charger_elapsed, _charger_direction.x, _charger_direction.y],
+	}
+
+## Applied after setup() (and make_elite/configure_variant), before the enemy
+## enters the tree: overrides the freshly rolled stats with the saved ones.
+func apply_snapshot(data: Dictionary) -> void:
+	max_hp = maxi(1, RunSnapshot.i(data.get("max_hp"), max_hp))
+	hp = clampi(RunSnapshot.i(data.get("hp"), max_hp), 1, max_hp)
+	move_speed = maxf(0.0, RunSnapshot.f(data.get("speed"), move_speed))
+	contact_damage = maxi(0, RunSnapshot.i(data.get("contact"), contact_damage))
+	xp_value = maxi(0, RunSnapshot.i(data.get("xp"), xp_value))
+	gold_value = maxi(0, RunSnapshot.i(data.get("gold"), gold_value))
+	hit_clock = maxf(0.0, RunSnapshot.f(data.get("hit_clock"), 0.0))
+	var poison := RunSnapshot.arr(data.get("poison"), 3)
+	poison_timer = maxf(0.0, RunSnapshot.f(poison[0], 0.0)); poison_tick_clock = RunSnapshot.f(poison[1], 0.0); poison_damage = maxi(0, RunSnapshot.i(poison[2], 0))
+	var burn := RunSnapshot.arr(data.get("burn"), 3)
+	burn_timer = maxf(0.0, RunSnapshot.f(burn[0], 0.0)); burn_tick_clock = RunSnapshot.f(burn[1], 0.0); burn_damage = maxi(0, RunSnapshot.i(burn[2], 0))
+	freeze_timer = maxf(0.0, RunSnapshot.f(data.get("freeze"), 0.0))
+	# Already counted for the weapon challenge: re-freezing must not count twice.
+	_was_frozen = RunSnapshot.b(data.get("frozen_once"), false)
+	shock_timer = maxf(0.0, RunSnapshot.f(data.get("shock"), 0.0))
+	_shoot_clock = RunSnapshot.f(data.get("shoot"), 0.0)
+	var charge := RunSnapshot.arr(data.get("charge"), 5)
+	_charge_clock = RunSnapshot.f(charge[0], 0.0)
+	_charging = RunSnapshot.b(charge[1], false)
+	_charger_elapsed = RunSnapshot.f(charge[2], 0.0)
+	_charger_direction = Vector2(RunSnapshot.f(charge[3], 1.0), RunSnapshot.f(charge[4], 0.0))
 
 func apply_poison(duration: float, damage_per_tick: int) -> void:
 	poison_timer = maxf(poison_timer, duration)
@@ -187,7 +226,16 @@ func _physics_process(delta: float) -> void:
 	if _knockback.length_squared() > 1.0:
 		position += _knockback * delta
 		_knockback = _knockback.move_toward(Vector2.ZERO, 900.0 * delta)
-	queue_redraw()
+	var draw_state := _visual_state()
+	if draw_state != _last_draw_state:
+		_last_draw_state = draw_state
+		queue_redraw()
+
+func _visual_state() -> String:
+	var moving := velocity.length() > 5.0
+	var frame := int((Time.get_ticks_msec() / 1000.0 + _walk_phase) * WALK_FPS) % WALK_CYCLE.size() if moving else 0
+	var facing := -1 if velocity.x < -5.0 else (1 if velocity.x > 5.0 else 0)
+	return "%d:%d:%d:%d:%d:%d:%d:%d" % [hp, frame, facing, int(freeze_timer > 0.0), int(burn_timer > 0.0), int(poison_timer > 0.0), int(shock_timer > 0.0), int(round(hit_flash * 8.0))]
 
 func _process_chase(delta: float) -> void:
 	var direction := global_position.direction_to(target.global_position)
@@ -315,9 +363,17 @@ const ARCHETYPE_FOLDERS := {
 const ART_FACING := {"fast": -1, "charger": 1}
 const WALK_FPS := 7.0
 const WALK_CYCLE := [0, 1, 2, 1]
+## Static references ensure these dynamically selected mini-boss textures are
+## included in exported builds (paths assembled inside _draw are not scanned).
+const MINIBOSS_IDLE_TEXTURES: Array[Texture2D] = [
+	preload("res://assets/personajes/jefes/01_coloso_runico/idle.png"),
+	preload("res://assets/personajes/jefes/02_guardian_hueco/idle.png"),
+	preload("res://assets/personajes/jefes/03_matriarca_ceniza/idle.png"),
+]
 static var _walk_cache := {}
 var _walk_phase := randf() * 10.0
 var _face_left := false
+var _last_draw_state := ""
 
 static func walk_frames(folder: String, chapter: int) -> Array:
 	var key := "%s/%d" % [folder, chapter]
@@ -392,20 +448,26 @@ func visual_tint() -> Color:
 func _draw() -> void:
 	var size := visual_size()
 	if elite_tier > 0:
-		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 180.0)
 		var aura := Color("e8b84a") if elite_tier == 1 else Color("b07cff")
-		draw_circle(Vector2.ZERO, size * 0.55, Color(aura, 0.10 + 0.08 * pulse))
-		draw_arc(Vector2.ZERO, size * 0.55, 0.0, TAU, 32, Color(aura, 0.55 + 0.3 * pulse), 2.5)
+		draw_circle(Vector2.ZERO, size * 0.55, Color(aura, 0.16))
+		draw_arc(Vector2.ZERO, size * 0.55, 0.0, TAU, 32, Color(aura, 0.7), 2.5)
 	draw_set_transform(Vector2(0, size * 0.42), 0.0, Vector2(1.0, 0.35))
 	draw_circle(Vector2.ZERO, size * 0.36, Color(0, 0, 0, 0.28))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var frames: Array = [] if is_boss else walk_frames(_art_folder(), int(GameState.current_stage_context.get("chapter", 1)))
 	var top := -size / 2.0
-	if not frames.is_empty():
+	if elite_tier >= 2:
+		var chapter := clampi(int(GameState.current_stage_context.get("chapter", 1)), 1, 3)
+		var boss_texture := MINIBOSS_IDLE_TEXTURES[chapter - 1]
+		if boss_texture:
+			var boss_size := size * 0.62
+			top = -boss_size * 0.6
+			draw_texture_rect(boss_texture, Rect2(-boss_size / 2.0, top, boss_size, boss_size), false)
+	elif not frames.is_empty():
 		top = _draw_walk(frames, size)
 	elif _shared_texture == null:
 		_shared_texture = load("res://assets/personajes/enemigos/generico.png") as Texture2D
-	if frames.is_empty() and _shared_texture:
+	if elite_tier < 2 and frames.is_empty() and _shared_texture:
 		var tint := visual_tint()
 		if freeze_timer > 0.0:
 			tint = tint * Color(0.7, 0.9, 1.3)
@@ -458,11 +520,10 @@ func draw_status_icons(center: Vector2) -> void:
 	if shock_timer > 0.0: active.append("shock")
 	if active.is_empty():
 		return
-	var t := Time.get_ticks_msec() / 1000.0
 	var spacing := 15.0
 	var x := -spacing * (active.size() - 1) / 2.0
 	for status in active:
-		var c := center + Vector2(x, sin(t * 6.0 + x) * 1.5)
+		var c := center + Vector2(x, 0)
 		# Badge art for burn/poison/freeze (assets/vfx/estados); shock and any
 		# missing badge keep the small drawn glyph.
 		var badge := EmberfallVfxArt.image("estados/%s.png" % status)

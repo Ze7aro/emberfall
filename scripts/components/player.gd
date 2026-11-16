@@ -5,7 +5,7 @@ signal died
 const BASE_MAX_HP := 6 # 3 hearts, 2 half-heart units each
 const DEFAULT_SPRITE_FOLDER := "variante_01_baculo (Vaelor)"
 const SPRITE_SCALE := 0.38 # 256px source frames down to ~97px on screen
-const BASE_ATTACK_INTERVAL := 1.1 # seconds between weapon attacks; game_world scales it (Celeridad, hero, weapon level)
+const BASE_ATTACK_INTERVAL := 1.2 # seconds between weapon attacks; game_world scales it (Celeridad, hero, weapon level)
 
 var hp := BASE_MAX_HP
 var max_hp := BASE_MAX_HP
@@ -54,7 +54,7 @@ func setup(owner: Node) -> void:
 	if hero_data != null:
 		speed *= hero_data.move_speed_modifier
 	_camera = Camera2D.new()
-	_camera.zoom = Vector2(1.0, 1.0)
+	_camera.zoom = Vector2(0.8, 0.8)
 	_camera.position_smoothing_enabled = true
 	_camera.enabled = true
 	add_child(_camera)
@@ -71,6 +71,24 @@ func setup(owner: Node) -> void:
 	projectile_origin.name = "ProjectileOrigin"
 	projectile_origin.position = Vector2(19, -15) # slightly forward/up from center, not the feet
 	add_child(projectile_origin)
+	queue_redraw()
+
+## RUN-RESUME: health, stats rolled at setup() and position. Called after
+## setup() on restore, so the saved max_hp (Vitalidad picks included) and
+## speed win over whatever the current upgrades/equipment would give.
+func to_snapshot() -> Dictionary:
+	return {"pos": [global_position.x, global_position.y], "hp": hp, "max_hp": max_hp, "speed": speed,
+		"invulnerable": invulnerable, "regen": _regen_accum, "facing": [facing_direction.x, facing_direction.y]}
+
+func apply_snapshot(data: Dictionary) -> void:
+	position = RunSnapshot.v2(data.get("pos"), position)
+	max_hp = maxi(1, RunSnapshot.i(data.get("max_hp"), max_hp))
+	hp = clampi(RunSnapshot.i(data.get("hp"), max_hp), 1, max_hp)
+	speed = maxf(1.0, RunSnapshot.f(data.get("speed"), speed))
+	invulnerable = clampf(RunSnapshot.f(data.get("invulnerable"), 0.0), 0.0, 5.0)
+	_regen_accum = clampf(RunSnapshot.f(data.get("regen"), 0.0), 0.0, 1.0)
+	var facing := RunSnapshot.v2(data.get("facing"), Vector2.RIGHT)
+	facing_direction = facing.normalized() if facing.length_squared() > 0.01 else Vector2.RIGHT
 	queue_redraw()
 
 func _physics_process(delta: float) -> void:
@@ -150,3 +168,4 @@ func _update_hit_shake(delta: float) -> void:
 		_camera.offset = Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0))
 	else:
 		_camera.offset = Vector2.ZERO
+

@@ -105,14 +105,15 @@ func _draw() -> void:
 func _check_hits(moon: EmberfallOrbitalMoon, moon_index: int) -> void:
 	if not is_instance_valid(game_ref):
 		return
+	var hit_cooldown: float = HIT_COOLDOWN * game_ref.haste_upgrade_multiplier()
 	var meta_key := "orbital_moon_hit_%d" % moon_index
 	for enemy in game_ref.enemies:
 		if not is_instance_valid(enemy) or enemy.dead:
 			continue
 		if moon.global_position.distance_to(enemy.global_position) > HIT_DISTANCE:
 			continue
-		var last: float = enemy.get_meta(meta_key, -HIT_COOLDOWN)
-		if _orbit_time - last < HIT_COOLDOWN:
+		var last: float = enemy.get_meta(meta_key, -hit_cooldown)
+		if _orbit_time - last < hit_cooldown:
 			continue
 		enemy.set_meta(meta_key, _orbit_time)
 		game_ref._apply_damage(enemy, damage, true, true, "orbital")

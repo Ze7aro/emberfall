@@ -108,6 +108,25 @@ func configure_variant(new_variant: int) -> void:
 		_:
 			pass
 
+func to_snapshot() -> Dictionary:
+	var data := super.to_snapshot()
+	data["variant"] = variant
+	data["pattern_clock"] = _pattern_clock
+	data["pattern_index"] = _pattern_index
+	data["in_pattern"] = _state != "chase"
+	return data
+
+## A boss saved mid-attack comes back chasing, with its next attack close:
+## its warning plays again in full instead of landing an unannounced hit (and
+## zones/runes in flight are not part of the snapshot).
+func apply_snapshot(data: Dictionary) -> void:
+	super.apply_snapshot(data)
+	_state = "chase"
+	_pattern_index = clampi(RunSnapshot.i(data.get("pattern_index"), 0), 0, 1)
+	_pattern_clock = clampf(RunSnapshot.f(data.get("pattern_clock"), 0.0), 0.0, pattern_cooldown)
+	if RunSnapshot.b(data.get("in_pattern"), false):
+		_pattern_clock = pattern_cooldown * 0.5
+
 func _physics_process(delta: float) -> void:
 	if dead or not is_instance_valid(target) or GameState.screen != "playing":
 		return

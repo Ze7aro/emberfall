@@ -16,11 +16,14 @@ static func build_sprite_frames(folder: String) -> SpriteFrames:
 
 	for dir in ["right", "left"]:
 		var anim := "walk_%s" % dir
+		# The source pack labels the directional frames opposite to the way
+		# the character faces: walk_left points right and vice versa.
+		var source_dir := "left" if dir == "right" else "right"
 		frames.add_animation(anim)
 		frames.set_animation_loop(anim, true)
 		frames.set_animation_speed(anim, WALK_FPS)
 		for i in 3:
-			frames.add_frame(anim, load("%s/walk_%s_%02d.png" % [base, dir, i]))
+			frames.add_frame(anim, load("%s/walk_%s_%02d.png" % [base, source_dir, i]))
 
 	frames.add_animation("attack")
 	frames.set_animation_loop("attack", false)

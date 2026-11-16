@@ -12,6 +12,9 @@ func setup(amount: int, gold: bool = false) -> void:
 	is_gold = gold
 	queue_redraw()
 
+func to_snapshot() -> Dictionary:
+	return {"pos": [global_position.x, global_position.y], "value": value, "gold": is_gold, "mag": magnetized}
+
 func absorb(amount: int) -> void:
 	value += amount
 	queue_redraw()

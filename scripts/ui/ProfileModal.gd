@@ -43,7 +43,7 @@ func _build() -> void:
 
 	var settings := Button.new()
 	settings.text = "CONFIGURACIÓN"
-	settings.icon = load("res://assets/ui/icons/settings.png") as Texture2D
+	settings.icon = load("res://assets/ui/icons/engranajes.png") as Texture2D
 	settings.custom_minimum_size = Vector2(0, 44)
 	settings.pressed.connect(func(): settings_requested.emit())
 	box.add_child(settings)

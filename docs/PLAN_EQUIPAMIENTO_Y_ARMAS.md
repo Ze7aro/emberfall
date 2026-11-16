@@ -2,7 +2,7 @@
 
 Decisiones tomadas (2026-11-03):
 - **Armas de héroe estilo Vampire Survivors.** Cada héroe arranca solo con su ataque, que pasa a ser un arma de nivel 1. Los ataques de los otros héroes aparecen al subir de nivel, pero solo los que desbloqueaste: primero desbloqueás al héroe y después, con un desafío con ese héroe, desbloqueás su arma para todos.
-- **Casilleros:** 6 activas y 6 pasivas por partida.
+- **Casilleros:** máximo de 4 activas y 4 pasivas por partida.
 - **Equipamiento completo:** más stats, objetos con nivel, rareza legendaria con efecto único y sets.
 - **Dónde se consigue:** baúles de la Tienda, jefes y élites en partida, misiones y mazmorras.
 
@@ -35,7 +35,7 @@ Decisiones tomadas (2026-11-03):
   - Nv. 4: atraviesa 1 enemigo más y +20 % de alcance.
   - Nv. 5: +30 % de daño y ataca 20 % más rápido.
 - El efecto del elemento viaja con el arma: el Disparo de Fuego quema aunque lo use otro héroe.
-- Las armas tienen **evolución** como las habilidades: nivel 5 más una pasiva emparejada da una versión dorada. Esto va en una fase posterior.
+- Las armas tienen **evolución** como las habilidades: nivel 5 más su pasiva emparejada al nivel 5 da una versión dorada. Esto va en una fase posterior.
 
 ### Desbloqueo
 Para usar el arma de un héroe con otros:
@@ -86,7 +86,7 @@ Al cumplirlo, aparece un aviso: "Arma desbloqueada: Flecha".
 | Anillo | Crítico |
 | Botas | Velocidad |
 
-- **Stats secundarias al azar** según la rareza: común 0, raro 1, épico 2, legendario 2 más un efecto único. Se eligen entre área, imán, oro, experiencia, regeneración y velocidad de proyectil.
+- **Stats secundarias al azar** según la rareza: común 0, raro 1, épico 2, legendario 2 más un efecto único. Se eligen entre área, imán, oro, experiencia y velocidad de proyectil.
 - **Efectos únicos de los legendarios** (ejemplos):
   - Al matar, 3 % de chance de soltar un corazón.
   - Cada 10 s, la próxima habilidad hace el doble de daño.
@@ -138,7 +138,7 @@ Los 18 objetos actuales se convierten al sistema nuevo y se conservan, en nivel 
 
 | # | Fase | Qué se puede probar al terminar |
 |---|---|---|
-| 1 | ✅ Casilleros 6 + 6 | Una partida con 6 activas y 6 pasivas, barra y pausa incluidas |
+| 1 | ✅ Casilleros 4 + 4 | Una partida con hasta 4 activas y 4 pasivas, barra y pausa incluidas |
 | 2 | ✅ Ataques de héroe convertidos en armas | Cada héroe arranca con su arma, que sube de nivel 1 a 5 al subir de nivel |
 | 3 | ✅ Armas de otros héroes en el pool y desbloqueo | Desafío con progreso, aviso al desbloquear y el arma apareciendo con otro héroe |
 | 4 | ✅ Pantallas de armas | Selección de héroe con el arma y su desafío, Códex de armas |
@@ -163,7 +163,7 @@ Si falta el ícono de un arma o de un objeto, el juego usa uno provisorio: el sp
 - **Nivel máximo por rareza:** 10 / 20 / 30 / 40 / 50 / 60. Cada nivel suma 5 % del valor de nivel 1 (nivel 60 = x3,95).
 - **Secundarias por rareza:** 0 / 1 / 2 / 2 / 3 / 3.
 - **Stat principal en nivel 1** (común → legendario): Daño 3/5/7/10/13/16, Vida 1/1/2/2/3/4 medios corazones, Bloqueo 2/3/4/5/6/7 %, Enfriamiento y Crítico 3/4/5/7/8/10 %, Velocidad 4/5/7/9/11/14 %.
-- **Secundarias:** Área 4/5/6/7/8/10 %, Imán 8/10/12/14/16/20 %, Oro 5/6/8/10/12/15 %, Experiencia 4/5/6/7/8/10 %, Regeneración 1/1,2/1,5/2/2,5/3 medios corazones por minuto, Vel. de proyectil 5/6/8/10/12/15 %.
+- **Secundarias:** Área 4/5/6/7/8/10 %, Imán 8/10/12/14/16/20 %, Oro 5/6/8/10/12/15 %, Experiencia 4/5/6/7/8/10 %, Vel. de proyectil 5/6/8/10/12/15 %.
 - **Baúles:** el común da común o poco común; el épico, raro o épico. Probabilidades: común 50, poco común 30, raro 15, épico 5. Épico+ y legendario solo salen de la Forja por ahora (la chance de legendario del baúl épico va en la fase 7).
 
 ## Valores de la fase 6
@@ -209,7 +209,7 @@ Sin set: Garra Afilada, Corazón de Roble, Yelmo de Hierro, Amuleto de Brasa, An
 En pantalla: el detalle del objeto muestra su set, cuántas piezas tenés equipadas y qué bonus están activos (✓). El resumen de stats del equipo suma los bonus de set y lista los sets activos.
 
 ## Valores de la fase 9
-Un arma en nivel 5 más su pasiva emparejada aparece como carta dorada al subir de nivel, igual que las habilidades. El arma dorada hace +30 % de daño, sus disparos brillan dorados y suma un efecto propio:
+Un arma en nivel 5 más su pasiva emparejada en nivel 5 aparece como carta dorada al subir de nivel, igual que las habilidades. El arma dorada hace +30 % de daño, sus disparos brillan dorados y suma un efecto propio:
 
 | Héroe | Arma | Pasiva | Evolución | Efecto |
 |---|---|---|---|---|
@@ -228,8 +228,8 @@ Un arma en nivel 5 más su pasiva emparejada aparece como carta dorada al subir 
 | Raiken | Onda de Puño | Celeridad | Puño del Trueno | Los golpes lanzan rayos a 2 enemigos más |
 | Darven | Corte en X | Área | Vendaval de Acero | Cada 3 ataques, cortes alrededor que empujan |
 
-- Las cartas y la barra de la partida muestran "Evoluciona con …" también para las armas.
-- El Códex de armas muestra la receta ("nivel 5 + pasiva → ???") hasta que la evolucionás por primera vez; después, el nombre y el efecto.
+- Las cartas muestran el nivel actual de la activa/arma y su pasiva emparejada; ambas deben llegar al máximo para evolucionar.
+- El Códex de armas muestra la receta ("nivel 5 + pasiva nivel 5 → ???") hasta que la evolucionás por primera vez; después, el nombre y el efecto.
 
 ## A definir más adelante
 - Desafíos y números finales (los de la tabla son una propuesta).

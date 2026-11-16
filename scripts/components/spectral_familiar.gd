@@ -1,6 +1,8 @@
 extends Node2D
 class_name EmberfallSpectralFamiliar
 
+const SkillProjectileScript := preload("res://scripts/components/skill_projectile.gd")
+
 ## Familiar Espectral: floats around the player at its own slot on a slow
 ## circle and shoots a bolt at the nearest enemy in range on its own clock.
 ## game_world owns the stats and re-syncs them on every level/evolution.
@@ -36,9 +38,9 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 func _fire(target: EmberfallEnemy) -> void:
-	var bolt := EmberfallSkillProjectile.new()
+	var bolt := SkillProjectileScript.new()
 	bolt.game_ref = game_ref
-	bolt.style = EmberfallSkillProjectile.Style.BOLT
+	bolt.style = SkillProjectileScript.Style.BOLT
 	bolt.color = Color("8ff0d0")
 	bolt.global_position = global_position
 	bolt.direction = global_position.direction_to(target.global_position)

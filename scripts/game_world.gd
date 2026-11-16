@@ -3,7 +3,7 @@ extends Node2D
 ## Short in-run banner (hordes, élites, chests, evolutions); ui.gd shows it.
 signal announced(text: String, color: Color)
 
-const BOSS_TIME := 720.0
+const BOSS_TIME := 900.0
 const GOLD := Color("e8b84a")
 const DANGER := Color("e86958")
 const VIOLET := Color("b07cff")
@@ -15,14 +15,14 @@ const ELITE_INTERVAL_MAX := 120.0
 ## circle around the player, "swarm" sends a fast column from one side, and
 ## "miniboss" brings a tier-2 élite that drops an epic chest.
 const WAVE_EVENTS := [
-	{"time": 150.0, "type": "ring"},
-	{"time": 240.0, "type": "swarm"},
-	{"time": 330.0, "type": "ring"},
-	{"time": 360.0, "type": "miniboss"},
-	{"time": 420.0, "type": "swarm"},
-	{"time": 510.0, "type": "ring"},
-	{"time": 600.0, "type": "swarm"},
-	{"time": 660.0, "type": "ring"},
+	{"time": 188.0, "type": "ring"},
+	{"time": 300.0, "type": "swarm"},
+	{"time": 413.0, "type": "ring"},
+	{"time": 450.0, "type": "miniboss"},
+	{"time": 525.0, "type": "swarm"},
+	{"time": 638.0, "type": "ring"},
+	{"time": 750.0, "type": "swarm"},
+	{"time": 825.0, "type": "ring"},
 ]
 ## Chance per regular kill for each small drop (rolled once, in this order).
 const DROP_POTION := 0.008
@@ -30,6 +30,7 @@ const DROP_MAGNET := 0.004
 const DROP_BOMB := 0.003
 const POTION_HEAL := 2 # 1 full heart
 const MAX_ABILITY_LEVEL := AbilityCatalog.MAX_LEVEL
+const SkillProjectileScript := preload("res://scripts/components/skill_projectile.gd")
 
 ## STAGE-01: each of the 10 campaign stages (keyed by HomeScreen's 1-based
 ## index, matching its STAGE_NAMES order) gets its own enemy mix instead of
@@ -69,6 +70,9 @@ var spawn_interval := 2.2
 var enemies: Array[EmberfallEnemy] = []
 var orbs: Array[EmberfallXPOrb] = []
 var projectiles: Array[EmberfallProjectile] = []
+const PROJECTILE_GRID_CELL_SIZE := 96.0
+const PROJECTILE_HIT_RADIUS := 34.0
+var _projectile_enemy_grid: Dictionary = {}
 var pickups: Array[EmberfallPickup] = []
 var _next_elite_time := ELITE_INTERVAL_MIN
 ## Run stats reported to GameState.record_run() (ability unlocks).
@@ -112,7 +116,6 @@ var _familiars: Array[EmberfallSpectralFamiliar] = []
 var aegis_charges := 0
 var _aegis_bubble: EmberfallAegisBubble
 var _aegis_clock := 0.0
-var _solar_heal_clock := 0.0
 var _cataclysm_clock := 0.0
 ## Set by _apply_damage so callers (Guadaña del Vacío) know if the hit crit.
 var _last_hit_crit := false
@@ -299,10 +302,32 @@ var _empowered := false
 func _eq(stat: String) -> float:
 	return float(_equip.get(stat, 0.0))
 
+## RUN-RESUME: MainLayout sets this before add_child() to continue a saved
+## run (GameState.active_run) instead of starting a new one.
+var restore_snapshot: Dictionary = {}
+## Permanent upgrade levels frozen when the run started: buying upgrades in
+## the menu while a run is pending must not make the resumed run stronger.
+var _run_upgrades := {}
+## Game-time seconds between periodic snapshots (pause, level-up, focus loss
+## and leaving to the menu also save).
+const RUN_AUTOSAVE_INTERVAL := 20.0
+var _autosave_clock := 0.0
+## Set once the run was stored and handed back to the menu ("Salir").
+var _suspended := false
+
 func _ready() -> void:
-	_equip = GameState.equipment_totals()
-	_effects = GameState.equipped_effects()
-	GameState.change_screen("playing")
+	var restoring := not restore_snapshot.is_empty()
+	if restoring:
+		var saved_world := RunSnapshot.dict(restore_snapshot.get("world"))
+		_equip = RunSnapshot.float_map(saved_world.get("equip"))
+		for id in RunSnapshot.strings(saved_world.get("effects")):
+			_effects[id] = true
+		_run_upgrades = RunSnapshot.int_map(saved_world.get("upgrades"))
+	else:
+		_equip = GameState.equipment_totals()
+		_effects = GameState.equipped_effects()
+		_capture_upgrades()
+		GameState.change_screen("playing")
 	GameState.set_boss_encounter(false)
 	_build_biome_background()
 	player = EmberfallPlayer.new()
@@ -313,13 +338,28 @@ func _ready() -> void:
 	sparks = EmberfallSparks.new()
 	add_child(sparks)
 	_setup_lighting()
-	rerolls = 2 + _up("reroll")
-	banishes = 2 + _up("banish")
-	_revives_left = _up("revival")
-	_gold_at_start = GameState.gold
-	_grant_hero_weapon()
-	for i in 4:
-		spawn_enemy()
+	if restoring:
+		_restore(restore_snapshot)
+	else:
+		rerolls = 2 + _up("reroll")
+		banishes = 2 + _up("banish")
+		_revives_left = _up("revival")
+		_gold_at_start = GameState.gold
+		_grant_hero_weapon()
+		for i in 4:
+			spawn_enemy()
+	GameState.set_run_snapshot_provider(capture_snapshot)
+	if not restoring:
+		# The run exists on disk from its first second: closing the app right
+		# away still leaves it resumable (energy was already paid).
+		GameState.save()
+
+func _capture_upgrades() -> void:
+	_run_upgrades = {}
+	for id in UpgradeCatalog.LEGACY_IDS:
+		_run_upgrades[str(id)] = GameState.get_upgrade_level(str(id))
+	for entry in UpgradeCatalog.UPGRADES:
+		_run_upgrades[str(entry["id"])] = GameState.get_upgrade_level(str(entry["id"]))
 
 ## Dim arena with a few warm lights (hero, élites, boss), so the
 ## violet/teal palette glows. Kept to a handful of lights: the Compatibility
@@ -369,7 +409,12 @@ func own_weapon_id() -> String:
 func _physics_process(delta: float) -> void:
 	if GameState.screen != "playing":
 		return
+	_rebuild_projectile_enemy_grid()
 	elapsed += delta
+	_autosave_clock += delta
+	if _autosave_clock >= RUN_AUTOSAVE_INTERVAL:
+		_autosave_clock = 0.0
+		GameState.save()
 	if _damage_taken <= CLEAN_RUN_MAX_LOSS:
 		_clean_time = elapsed
 	if not boss_spawned and elapsed >= _boss_time():
@@ -413,6 +458,7 @@ func spawn_boss() -> void:
 		boss.add_child(make_light(220.0, Color(0.55, 0.95, 0.95), 0.7))
 	add_child(boss)
 	enemies.append(boss)
+	GameState.save()
 
 # --- Active abilities --------------------------------------------------------
 
@@ -427,6 +473,7 @@ func update_powers(delta: float) -> void:
 	damage_source = "basic"
 
 func _update_powers_inner(delta: float, cd: float) -> void:
+	_tick_weapon_bursts(delta)
 	for id: String in skills:
 		if AbilityCatalog.is_weapon(id):
 			_tick_weapon(id)
@@ -434,7 +481,7 @@ func _update_powers_inner(delta: float, cd: float) -> void:
 		var interval := (0.3 if is_evolved("daggers") else 1.1) * attack_speed_multiplier()
 		if _due("daggers", interval):
 			_fire_daggers(skill_level("daggers"))
-	if skills.has("fire") and _due("fire", FIRE_TICK_INTERVAL):
+	if skills.has("fire") and _due("fire", FIRE_TICK_INTERVAL * haste_upgrade_multiplier()):
 		_tick_fire_aura(skill_level("fire"), delta)
 	if skills.has("chain") and _due("chain", (1.2 if is_evolved("chain") else 2.0) * cd):
 		_fire_chain(skill_level("chain"))
@@ -489,7 +536,7 @@ func _fire_daggers(lvl: int) -> void:
 		aim = player.global_position.direction_to(target.global_position)
 	for i in count:
 		var spread := deg_to_rad(9.0) * (float(i) - float(count - 1) / 2.0)
-		var dagger := _make_skill_projectile(EmberfallSkillProjectile.Style.DAGGER, "daggers")
+		var dagger := _make_skill_projectile(SkillProjectileScript.Style.DAGGER, "daggers")
 		dagger.direction = aim.rotated(spread)
 		dagger.speed = DAGGER_SPEED * proj_speed_multiplier()
 		dagger.damage = 9 + 4 * lvl
@@ -499,26 +546,18 @@ func _fire_daggers(lvl: int) -> void:
 	SfxPlayer.play("combat/basic_projectile.wav")
 
 ## Aura Ígnea: unlike the other actives this isn't a burst on a cooldown,
-## it's meant to be *constant* — so its tick rate stays fixed instead of
-## scaling with Enfriamiento. Corona Solar also heals while it's burning.
+## it doesn't use Enfriamiento, but Celeridad still shortens its attack tick.
 func _tick_fire_aura(lvl: int, _delta: float) -> void:
 	damage_source = "fire"
 	var radius := fire_aura_radius()
 	var tick_damage := int(round((4.0 + lvl * 3.0) * 0.5 * (1.5 if is_evolved("fire") else 1.0)))
-	var burned_any := false
 	for enemy in enemies:
 		if is_instance_valid(enemy) and not enemy.dead and enemy.global_position.distance_to(player.global_position) < radius:
 			enemy.apply_burn(2.0 * duration_multiplier(), 2 + lvl)
 			_apply_damage(enemy, tick_damage)
-			burned_any = true
-	if is_evolved("fire"):
-		_solar_heal_clock += FIRE_TICK_INTERVAL
-		if burned_any and _solar_heal_clock >= 6.0:
-			_solar_heal_clock = 0.0
-			player.heal(1)
 
 func fire_aura_radius() -> float:
-	return (FIRE_AURA_BASE_RADIUS + 6.0 * skill_level("fire")) * area_multiplier() * (1.4 if is_evolved("fire") else 1.0)
+	return (FIRE_AURA_BASE_RADIUS + 18.0 + 6.0 * skill_level("fire")) * area_multiplier() * (1.4 if is_evolved("fire") else 1.0)
 
 ## Cadena Eléctrica: capped per jump so the arc reads as lightning hopping
 ## between nearby enemies, not teleporting across the map. Every hit
@@ -534,7 +573,8 @@ func _fire_chain(lvl: int) -> void:
 		var target: EmberfallEnemy = nearest_from(remaining, origin, jump_range)
 		if not target:
 			break
-		_apply_damage(target, 20 + lvl * 8)
+		var jump_damage := maxi(1, int(round((16.0 + lvl * 6.0) * pow(0.5, i))))
+		_apply_damage(target, jump_damage)
 		if is_instance_valid(target):
 			target.apply_shock(1.5 * duration_multiplier())
 		_spawn_chain_fx(origin, target.global_position)
@@ -561,8 +601,23 @@ func _trigger_blizzard(lvl: int) -> void:
 ## EmberfallPoisonBombProjectile), then on landing leaves a pool that keeps
 ## poisoning whatever stands in it until it dissipates.
 func _trigger_poison_bomb(lvl: int) -> void:
-	var angle := randf_range(0.0, TAU)
-	var pos := player.global_position + Vector2(cos(angle), sin(angle)) * randf_range(60.0, 180.0)
+	var pos := player.global_position
+	var active_targets: Array[Vector2] = []
+	for child in get_children():
+		if child is EmberfallPoisonBombProjectile:
+			active_targets.append(child.destination)
+		elif child is EmberfallPoisonPool:
+			active_targets.append(child.global_position)
+	for attempt in 12:
+		var angle := randf_range(0.0, TAU)
+		pos = player.global_position + Vector2.from_angle(angle) * randf_range(60.0, 180.0)
+		var separated := true
+		for target in active_targets:
+			if pos.distance_squared_to(target) < 110.0 * 110.0:
+				separated = false
+				break
+		if separated:
+			break
 	var thrown := preload("res://scripts/components/poison_bomb_projectile.gd").new()
 	thrown.launch(player.global_position, pos)
 	thrown.landed.connect(_spawn_poison_pool.bind(lvl))
@@ -588,19 +643,19 @@ func _fire_boomerang(lvl: int) -> void:
 	var target: EmberfallEnemy = nearest_from(enemies, player.global_position, 400.0)
 	var aim := player.global_position.direction_to(target.global_position) if target else player.facing_direction
 	for i in count:
-		var axe := _make_skill_projectile(EmberfallSkillProjectile.Style.AXE, "boomerang")
+		var axe := _make_skill_projectile(SkillProjectileScript.Style.AXE, "boomerang")
 		axe.direction = aim.rotated(TAU * float(i) / float(count))
 		axe.damage = 16 + 6 * lvl
 		axe.pierce = -1
 		axe.hit_radius = 20.0 * area_multiplier()
 		axe.visual_scale = area_multiplier()
 		if is_evolved("boomerang"):
-			axe.mode = EmberfallSkillProjectile.Mode.SPIRAL
+			axe.mode = SkillProjectileScript.Mode.SPIRAL
 			axe.speed = 300.0 * proj_speed_multiplier()
 			axe.lifetime = 2.6 * duration_multiplier()
 			axe.rehit_interval = 0.5
 		else:
-			axe.mode = EmberfallSkillProjectile.Mode.BOOMERANG
+			axe.mode = SkillProjectileScript.Mode.BOOMERANG
 			axe.speed = 380.0 * proj_speed_multiplier()
 			axe.out_distance = 220.0 * area_multiplier()
 			axe.return_target = player
@@ -676,9 +731,9 @@ func _fire_shards(lvl: int) -> void:
 		_spawn_shard(player.global_position, Vector2(cos(angle), sin(angle)), 12 + 5 * lvl, 1 + lvl + bounce_bonus(), 3.5 * duration_multiplier(), true)
 
 func _spawn_shard(at: Vector2, dir: Vector2, shard_damage: int, bounce_count: int, life: float, can_split: bool) -> void:
-	var shard := _make_skill_projectile(EmberfallSkillProjectile.Style.SHARD, "shard")
+	var shard := _make_skill_projectile(SkillProjectileScript.Style.SHARD, "shard")
 	shard.global_position = at
-	shard.mode = EmberfallSkillProjectile.Mode.BOUNCE
+	shard.mode = SkillProjectileScript.Mode.BOUNCE
 	shard.direction = dir
 	shard.speed = 420.0 * proj_speed_multiplier()
 	shard.damage = shard_damage
@@ -732,8 +787,8 @@ func try_block() -> bool:
 		_spawn_burst_fx(player.global_position, radius, EmberfallFx.evolved_color(shield_color))
 	return true
 
-func _make_skill_projectile(style: int, id: String) -> EmberfallSkillProjectile:
-	var projectile := EmberfallSkillProjectile.new()
+func _make_skill_projectile(style: int, id: String) -> SkillProjectileScript:
+	var projectile: SkillProjectileScript = SkillProjectileScript.new()
 	projectile.game_ref = self
 	projectile.style = style
 	projectile.color = AbilityCatalog.color(id)
@@ -805,7 +860,7 @@ func _refresh_powers() -> void:
 ## Fuego Constante's frame_01/02 are a near-solid disc (unlike frame_00's
 ## sparse ring); the base radius keeps the aura's footprint inside the
 ## Lunas' orbit so the two don't fight for the same screen space.
-const FIRE_AURA_BASE_RADIUS := 44.0
+const FIRE_AURA_BASE_RADIUS := 60.0
 const FIRE_TICK_INTERVAL := 0.25
 ## Cadena Eléctrica: bounded to a believable lightning hop.
 const CHAIN_JUMP_RANGE := 220.0
@@ -969,6 +1024,7 @@ func hit_stop(duration: float) -> void:
 
 func _exit_tree() -> void:
 	Engine.time_scale = 1.0
+	GameState.clear_run_snapshot_provider(capture_snapshot)
 
 ## Public so enemy.gd can show numbers for its own poison/burn ticks too,
 ## keeping every damage source visually consistent.
@@ -1040,6 +1096,8 @@ func _dungeon_modifier() -> String:
 func _stage_spawn_interval_mult() -> float:
 	if _dungeon_modifier() == "swarm":
 		return 0.7
+	if _dungeon_modifier() == "reckoning":
+		return 0.8 if elapsed >= 600.0 else 1.0
 	if str(GameState.current_stage_context.get("type", "")) != "stage":
 		return 1.0
 	var stage_index := int(GameState.current_stage_context.get("index", 0))
@@ -1049,7 +1107,7 @@ func _difficulty_multiplier() -> float:
 	return 1.3 if _dungeon_modifier() == "hardened" else 1.0
 
 func _boss_time() -> float:
-	return 480.0 if _dungeon_modifier() == "reckoning" else BOSS_TIME
+	return BOSS_TIME
 
 ## Stages and dungeons alike already carry a real "chapter" (1-3, see
 ## HomeScreen/DungeonSelectionScreen) — reused here to pick which of the 3
@@ -1237,7 +1295,7 @@ func _debug_show_ability(step: int) -> void:
 	_refresh_powers()
 	announced.emit("PRUEBA: %s NV. 1" % AbilityCatalog.display_name(id), GOLD)
 
-## Debug: +1 level to the previewed active; past the max it evolves.
+## Debug: level the previewed active, then its paired passive, then evolve.
 func _debug_level_up_ability() -> void:
 	if _debug_ability_index < 0:
 		_debug_show_ability(1)
@@ -1249,7 +1307,12 @@ func _debug_level_up_ability() -> void:
 		skills[id] = skill_level(id) + 1
 		announced.emit("PRUEBA: %s NV. %d" % [AbilityCatalog.display_name(id), skill_level(id)], GOLD)
 	elif not is_evolved(id):
-		_apply_evolution(id)
+		var partner := AbilityCatalog.evolution_partner(id)
+		if passive_level(partner) < AbilityCatalog.passive_max_level(partner):
+			passives[partner] = passive_level(partner) + 1
+			announced.emit("PRUEBA: %s NV. %d" % [AbilityCatalog.display_name(partner), passive_level(partner)], GOLD)
+		else:
+			_apply_evolution(id)
 	_refresh_powers()
 
 func _debug_clear_actives() -> void:
@@ -1301,6 +1364,11 @@ func is_on_screen(world_position: Vector2, inset: float = 16.0) -> bool:
 
 ## Attacks per weapon, for every-Nth effects and alternating swing frames.
 var _weapon_attack_counts := {}
+## Shots a multi-shot attack still owes, per weapon id (see _fire_weapon).
+var _weapon_bursts := {}
+## Gap between the shots of one volley; shortened when needed so a volley
+## always ends before the weapon's next attack.
+const WEAPON_BURST_GAP := 0.07
 
 ## A weapon fires once its interval has passed and an enemy is in range;
 ## with nobody in range it stays ready and fires as soon as one shows up.
@@ -1313,15 +1381,18 @@ func _tick_weapon(id: String) -> void:
 	if float(skill_timers.get(id, 0.0)) < interval:
 		return
 	skill_timers[id] = interval
-	if _fire_weapon(id, hero_data, stats):
+	if _fire_weapon(id, hero_data, stats, interval):
 		skill_timers[id] = 0.0
 		if id == own_weapon_id():
 			player.play_attack()
 
-## Hero weapon: aimed at the nearest enemies in range. Grows with its own
+## Hero weapon: aimed at the nearest enemy in range. Grows with its own
 ## level plus passives (Fuerza, Celeridad, Amplitud, Velocidad de
-## proyectil, Crítico) and permanent upgrades/equipment.
-func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bool:
+## proyectil, Crítico) and permanent upgrades/equipment. Several shots
+## (Multiproyectil, weapon level, volley evolution) go out as a quick volley,
+## each shot re-aimed at the nearest enemy not already doomed by the shots in
+## flight — so a lone enemy takes them all.
+func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary, interval: float) -> bool:
 	# Gate candidates by the real attack range instead of just picking the
 	# globally nearest, which read as infinite range.
 	var attack_range := weapon_range(id)
@@ -1334,7 +1405,7 @@ func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bo
 	living_enemies.sort_custom(func(a, b):
 		return player.global_position.distance_squared_to(a.global_position) < player.global_position.distance_squared_to(b.global_position)
 	)
-	var bonus_damage := GameState.permanent_damage + int(round(_eq("damage")))
+	var bonus_damage := _up("damage") + int(round(_eq("damage")))
 	var base_damage := (BASIC_ATTACK_BASE_DAMAGE + bonus_damage * 2) * float(stats["damage"])
 	var evo_trait := AbilityCatalog.weapon_trait(id) if is_evolved(id) else ""
 	if evo_trait != "":
@@ -1354,27 +1425,101 @@ func _fire_weapon(id: String, hero_data: CharacterData, stats: Dictionary) -> bo
 		_trigger_melee_aoe(id, hero_data, final_damage)
 		return true
 
-	var shot_range_scale := hero_data.attack_range_scale * float(stats["range"])
-	SfxPlayer.play("combat/basic_melee.wav" if hero_data.attack_range_scale < 1.0 else "combat/basic_projectile.wav")
 	var shot_count := 1 + amount_bonus() + int(stats["shots"]) + (2 if evo_trait == "volley" else 0)
-	var shot_frame_names := _shot_frame_names(hero_data, attack_count)
-	var origin_pos := player.projectile_origin.global_position if is_instance_valid(player.projectile_origin) else player.position
-	for i in mini(shot_count, living_enemies.size()):
-		var target: EmberfallEnemy = living_enemies[i]
-		var projectile := EmberfallProjectile.new()
-		projectile.position = origin_pos
-		projectile.setup(target.position, final_damage, hero_data.attack_color, hero_data.attack_sprite_folder, shot_range_scale, shot_frame_names)
-		projectile.speed = PROJECTILE_SPEED * proj_speed_multiplier()
-		projectile.set_meta("hit_enemies", [])
-		projectile.set_meta("max_pierces", 999 if evo_trait == "pierce" else int(stats["pierce"]))
-		projectile.set_meta("source", id)
-		if evo_trait != "":
-			projectile.modulate = Color(1.3, 1.12, 0.65)
-		projectile.set_meta("hero", hero_data)
-		projectile.tree_exiting.connect(_on_projectile_removed.bind(projectile))
-		add_child(projectile)
-		projectiles.append(projectile)
+	var shot := {
+		"id": id,
+		"hero": hero_data,
+		"damage": final_damage,
+		"range": attack_range,
+		"range_scale": hero_data.attack_range_scale * float(stats["range"]),
+		"frames": _shot_frame_names(hero_data, attack_count),
+		"pierce": 999 if evo_trait == "pierce" else int(stats["pierce"]),
+		"evolved": evo_trait != "",
+	}
+	_fire_weapon_shot(shot)
+	if shot_count > 1:
+		shot["left"] = shot_count - 1
+		shot["gap"] = minf(WEAPON_BURST_GAP, interval * 0.8 / float(shot_count - 1))
+		shot["clock"] = 0.0
+		_weapon_bursts[id] = shot
+	else:
+		_weapon_bursts.erase(id)
 	return true
+
+## Fires the shots a volley still owes, spaced by its gap. A volley with no
+## target left (all dead, out of range or off screen) is dropped.
+func _tick_weapon_bursts(delta: float) -> void:
+	for id in _weapon_bursts.keys():
+		var shot: Dictionary = _weapon_bursts[id]
+		if not skills.has(id):
+			_weapon_bursts.erase(id)
+			continue
+		shot["clock"] = float(shot["clock"]) + delta
+		while int(shot["left"]) > 0 and float(shot["clock"]) >= float(shot["gap"]):
+			shot["clock"] = float(shot["clock"]) - float(shot["gap"])
+			shot["left"] = int(shot["left"]) - 1
+			if not _fire_weapon_shot(shot):
+				shot["left"] = 0
+		if int(shot["left"]) <= 0:
+			_weapon_bursts.erase(id)
+
+## One projectile of a weapon attack, aimed at the current best target.
+func _fire_weapon_shot(shot: Dictionary) -> bool:
+	var target := _weapon_target(float(shot["range"]))
+	if target == null:
+		return false
+	var hero_data: CharacterData = shot["hero"]
+	SfxPlayer.play("combat/basic_melee.wav" if hero_data.attack_range_scale < 1.0 else "combat/basic_projectile.wav")
+	var projectile := EmberfallProjectile.new()
+	projectile.position = player.projectile_origin.global_position if is_instance_valid(player.projectile_origin) else player.position
+	projectile.setup(target.position, int(shot["damage"]), hero_data.attack_color, hero_data.attack_sprite_folder, float(shot["range_scale"]), shot["frames"])
+	projectile.speed = PROJECTILE_SPEED * proj_speed_multiplier()
+	projectile.set_meta("hit_enemies", [])
+	projectile.set_meta("collision_from", projectile.global_position)
+	projectile.set_meta("max_pierces", int(shot["pierce"]))
+	projectile.set_meta("source", str(shot["id"]))
+	projectile.set_meta("aim_target", target)
+	if bool(shot["evolved"]):
+		projectile.modulate = Color(1.3, 1.12, 0.65)
+	projectile.set_meta("hero", hero_data)
+	projectile.tree_exiting.connect(_on_projectile_removed.bind(projectile))
+	add_child(projectile)
+	projectiles.append(projectile)
+	return true
+
+## Nearest on-screen enemy within `attack_range` whose remaining HP isn't
+## already covered by the weapon shots flying at it; when every candidate is
+## covered (e.g. a lone enemy) it's simply the nearest one.
+func _weapon_target(attack_range: float) -> EmberfallEnemy:
+	var origin := player.global_position
+	var max_distance_squared := attack_range * attack_range
+	var nearest: EmberfallEnemy
+	var nearest_distance := INF
+	var open_target: EmberfallEnemy
+	var open_distance := INF
+	for enemy in enemies:
+		if not is_instance_valid(enemy) or enemy.dead:
+			continue
+		var distance := origin.distance_squared_to(enemy.global_position)
+		if distance > max_distance_squared or (distance >= nearest_distance and distance >= open_distance):
+			continue
+		if not is_on_screen(enemy.global_position):
+			continue
+		if distance < nearest_distance:
+			nearest = enemy
+			nearest_distance = distance
+		if distance < open_distance and _incoming_weapon_damage(enemy) < enemy.hp:
+			open_target = enemy
+			open_distance = distance
+	return open_target if open_target != null else nearest
+
+## Damage of the weapon shots aimed at `enemy` that haven't reached it yet.
+func _incoming_weapon_damage(enemy: EmberfallEnemy) -> int:
+	var total := 0
+	for projectile in projectiles:
+		if is_instance_valid(projectile) and projectile.get_meta("aim_target", null) == enemy and not (projectile.get_meta("hit_enemies", []) as Array).has(enemy):
+			total += projectile.damage_amount
+	return total
 
 ## Heroes with explicit frames (melee packs like Darven/Kaelgor) just use
 ## them. Heroes with alternating variants (Mordrak's two swing directions)
@@ -1407,22 +1552,59 @@ func _process(_delta: float) -> void:
 	for projectile in projectiles:
 		if not is_instance_valid(projectile):
 			continue
-		var hit_enemies: Array = projectile.get_meta("hit_enemies", [])
-		var max_pierces: int = projectile.get_meta("max_pierces", 0)
-		for enemy in enemies:
-			if is_instance_valid(enemy) and not enemy.dead and not hit_enemies.has(enemy) and projectile.global_position.distance_to(enemy.global_position) < 34.0:
-				hit_enemies.append(enemy)
-				projectile.set_meta("hit_enemies", hit_enemies)
-				var hit_pos: Vector2 = enemy.global_position
-				var source := str(projectile.get_meta("source", "basic"))
-				if not _apply_damage(enemy, projectile.damage_amount, false, true, source):
-					_apply_hero_guaranteed_status(enemy, projectile.get_meta("hero", null))
-				if AbilityCatalog.is_weapon(source) and is_evolved(source):
-					_weapon_evo_hit(source, enemy, hit_pos, projectile.damage_amount, projectile.global_position.direction_to(hit_pos))
-				_spawn_impact_flash(hit_pos, projectile.color)
-				if hit_enemies.size() > max_pierces:
-					projectile.queue_free()
-				break
+		var from: Vector2 = projectile.get_meta("collision_from", projectile.global_position)
+		var to := projectile.global_position
+		projectile.set_meta("collision_from", to)
+		for enemy in _projectile_candidates(from, to):
+			if not is_instance_valid(enemy) or enemy.dead:
+				continue
+			var hit_enemies: Array = projectile.get_meta("hit_enemies", [])
+			if hit_enemies.has(enemy) or _segment_distance_squared(enemy.global_position, from, to) >= PROJECTILE_HIT_RADIUS * PROJECTILE_HIT_RADIUS:
+				continue
+			hit_enemies.append(enemy)
+			projectile.set_meta("hit_enemies", hit_enemies)
+			var hit_pos: Vector2 = enemy.global_position
+			var source := str(projectile.get_meta("source", "basic"))
+			if not _apply_damage(enemy, projectile.damage_amount, false, true, source):
+				_apply_hero_guaranteed_status(enemy, projectile.get_meta("hero", null))
+			if AbilityCatalog.is_weapon(source) and is_evolved(source):
+				_weapon_evo_hit(source, enemy, hit_pos, projectile.damage_amount, projectile.global_position.direction_to(hit_pos))
+			_spawn_impact_flash(hit_pos, projectile.color)
+			if hit_enemies.size() > int(projectile.get_meta("max_pierces", 0)):
+				projectile.queue_free()
+			break
+
+func _rebuild_projectile_enemy_grid() -> void:
+	_projectile_enemy_grid.clear()
+	for enemy in enemies:
+		if not is_instance_valid(enemy) or enemy.dead:
+			continue
+		var cell := _projectile_grid_cell(enemy.global_position)
+		if not _projectile_enemy_grid.has(cell):
+			_projectile_enemy_grid[cell] = []
+		_projectile_enemy_grid[cell].append(enemy)
+
+func _projectile_grid_cell(point: Vector2) -> Vector2i:
+	return Vector2i(floori(point.x / PROJECTILE_GRID_CELL_SIZE), floori(point.y / PROJECTILE_GRID_CELL_SIZE))
+
+func _projectile_candidates(from: Vector2, to: Vector2) -> Array:
+	var result: Array = []
+	var low := Vector2(minf(from.x, to.x), minf(from.y, to.y)) - Vector2.ONE * PROJECTILE_HIT_RADIUS
+	var high := Vector2(maxf(from.x, to.x), maxf(from.y, to.y)) + Vector2.ONE * PROJECTILE_HIT_RADIUS
+	var first := _projectile_grid_cell(low)
+	var last := _projectile_grid_cell(high)
+	for x in range(first.x, last.x + 1):
+		for y in range(first.y, last.y + 1):
+			result.append_array(_projectile_enemy_grid.get(Vector2i(x, y), []))
+	return result
+
+func _segment_distance_squared(point: Vector2, from: Vector2, to: Vector2) -> float:
+	var segment := to - from
+	var length_squared := segment.length_squared()
+	if length_squared <= 0.0001:
+		return point.distance_squared_to(from)
+	var t := clampf((point - from).dot(segment) / length_squared, 0.0, 1.0)
+	return point.distance_squared_to(from + segment * t)
 
 ## Golden weapon traits that fire on every hit (AbilityCatalog.WEAPON_EVOLUTIONS).
 const EVO_BLAST_RADIUS := 64.0
@@ -1590,9 +1772,10 @@ func _merge_orb(at: Vector2, amount: int, gold: bool) -> bool:
 func passive_level(id: String) -> int:
 	return int(passives.get(id, 0))
 
-## Permanent upgrade level (UpgradeCatalog), bought between runs.
+## Permanent upgrade level (UpgradeCatalog), bought between runs — as it was
+## when this run started (see _run_upgrades).
 func _up(id: String) -> int:
-	return GameState.get_upgrade_level(id)
+	return int(_run_upgrades.get(id, 0))
 
 func pickup_radius() -> float:
 	return (80.0 + passive_level("magnet") * 35.0 + _up("magnet") * 20.0 + (60.0 if is_evolved("familiar") else 0.0)) * (1.0 + _eq("magnet") / 100.0)
@@ -1623,7 +1806,7 @@ func speed_multiplier() -> float:
 
 ## Half-hearts per second.
 func regen_per_second() -> float:
-	return passive_level("regen") * 0.1 + _up("regen") * (1.0 / 30.0) + _eq("regen") / 60.0
+	return passive_level("regen") * 0.1 + _up("regen") * (1.0 / 30.0)
 
 func armor_block_chance() -> float:
 	return passive_level("armor") * 0.08 + _up("armor") * 0.03 + _eq("block") / 100.0
@@ -1635,10 +1818,13 @@ func crit_multiplier() -> float:
 	return 1.5 + passive_level("crit") * 0.2
 
 func attack_speed_multiplier() -> float:
-	return maxf(0.5, 1.0 - passive_level("haste") * 0.08 - _up("haste") * 0.04)
+	return maxf(0.5, 1.0 - passive_level("haste") * 0.08 - _up("haste") * 0.01)
+
+func haste_upgrade_multiplier() -> float:
+	return 1.0 - _up("haste") * 0.01
 
 func cooldown_multiplier() -> float:
-	return maxf(0.4, 1.0 - passive_level("cooldown") * 0.08 - _up("cooldown") * 0.03 - _eq("cooldown") / 100.0)
+	return maxf(0.4, 1.0 - passive_level("cooldown") * 0.08 - _up("cooldown") * 0.03 - _eq("cooldown") / 100.0 - _up("haste") * 0.01)
 
 func area_multiplier() -> float:
 	return 1.0 + passive_level("area") * 0.10 + _up("area") * 0.05 + _eq("area") / 100.0
@@ -1698,7 +1884,8 @@ func can_evolve(active_id: String) -> bool:
 		return false
 	if skill_level(active_id) < MAX_ABILITY_LEVEL or is_evolved(active_id):
 		return false
-	return passive_level(AbilityCatalog.evolution_partner(active_id)) > 0
+	var partner := AbilityCatalog.evolution_partner(active_id)
+	return passive_level(partner) >= AbilityCatalog.passive_max_level(partner)
 
 ## Every non-evolution option that could be picked right now, with its
 ## weight: upgrades of what you already own are 3× as likely as something
@@ -1726,7 +1913,7 @@ func _upgrade_candidates(exclude: Array[String] = []) -> Dictionary:
 		if id in banished or id in exclude:
 			continue
 		if passives.has(id):
-			if passive_level(id) < MAX_ABILITY_LEVEL:
+			if passive_level(id) < AbilityCatalog.passive_max_level(id):
 				result[id] = 3.0
 		elif passives.size() < AbilityCatalog.PASSIVE_SLOTS:
 			result[id] = 1.0
@@ -1767,6 +1954,8 @@ var _choice_locked := false
 func choose_power(option_id: String) -> void:
 	if _choice_locked or GameState.screen != "level_up" or option_id not in current_level_up_options:
 		return
+	if AbilityCatalog.is_evolution(option_id) and not can_evolve(AbilityCatalog.evolution_source(option_id)):
+		return
 	_choice_locked = true
 	call_deferred("_unlock_choice")
 	if AbilityCatalog.is_evolution(option_id):
@@ -1788,6 +1977,8 @@ func _apply_upgrade(id: String) -> void:
 			player.heal(VITALITY_HP)
 
 func _apply_evolution(source: String) -> void:
+	if not can_evolve(source):
+		return
 	evolved.append(source)
 	_evolutions_done += 1
 	announced.emit("¡Evolución: %s!" % AbilityCatalog.display_name(source, true), GOLD)
@@ -1812,6 +2003,7 @@ func _finish_level_choice() -> void:
 	pending_levels = maxi(0, pending_levels - 1)
 	if pending_levels == 0:
 		GameState.change_screen("playing")
+		GameState.save() # the pick is part of the run from now on
 	else:
 		_present_level_up()
 
@@ -1867,17 +2059,20 @@ func _revive() -> void:
 
 ## Every way a run can end goes through here, so lifetime stats (and the
 ## ability unlocks they drive) are recorded exactly once.
+##
+## RUN-RESUME: the snapshot is dropped and every reward is written in one
+## save (GameState save batch): a crash can leave either the run still
+## pending or the run fully settled, never both and never half-paid.
 func end_run(victory: bool) -> void:
-	if not _run_reported:
+	var first_report := not _run_reported
+	if first_report:
 		_run_reported = true
-		var newly := GameState.record_run({
-			"victory": victory, "kills": kills, "level": level, "time": int(elapsed),
-			"chests": _chests_opened, "evolutions": _evolutions_done,
-			"abilities": skills.keys().filter(func(id): return not AbilityCatalog.is_weapon(id)) + passives.keys(), "evolved": evolved.duplicate(),
-			"kills_by_type": _kills_by_type,
-			"hero": str(GameState.selected_character_id), "frozen": _frozen_count,
-			"poison_kills": _poison_kills, "elites": _elite_kills, "clean_time": int(_clean_time),
-		})
+		GameState.clear_run_snapshot_provider(capture_snapshot)
+		GameState.begin_save_batch()
+		GameState.clear_run_snapshot(false)
+		var stats := _run_report()
+		stats["victory"] = victory
+		var newly := GameState.record_run(stats)
 		for id in newly:
 			var kind := "Arma desbloqueada" if AbilityCatalog.is_weapon(id) else "Nueva habilidad"
 			announced.emit("¡%s: %s!" % [kind, AbilityCatalog.display_name(id)], GOLD)
@@ -1891,6 +2086,270 @@ func end_run(victory: bool) -> void:
 			"loot": GameState.grant_run_loot(_loot),
 		}
 	GameState.finish_run(victory, kills)
+	if first_report:
+		GameState.end_save_batch()
+
+## Stats handed to GameState.record_run() when the run ends; also stored in
+## the snapshot so abandoning a saved run from the menu reports the same.
+func _run_report() -> Dictionary:
+	return {
+		"kills": kills, "level": level, "time": int(elapsed),
+		"chests": _chests_opened, "evolutions": _evolutions_done,
+		"abilities": skills.keys().filter(func(id): return not AbilityCatalog.is_weapon(id)) + passives.keys(), "evolved": evolved.duplicate(),
+		"kills_by_type": _kills_by_type.duplicate(),
+		"hero": str(GameState.selected_character_id), "frozen": _frozen_count,
+		"poison_kills": _poison_kills, "elites": _elite_kills, "clean_time": int(_clean_time),
+	}
+
+# --- Run snapshot (RUN-RESUME) ---------------------------------------------------
+#
+# What is saved: the hero, every field that decides the next pick or the
+# result (XP, build, timers, events, counters, loot), enemies (élites, mini-
+# boss and boss included), XP/gold orbs, pickups and lingering pools/zones.
+# What is not: shots and telegraphs already in the air (weapon/skill
+# projectiles, meteors, flasks, boss runes and zones), decor and effects.
+# Dropping them can only cost a few hits, never repeat a kill, a drop or an
+# event. Persistent ability nodes (orbit, aura, familiars…) are rebuilt
+# from the build by _refresh_powers().
+
+## Provider for GameState.save(): {} once the run ended or was handed back.
+func capture_snapshot() -> Dictionary:
+	if _run_reported or _suspended or not is_instance_valid(player) or player.hp <= 0:
+		return {}
+	if GameState.screen not in ["playing", "level_up", "paused"]:
+		return {}
+	var phase := "level_up" if GameState.screen == "level_up" and not current_level_up_options.is_empty() else "playing"
+	var saved_enemies: Array = []
+	for enemy in enemies:
+		if is_instance_valid(enemy) and not enemy.dead and not enemy.is_queued_for_deletion():
+			saved_enemies.append(enemy.to_snapshot())
+	# Orbs leave the list only once their value is credited (_on_orb_removed),
+	# so every orb still listed is one the profile has not been paid for.
+	var saved_orbs: Array = []
+	for orb in orbs:
+		if is_instance_valid(orb):
+			saved_orbs.append(orb.to_snapshot())
+	var saved_pickups: Array = []
+	for pickup in pickups:
+		if is_instance_valid(pickup) and not pickup.collected and not pickup.is_queued_for_deletion():
+			saved_pickups.append(pickup.to_snapshot())
+	var saved_zones: Array = []
+	for child in get_children():
+		if (child is EmberfallPoisonPool or child is EmberfallFrostZone) and not child.is_queued_for_deletion():
+			saved_zones.append(child.to_snapshot())
+	var context := {}
+	for key in GameState.current_stage_context:
+		var value = GameState.current_stage_context[key]
+		context[str(key)] = str(value) if value is StringName else value
+	return {
+		"version": GameState.RUN_SNAPSHOT_VERSION,
+		"saved_at": int(Time.get_unix_time_from_system()),
+		"phase": phase,
+		"context": context,
+		"hero": {"id": str(GameState.selected_character_id), "texture": GameState.selected_character_texture, "sprite_folder": GameState.selected_character_sprite_folder},
+		"report": _run_report(),
+		"loot": _loot.duplicate(true),
+		"world": {
+			"elapsed": elapsed, "xp": xp, "level": level, "xp_needed": xp_needed, "kills": kills,
+			"spawn_clock": spawn_clock, "spawn_interval": spawn_interval, "next_elite": _next_elite_time,
+			"chests": _chests_opened, "evolutions": _evolutions_done, "kills_by_type": _kills_by_type.duplicate(),
+			"frozen": _frozen_count, "poison_kills": _poison_kills, "elite_kills": _elite_kills,
+			"damage_taken": _damage_taken, "clean_time": _clean_time, "revives_left": _revives_left,
+			"events_fired": Array(_events_fired), "skills": skills.duplicate(), "passives": passives.duplicate(),
+			"evolved": Array(evolved), "banished": Array(banished), "pending_levels": pending_levels,
+			"rerolls": rerolls, "banishes": banishes, "skill_timers": skill_timers.duplicate(),
+			"level_options": Array(current_level_up_options), "boss_spawned": boss_spawned,
+			"aegis_charges": aegis_charges, "aegis_clock": _aegis_clock,
+			"cataclysm_clock": _cataclysm_clock, "empower_clock": _empower_clock, "empowered": _empowered,
+			"damage_by_source": damage_by_source.duplicate(), "gold_collected": gold_this_run(),
+			"weapon_attacks": _weapon_attack_counts.duplicate(), "autosave_clock": _autosave_clock,
+			"equip": _equip.duplicate(), "effects": _effects.keys(), "upgrades": _run_upgrades.duplicate(),
+		},
+		"player": player.to_snapshot(),
+		"enemies": saved_enemies,
+		"orbs": saved_orbs,
+		"pickups": saved_pickups,
+		"zones": saved_zones,
+	}
+
+## "Salir" from the pause menu: stores the run and stops capturing so the
+## world can be freed. False when there was nothing left to keep.
+func suspend() -> bool:
+	if _run_reported:
+		return false
+	GameState.save()
+	_suspended = true
+	GameState.clear_run_snapshot_provider(capture_snapshot)
+	return GameState.has_resumable_run()
+
+func _valid_skill_id(id: String) -> bool:
+	return AbilityCatalog.is_active(id) or (AbilityCatalog.is_weapon(id) and AbilityCatalog.weapon_hero(id) != null)
+
+func _valid_level_option(id: String) -> bool:
+	if AbilityCatalog.is_evolution(id):
+		return can_evolve(AbilityCatalog.evolution_source(id))
+	if AbilityCatalog.is_passive(id):
+		return passive_level(id) < AbilityCatalog.passive_max_level(id)
+	return _valid_skill_id(id) and skill_level(id) < MAX_ABILITY_LEVEL
+
+## Rebuilds the run from GameState.active_run: base fields first, then the
+## build's persistent nodes, then the entities, and only at the end the
+## screen (paused, or the same level-up choice) so nothing ticks halfway.
+func _restore(snapshot: Dictionary) -> void:
+	var w := RunSnapshot.dict(snapshot.get("world"))
+	player.apply_snapshot(RunSnapshot.dict(snapshot.get("player")))
+	elapsed = maxf(0.0, RunSnapshot.f(w.get("elapsed"), 0.0))
+	xp = maxi(0, RunSnapshot.i(w.get("xp"), 0))
+	level = maxi(1, RunSnapshot.i(w.get("level"), 1))
+	xp_needed = maxi(1, RunSnapshot.i(w.get("xp_needed"), xp_needed))
+	kills = maxi(0, RunSnapshot.i(w.get("kills"), 0))
+	spawn_clock = maxf(0.0, RunSnapshot.f(w.get("spawn_clock"), 0.0))
+	spawn_interval = clampf(RunSnapshot.f(w.get("spawn_interval"), spawn_interval), 0.55, 2.2)
+	_next_elite_time = maxf(elapsed, RunSnapshot.f(w.get("next_elite"), elapsed + ELITE_INTERVAL_MIN))
+	_chests_opened = maxi(0, RunSnapshot.i(w.get("chests"), 0))
+	_evolutions_done = maxi(0, RunSnapshot.i(w.get("evolutions"), 0))
+	_kills_by_type = RunSnapshot.int_map(w.get("kills_by_type"))
+	_frozen_count = maxi(0, RunSnapshot.i(w.get("frozen"), 0))
+	_poison_kills = maxi(0, RunSnapshot.i(w.get("poison_kills"), 0))
+	_elite_kills = maxi(0, RunSnapshot.i(w.get("elite_kills"), 0))
+	_damage_taken = maxi(0, RunSnapshot.i(w.get("damage_taken"), 0))
+	_clean_time = clampf(RunSnapshot.f(w.get("clean_time"), 0.0), 0.0, elapsed)
+	_revives_left = maxi(0, RunSnapshot.i(w.get("revives_left"), 0))
+	_events_fired.clear()
+	for entry in RunSnapshot.list(w.get("events_fired")):
+		var index := RunSnapshot.i(entry, -1)
+		if index >= 0 and index < WAVE_EVENTS.size() and index not in _events_fired:
+			_events_fired.append(index)
+	_loot = []
+	for drop in RunSnapshot.list(snapshot.get("loot")):
+		if drop is Dictionary and not EquipmentCatalog.recipe(str(drop.get("id", ""))).is_empty():
+			_loot.append({"id": str(drop["id"]), "rarity": RunSnapshot.s(drop.get("rarity"), "common")})
+	skills = {}
+	var saved_skills := RunSnapshot.int_map(w.get("skills"))
+	var initial_weapon := own_weapon_id()
+	if _valid_skill_id(initial_weapon):
+		skills[initial_weapon] = clampi(int(saved_skills.get(initial_weapon, 1)), 1, MAX_ABILITY_LEVEL)
+	for id: String in saved_skills:
+		if id != initial_weapon and _valid_skill_id(id) and skills.size() < AbilityCatalog.ACTIVE_SLOTS:
+			skills[id] = clampi(int(saved_skills[id]), 1, MAX_ABILITY_LEVEL)
+	passives = {}
+	var saved_passives := RunSnapshot.int_map(w.get("passives"))
+	for id: String in saved_passives:
+		if AbilityCatalog.is_passive(id) and passives.size() < AbilityCatalog.PASSIVE_SLOTS:
+			passives[id] = clampi(int(saved_passives[id]), 1, AbilityCatalog.passive_max_level(id))
+	evolved.clear()
+	for id in RunSnapshot.strings(w.get("evolved")):
+		if skills.has(id):
+			evolved.append(id)
+	banished.clear()
+	banished.append_array(RunSnapshot.strings(w.get("banished")))
+	pending_levels = maxi(0, RunSnapshot.i(w.get("pending_levels"), 0))
+	rerolls = maxi(0, RunSnapshot.i(w.get("rerolls"), 0))
+	banishes = maxi(0, RunSnapshot.i(w.get("banishes"), 0))
+	skill_timers = {}
+	var saved_timers := RunSnapshot.float_map(w.get("skill_timers"))
+	for id: String in saved_timers:
+		if skills.has(id):
+			skill_timers[id] = maxf(0.0, float(saved_timers[id]))
+	aegis_charges = clampi(RunSnapshot.i(w.get("aegis_charges"), 0), 0, 2)
+	_aegis_clock = maxf(0.0, RunSnapshot.f(w.get("aegis_clock"), 0.0))
+	_cataclysm_clock = maxf(0.0, RunSnapshot.f(w.get("cataclysm_clock"), 0.0))
+	_empower_clock = maxf(0.0, RunSnapshot.f(w.get("empower_clock"), 0.0))
+	_empowered = RunSnapshot.b(w.get("empowered"), false)
+	damage_by_source = RunSnapshot.int_map(w.get("damage_by_source"))
+	_weapon_attack_counts = RunSnapshot.int_map(w.get("weapon_attacks"))
+	_autosave_clock = clampf(RunSnapshot.f(w.get("autosave_clock"), 0.0), 0.0, RUN_AUTOSAVE_INTERVAL)
+	# The gold picked up so far is already in the profile; keep "+N ORO"
+	# right even if the player spent gold in the menu meanwhile.
+	_gold_at_start = GameState.gold - maxi(0, RunSnapshot.i(w.get("gold_collected"), 0))
+	_refresh_powers()
+	for entry in RunSnapshot.list(snapshot.get("enemies")):
+		if entry is Dictionary:
+			_restore_enemy(entry)
+	# A boss that was up but is missing from the save comes back instead of
+	# leaving a run that can never be won.
+	boss_spawned = is_instance_valid(boss)
+	for entry in RunSnapshot.list(snapshot.get("orbs")):
+		if entry is Dictionary:
+			_restore_orb(entry)
+	for entry in RunSnapshot.list(snapshot.get("pickups")):
+		if entry is Dictionary:
+			var kind := RunSnapshot.i(entry.get("kind"), -1)
+			if kind >= 0 and kind < EmberfallPickup.Kind.size():
+				spawn_pickup(RunSnapshot.v2(entry.get("pos"), player.position), kind)
+				pickups.back().apply_snapshot(entry)
+	for entry in RunSnapshot.list(snapshot.get("zones")):
+		if entry is Dictionary:
+			_restore_zone(entry)
+	_follow_floor(player.global_position)
+	var options: Array[String] = []
+	for id in RunSnapshot.strings(w.get("level_options")):
+		if _valid_level_option(id) and id not in banished and options.size() < 3:
+			options.append(id)
+	if str(snapshot.get("phase", "")) == "level_up" or pending_levels > 0:
+		pending_levels = maxi(1, pending_levels)
+		if options.is_empty():
+			_present_level_up()
+		else:
+			current_level_up_options = options
+			GameState.change_screen("level_up")
+	else:
+		# Back in the run, but paused: the player resumes with a tap once
+		# they have their bearings, same as after a focus loss.
+		GameState.change_screen("paused")
+
+func _restore_enemy(data: Dictionary) -> void:
+	var as_boss := RunSnapshot.b(data.get("boss"), false)
+	if as_boss and is_instance_valid(boss):
+		return # only one boss per run
+	var enemy: EmberfallEnemy
+	if as_boss:
+		var boss_node := EmberfallBoss.new()
+		boss_node.setup(player, 1.0, true)
+		boss_node.configure_variant(clampi(RunSnapshot.i(data.get("variant"), _boss_variant_for_chapter()), 0, EmberfallBoss.Variant.size() - 1))
+		enemy = boss_node
+	else:
+		enemy = EmberfallEnemy.new()
+		enemy.setup(player, 1.0, false, clampi(RunSnapshot.i(data.get("arch"), 0), 0, EmberfallEnemy.Archetype.size() - 1))
+		# Stats come from the snapshot; make_elite() would scale them again.
+		enemy.elite_tier = clampi(RunSnapshot.i(data.get("elite"), 0), 0, 2)
+	enemy.position = RunSnapshot.v2(data.get("pos"), player.position + Vector2(540, 0))
+	enemy.apply_snapshot(data)
+	enemy.game_ref = self
+	if LIGHTING_ENABLED:
+		if as_boss:
+			enemy.add_child(make_light(220.0, Color(0.55, 0.95, 0.95), 0.7))
+		elif enemy.elite_tier > 0:
+			enemy.add_child(make_light(150.0, Color("e8b84a") if enemy.elite_tier == 1 else Color("b07cff"), 0.6))
+	enemy.tree_exiting.connect(_on_enemy_removed.bind(enemy))
+	add_child(enemy)
+	enemies.append(enemy)
+	if as_boss:
+		boss = enemy
+		GameState.set_boss_encounter(true)
+
+func _restore_orb(data: Dictionary) -> void:
+	var amount := RunSnapshot.i(data.get("value"), 0)
+	if amount <= 0:
+		return
+	var orb := EmberfallXPOrb.new()
+	orb.position = RunSnapshot.v2(data.get("pos"), player.position)
+	orb.setup(amount, RunSnapshot.b(data.get("gold"), false))
+	orb.magnetized = RunSnapshot.b(data.get("mag"), false)
+	orb.tree_exiting.connect(_on_orb_removed.bind(orb))
+	add_child(orb)
+	orbs.append(orb)
+
+func _restore_zone(data: Dictionary) -> void:
+	var zone: Node2D
+	match str(data.get("kind", "")):
+		"pool": zone = preload("res://scripts/components/poison_pool.gd").new()
+		"frost": zone = preload("res://scripts/components/frost_zone.gd").new()
+		_: return
+	zone.position = RunSnapshot.v2(data.get("pos"), player.position)
+	zone.game_ref = self
+	zone.apply_snapshot(data)
+	add_child(zone)
 
 func _on_enemy_removed(enemy: EmberfallEnemy) -> void:
 	enemies.erase(enemy)

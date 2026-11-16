@@ -56,7 +56,7 @@ COMBATE
 HABILIDADES Y EVOLUCIONES
 - 12 habilidades activas y 12 pasivas, cada una con hasta 5 niveles.
 - 6 habilidades activas empiezan bloqueadas. Se desbloquean con logros como eliminar enemigos o derrotar a un jefe.
-- Una habilidad al nivel máximo, con su pasiva compañera, puede evolucionar a una versión dorada.
+- Una habilidad y su pasiva compañera al nivel máximo pueden evolucionar a una versión dorada.
 - 26 evoluciones doradas en total: 12 de habilidades y 14 de las armas de los héroes.
 
 HÉROES
@@ -94,7 +94,7 @@ COMBAT
 ABILITIES AND EVOLUTIONS
 - 12 active abilities and 12 passives, each up to level 5.
 - 6 active abilities start locked. Unlock them through achievements such as defeating enemies or beating a boss.
-- An active ability at max level, with its paired passive, can evolve into a golden version.
+- An active ability and its paired passive at max level can evolve into a golden version.
 - 26 golden evolutions in total: 12 for abilities and 14 for the heroes' weapons.
 
 HEROES

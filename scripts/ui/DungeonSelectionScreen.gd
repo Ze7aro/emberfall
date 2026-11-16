@@ -8,7 +8,7 @@ const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 const DUNGEONS: Array[Dictionary] = [
 	{"id": &"crimson_catacombs", "type": "dungeon", "index": 1, "name": "CATACUMBAS CARMESÍ", "chapter": 1, "level": 1, "preview": "res://assets/ui/escenarios/game_bg.png", "gold_reward": 150, "gems_reward": 5, "modifier": "swarm", "modifier_label": "Enjambre: oleadas 30% más frecuentes"},
 	{"id": &"obsidian_depths", "type": "dungeon", "index": 2, "name": "PROFUNDIDADES DE OBSIDIANA", "chapter": 2, "level": 1, "preview": "res://assets/ui/escenarios/world_map.png", "gold_reward": 220, "gems_reward": 7, "modifier": "hardened", "modifier_label": "Endurecidos: +30% de vida enemiga"},
-	{"id": &"withered_sanctum", "type": "dungeon", "index": 3, "name": "SANTUARIO MARCHITO", "chapter": 3, "level": 1, "preview": "res://assets/ui/escenarios/game_bg.png", "gold_reward": 300, "gems_reward": 9, "modifier": "reckoning", "modifier_label": "Ajuste de cuentas: el jefe llega a los 8 minutos"},
+	{"id": &"withered_sanctum", "type": "dungeon", "index": 3, "name": "SANTUARIO MARCHITO", "chapter": 3, "level": 1, "preview": "res://assets/ui/escenarios/game_bg.png", "gold_reward": 300, "gems_reward": 9, "modifier": "reckoning", "modifier_label": "Ajuste de cuentas: enemigos 20% más frecuentes en los últimos 5 minutos"},
 ]
 
 var _locked_box: VBoxContainer

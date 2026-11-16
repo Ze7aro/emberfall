@@ -28,6 +28,8 @@ func _ready() -> void:
 	map_selection.enable_hero()
 	# Room for the shortcut row under the HUD.
 	map_selection.add_theme_constant_override("margin_top", int(UiTheme.CONTENT_TOP) + 76)
+	if GameState.has_resumable_run():
+		_build_resume_card()
 	map_selection.unlock_check = func(data: Dictionary) -> bool:
 		return GameState.is_stage_unlocked(int(data.get("index", 1)))
 	map_selection.set_maps(_build_stages())
@@ -36,23 +38,78 @@ func _ready() -> void:
 	map_selection.start_map_requested.connect(_on_start_map_requested)
 	_build_missions_side()
 
-## Floating side shortcut to the existing Misiones screen (left edge), with the
-## same "something to claim" indicator the footer uses.
-## Floating shortcuts in a row under the HUD (side by side, so the stage
-## title below never runs under them): Misiones, then Notificaciones, each with its "something new" indicator.
+## RUN-RESUME: the saved run, in the free left end of the shortcut row so the
+## stage card below keeps all its room (its column has ~28 px to spare at
+## 390×844). Shows where it was left and REANUDAR; abandoning goes through
+## the confirmations of JUGAR ("ABANDONAR Y JUGAR") or of the run's pause.
+func _build_resume_card() -> void:
+	var summary := GameState.resumable_run_summary()
+	var card := PanelContainer.new()
+	card.name = "ResumeCard"
+	card.theme = UiTheme.make_theme()
+	var style := UiTheme.panel(UiTheme.GOLD, 10, 2)
+	style.bg_color = Color(0.07, 0.05, 0.13, 0.94)
+	style.content_margin_left = 8; style.content_margin_right = 8
+	style.content_margin_top = 5; style.content_margin_bottom = 6
+	card.add_theme_stylebox_override("panel", style)
+	# From the left edge to just before Misiones (the row is right-anchored).
+	card.anchor_left = 0.0; card.anchor_right = 1.0
+	card.offset_left = 16; card.offset_right = -196
+	card.offset_top = UiTheme.CONTENT_TOP + 4.0; card.offset_bottom = UiTheme.CONTENT_TOP + 76.0
+	add_child(card)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 4)
+	card.add_child(column)
+	var info := HBoxContainer.new()
+	info.add_theme_constant_override("separation", 6)
+	column.add_child(info)
+	var title := Label.new()
+	title.text = str(summary.get("name", "")) if str(summary.get("name", "")) != "" else "PARTIDA EN CURSO"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_theme_font_size_override("font_size", 11)
+	title.add_theme_color_override("font_color", UiTheme.GOLD)
+	info.add_child(title)
+	var seconds := int(summary.get("time", 0))
+	var clock := Label.new()
+	clock.text = "%02d:%02d" % [seconds / 60, seconds % 60]
+	clock.add_theme_font_size_override("font_size", 11)
+	clock.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	info.add_child(clock)
+	var resume := Button.new()
+	resume.name = "ResumeButton"
+	resume.text = "REANUDAR"
+	resume.custom_minimum_size = Vector2(0, 44)
+	resume.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	resume.add_theme_font_size_override("font_size", 15)
+	UiTheme.apply_primary(resume)
+	resume.pressed.connect(func():
+		var main_layout := _find_main_layout()
+		if main_layout and main_layout.has_method("resume_run"):
+			main_layout.resume_run()
+	)
+	column.add_child(resume)
+
+## Floating shortcuts in a row under the HUD: Misiones, Avisos y Ajustes.
 func _build_missions_side() -> void:
 	var top := UiTheme.CONTENT_TOP + 8.0
-	_side_button(Vector2(80, top), "res://assets/ui/icons/mail.png", "Avisos", func():
+	_side_button(Vector2(74, top), "res://assets/ui/icons/mail.png", "Avisos", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"notifications")
 			GameState.mark_notifications_read()
 	, func() -> bool: return GameState.unread_notification_count() > 0, GameState.notifications_changed, true)
-	_side_button(Vector2(122, top), "res://assets/ui/icons/missions.png", "Misiones", func():
+	_side_button(Vector2(132, top), "res://assets/ui/icons/missions.png", "Misiones", func():
 		var main_layout := _find_navigator()
 		if main_layout:
 			main_layout.open_modal(&"missions")
 	, func() -> bool: return GameState.has_claimable_missions(), GameState.missions_changed, true)
+	_side_button(Vector2(16, top), "res://assets/ui/icons/engranajes.png", "Ajustes", func():
+		var main_layout := _find_navigator()
+		if main_layout:
+			main_layout.open_modal(&"settings")
+	, func() -> bool: return false, GameState.notifications_changed, true)
 
 func _side_button(at: Vector2, icon_path: String, caption_text: String, on_press: Callable, has_news: Callable, changed: Signal, on_right := false) -> void:
 	var side := Control.new()

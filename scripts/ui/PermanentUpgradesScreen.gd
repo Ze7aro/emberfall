@@ -1,11 +1,13 @@
 extends Control
 
 const UiTheme := preload("res://scripts/ui/UiTheme.gd")
+const DragScroll := preload("res://scripts/ui/DragScroll.gd")
 
 ## Progreso: a grid of permanent upgrades bought with gold (UpgradeCatalog)
 ## and the list of abilities with their unlock goals (AbilityCatalog.UNLOCKS).
 ## Tapping any tile shows it in the detail panel at the bottom, where the
-## purchase happens, so a stray tap while scrolling never spends gold.
+## purchase happens, so a stray tap while scrolling never spends gold. The
+## list scrolls by dragging anywhere, tiles included (DragScroll).
 
 const GOLD := Color("e8b84a")
 const COLUMNS := 4
@@ -21,6 +23,10 @@ var _detail_desc: Label
 var _detail_button: Button
 ## "up:<id>" or "ab:<id>".
 var _selected := "up:damage"
+## Tile button and its resting border color, per key — lets a selection
+## change restyle two tiles instead of rebuilding both grids.
+var _tiles := {}
+var _drag: DragScroll
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -56,12 +62,14 @@ func _ready() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
+	_drag = DragScroll.new(scroll)
+	add_child(_drag)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 10)
 	scroll.add_child(column)
 
-	column.add_child(UiTheme.section_title("MEJORAS", "se aplican en todas las partidas"))
+	column.add_child(UiTheme.section_title("MEJORAS"))
 	_upgrade_grid = _make_grid()
 	column.add_child(_upgrade_grid)
 	var ability_header := UiTheme.section_title("HABILIDADES")
@@ -130,6 +138,7 @@ func _build_detail_panel() -> Control:
 
 func _refresh() -> void:
 	_gold_label.text = "ORO DISPONIBLE: %d" % GameState.gold
+	_tiles.clear()
 	for child in _upgrade_grid.get_children():
 		child.queue_free()
 	for upgrade in UpgradeCatalog.UPGRADES:
@@ -167,11 +176,10 @@ func _tile(key: String, icon: Texture2D, title: String, footer: String, border: 
 	var button := Button.new()
 	button.custom_minimum_size = TILE_SIZE
 	button.focus_mode = Control.FOCUS_NONE
-	var style := UiTheme.slot(key == _selected, 4)
-	style.border_color = UiTheme.ACCENT if key == _selected else border
-	button.add_theme_stylebox_override("normal", style)
-	button.add_theme_stylebox_override("hover", style)
-	button.add_theme_stylebox_override("pressed", style)
+	# PASS: presses that turn into drags must reach the ScrollContainer.
+	button.mouse_filter = Control.MOUSE_FILTER_PASS
+	_tiles[key] = {"button": button, "border": border}
+	_style_tile(key)
 	button.pressed.connect(_select.bind(key))
 	var box := VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -246,10 +254,29 @@ func _icon_node(icon: Texture2D, title: String, side: float, locked: bool) -> Co
 		holder.add_child(lock)
 	return holder
 
+func _style_tile(key: String) -> void:
+	var tile: Dictionary = _tiles.get(key, {})
+	if tile.is_empty() or not is_instance_valid(tile["button"]):
+		return
+	var button: Button = tile["button"]
+	var style := UiTheme.slot(key == _selected, 4)
+	style.border_color = UiTheme.ACCENT if key == _selected else tile["border"]
+	button.add_theme_stylebox_override("normal", style)
+	button.add_theme_stylebox_override("hover", style)
+	button.add_theme_stylebox_override("pressed", style)
+
 func _select(key: String) -> void:
+	# Lifting the finger after a scroll isn't a tap on the tile below it.
+	if _drag.blocks_tap():
+		return
+	if key == _selected:
+		return
+	var previous := _selected
 	_selected = key
 	SfxPlayer.play_ui("ui/ui_select.wav")
-	_refresh()
+	_style_tile(previous)
+	_style_tile(key)
+	_refresh_detail()
 
 func _refresh_detail() -> void:
 	for child in _detail_icon.get_children():

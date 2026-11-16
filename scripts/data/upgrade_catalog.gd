@@ -11,6 +11,7 @@ class_name UpgradeCatalog
 ## back to a tile with the initial.
 
 const ICON_DIR := "res://assets/mejoras/"
+const PERMANENT_UPGRADE_COST_MULTIPLIER := 2.2
 
 const UPGRADES := [
 	{"id": "damage", "name": "Poder", "desc": "+2 de daño al ataque básico y +3% de daño total por nivel.", "icon": "dano.png", "max": 10, "base": 40, "step": 35},
@@ -18,7 +19,7 @@ const UPGRADES := [
 	{"id": "speed", "name": "Movilidad", "desc": "+5% de velocidad de movimiento por nivel.", "icon": "velocidad_de_movimiento.png", "max": 10, "base": 40, "step": 35},
 	{"id": "armor", "name": "Armadura", "desc": "+3% de probabilidad de bloquear un golpe por nivel.", "icon": "mejora_armadura.png", "max": 3, "base": 120, "step": 120},
 	{"id": "regen", "name": "Regeneración", "desc": "Recuperas vida poco a poco (+½ corazón cada 30 s por nivel).", "icon": "corazon_extra_II.png", "max": 3, "base": 150, "step": 150},
-	{"id": "haste", "name": "Celeridad", "desc": "-4% de tiempo entre ataques básicos por nivel.", "icon": "velocidad_de_ataque.png", "max": 3, "base": 100, "step": 100},
+	{"id": "haste", "name": "Celeridad", "desc": "-1% de tiempo entre todos los ataques por nivel.", "icon": "velocidad_de_ataque.png", "max": 3, "base": 100, "step": 100},
 	{"id": "area", "name": "Amplitud", "desc": "+5% de área de las habilidades por nivel.", "icon": "area.png", "max": 3, "base": 100, "step": 100},
 	{"id": "cooldown", "name": "Enfriamiento", "desc": "-3% de enfriamiento de las habilidades por nivel.", "icon": "cooldown.png", "max": 3, "base": 150, "step": 150},
 	{"id": "duration", "name": "Duración", "desc": "+8% de duración de efectos y estados por nivel.", "icon": "duracion.png", "max": 3, "base": 100, "step": 100},
@@ -55,7 +56,8 @@ static func max_level(id: String) -> int:
 
 static func cost(id: String, current_level: int) -> int:
 	var upgrade := entry(id)
-	return int(upgrade.get("base", 0)) + int(upgrade.get("step", 0)) * current_level
+	var base_cost := int(upgrade.get("base", 0)) + int(upgrade.get("step", 0)) * current_level
+	return int(round(float(base_cost) * PERMANENT_UPGRADE_COST_MULTIPLIER))
 
 static func icon(id: String) -> Texture2D:
 	var path := ICON_DIR + str(entry(id).get("icon", ""))

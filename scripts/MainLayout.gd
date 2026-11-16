@@ -60,9 +60,13 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		if is_instance_valid(_active_game) and GameState.screen == "playing":
 			GameState.change_screen("paused")
-		# The OS may kill a backgrounded app without warning: flush progress.
-		if what == NOTIFICATION_APPLICATION_PAUSED:
+		# The OS may kill a backgrounded app without warning: flush progress
+		# (with a run going, this also stores its snapshot — RUN-RESUME).
+		if what == NOTIFICATION_APPLICATION_PAUSED or is_instance_valid(_active_game):
 			GameState.save()
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
+		# Desktop window closed mid-run: the run stays resumable.
+		GameState.save()
 	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		# Android back button (quit_on_go_back is off in project.godot).
 		if not _handle_back():
@@ -130,6 +134,7 @@ func navigate_to(route_id: StringName) -> void:
 	if is_instance_valid(current_screen): current_screen.queue_free()
 	current_screen = _screen_for(route_id)
 	content_host.add_child(current_screen); current_route = route_id
+	top_hud.set_settings_button_visible(route_id != &"home")
 	if navigation_footer.has_method("select_by_id"): navigation_footer.select_by_id(route_id)
 	route_changed.emit(route_id)
 
@@ -165,7 +170,7 @@ func _placeholder_screen(route_id: StringName) -> Control:
 func open_modal(modal_id: StringName, payload: Variant = null) -> void:
 	if is_instance_valid(active_modal): return
 	var blocker := ColorRect.new(); blocker.color = Color(0, 0, 0, 0.72); blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); blocker.mouse_filter = Control.MOUSE_FILTER_STOP; modal_host.add_child(blocker)
-	var content := _modal_for(modal_id)
+	var content := _modal_for(modal_id, payload)
 	if content:
 		modal_host.add_child(content)
 		_animate_modal_in(content, blocker)
@@ -207,8 +212,9 @@ func _animate_modal_in(content: Control, blocker: Control) -> void:
 	tween.tween_property(content, "modulate:a", 1.0, 0.14)
 	tween.tween_property(target, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
-func _modal_for(modal_id: StringName) -> Control:
+func _modal_for(modal_id: StringName, payload: Variant = null) -> Control:
 	match modal_id:
+		&"confirm": return _confirm_modal(payload if payload is Dictionary else {})
 		&"profile": return preload("res://scenes/ui/ProfileModal.tscn").instantiate()
 		&"settings": return preload("res://scenes/ui/SettingsModal.tscn").instantiate()
 		&"credits": return preload("res://scenes/ui/CreditsModal.tscn").instantiate()
@@ -228,7 +234,102 @@ func close_active_modal() -> void:
 
 func has_open_modal() -> bool: return is_instance_valid(active_modal)
 
+## Centered yes/no panel. payload: {title, lines: Array[String], confirm,
+## cancel, on_confirm: Callable}. Lines are separate labels (no autowrap, see
+## ui.gd's pause confirmation) and must fit 300 px.
+func _confirm_modal(payload: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.theme = UiTheme.make_theme()
+	panel.add_theme_stylebox_override("panel", UiTheme.kit("panel_modal", UiTheme.panel(UiTheme.PURPLE, UiTheme.CORNER, 4)))
+	panel.anchor_left = 0.5; panel.anchor_right = 0.5; panel.anchor_top = 0.5; panel.anchor_bottom = 0.5
+	panel.offset_left = -165; panel.offset_right = 165
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	panel.add_child(box)
+	var title := Label.new()
+	title.text = str(payload.get("title", ""))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", UiTheme.PURPLE)
+	box.add_child(title)
+	for line in payload.get("lines", []):
+		var label := Label.new()
+		label.text = str(line)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 14)
+		label.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+		box.add_child(label)
+	var confirm := Button.new()
+	confirm.text = str(payload.get("confirm", "ACEPTAR"))
+	confirm.custom_minimum_size = Vector2(0, 52)
+	confirm.add_theme_color_override("font_color", UiTheme.DANGER)
+	var on_confirm: Callable = payload.get("on_confirm", Callable())
+	confirm.pressed.connect(func():
+		close_active_modal()
+		if on_confirm.is_valid():
+			on_confirm.call()
+	)
+	box.add_child(confirm)
+	var cancel := Button.new()
+	cancel.text = str(payload.get("cancel", "CANCELAR"))
+	cancel.custom_minimum_size = Vector2(0, 52)
+	UiTheme.apply_primary(cancel)
+	cancel.pressed.connect(close_active_modal)
+	box.add_child(cancel)
+	# Height from the content, centered on any screen size.
+	panel.ready.connect(func():
+		var height := panel.get_combined_minimum_size().y
+		panel.offset_top = -height / 2.0
+		panel.offset_bottom = height / 2.0
+	)
+	return panel
+
+## RUN-RESUME: a new run while another one is saved asks first; confirming
+## settles the saved one as a defeat (GameState.forfeit_pending_run).
 func start_run(map_data: Dictionary) -> void:
+	if is_instance_valid(_active_game) or _starting_run:
+		return
+	if GameState.has_resumable_run():
+		var summary := GameState.resumable_run_summary()
+		open_modal(&"confirm", {
+			"title": "¿NUEVA PARTIDA?",
+			"lines": ["Tienes una partida guardada:", "%s · %s" % [str(summary.get("name", "")), _clock_text(int(summary.get("time", 0)))], "Si empiezas otra, se abandona", "y cuenta como derrota."],
+			"confirm": "ABANDONAR Y JUGAR",
+			"cancel": "VOLVER",
+			"on_confirm": func():
+				GameState.forfeit_pending_run()
+				_start_new_run(map_data),
+		})
+		return
+	_start_new_run(map_data)
+
+static func _clock_text(seconds: int) -> String:
+	return "%02d:%02d" % [seconds / 60, seconds % 60]
+
+## Rebuilds Inicio so the saved-run card appears or goes away.
+func _refresh_home() -> void:
+	if current_route != &"home":
+		return
+	if is_instance_valid(current_screen):
+		current_screen.queue_free()
+	current_screen = null
+	navigate_to(&"home")
+
+## Continues the saved run: no energy, no begin_stage(), no new hero weapon
+## or opening enemies — game_world rebuilds it from the snapshot.
+func resume_run() -> void:
+	if is_instance_valid(_active_game) or _starting_run:
+		return
+	var snapshot := GameState.prepare_resume()
+	if snapshot.is_empty():
+		_show_toast("La partida guardada no se pudo recuperar.")
+		_refresh_home()
+		return
+	_launch_world(snapshot)
+
+func _start_new_run(map_data: Dictionary) -> void:
 	# Guards against a double-tap (or any other stray repeat call) re-entering
 	# this while a run is already active — without it, energy could be spent
 	# twice and a second, orphaned game_world would keep running in the
@@ -250,6 +351,10 @@ func start_run(map_data: Dictionary) -> void:
 		return
 	if not GameState.start_run():
 		return
+	_launch_world({})
+
+## Shared by a new run and a resumed one (`snapshot` not empty).
+func _launch_world(snapshot: Dictionary) -> void:
 	close_active_modal()
 	if is_instance_valid(current_screen): current_screen.queue_free(); current_screen = null
 	hud_layer.visible = false
@@ -266,10 +371,31 @@ func start_run(map_data: Dictionary) -> void:
 	loading.queue_free()
 	_starting_run = false
 	_active_game = load("res://scripts/game_world.gd").new()
+	_active_game.restore_snapshot = snapshot
 	content_host.add_child(_active_game)
 	_active_game_ui = load("res://scripts/ui.gd").new()
 	content_host.add_child(_active_game_ui)
 	_active_game_ui.setup(_active_game)
+	_active_game_ui.suspend_requested.connect(_suspend_run)
+
+## "GUARDAR Y SALIR": the world stores its snapshot and is freed; Inicio then
+## shows the saved-run card. Nothing is reported or rewarded here.
+func _suspend_run() -> void:
+	if not is_instance_valid(_active_game):
+		return
+	var kept: bool = _active_game.suspend()
+	_active_game.queue_free()
+	if is_instance_valid(_active_game_ui): _active_game_ui.queue_free()
+	_active_game = null; _active_game_ui = null
+	GameState.set_boss_encounter(false)
+	GameState.change_screen("menu")
+	hud_layer.visible = true
+	$Backdrop.visible = true
+	current_screen = null
+	current_route = &""
+	navigate_to(&"home")
+	if kept:
+		_show_toast("Partida guardada.\nPuedes reanudarla desde Inicio.")
 
 ## Short message over everything that fades out on its own.
 func _show_toast(text: String) -> void:

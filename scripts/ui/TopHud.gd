@@ -18,6 +18,7 @@ var _energy_bar: HudFillBar
 var _energy_label: Label
 var _gold_label: Label
 var _gems_label: Label
+var _settings_button: Button
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -76,6 +77,10 @@ func set_gems(value: int) -> void:
 func set_energy_countdown(_seconds_left: int) -> void:
 	pass
 
+func set_settings_button_visible(visible: bool) -> void:
+	if is_instance_valid(_settings_button):
+		_settings_button.visible = visible
+
 func _build() -> void:
 	var frame := _art("frame.png")
 	frame.name = "HudFrame"
@@ -100,24 +105,24 @@ func _build() -> void:
 	row.add_child(_resource_tile("energy_icon.png", "energy", 108))
 	row.add_child(_resource_tile("coin_icon.png", "gold", 102))
 	row.add_child(_resource_tile("gem_icon.png", "gems", 102))
-	var settings := Button.new()
-	settings.name = "Settings"
-	settings.tooltip_text = "Configuración"
-	settings.accessibility_name = "Abrir configuración"
-	settings.icon = load(ART_DIR + "icons/settings_gear.png") as Texture2D
-	settings.add_theme_constant_override("icon_max_width", 34)
-	settings.expand_icon = true
-	settings.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	settings.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	settings.offset_left = -56
-	settings.offset_right = -6
-	settings.offset_top = 64
-	settings.offset_bottom = 114
-	settings.focus_mode = Control.FOCUS_ALL
+	_settings_button = Button.new()
+	_settings_button.name = "Settings"
+	_settings_button.tooltip_text = "Configuración"
+	_settings_button.accessibility_name = "Abrir configuración"
+	_settings_button.icon = load(ART_DIR + "icons/engranajes.png") as Texture2D
+	_settings_button.add_theme_constant_override("icon_max_width", 34)
+	_settings_button.expand_icon = true
+	_settings_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_settings_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_settings_button.offset_left = -56
+	_settings_button.offset_right = -6
+	_settings_button.offset_top = 64
+	_settings_button.offset_bottom = 114
+	_settings_button.focus_mode = Control.FOCUS_ALL
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
-		settings.add_theme_stylebox_override(state, StyleBoxEmpty.new())
-	settings.pressed.connect(func(): settings_pressed.emit())
-	_canvas.add_child(settings)
+		_settings_button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	_settings_button.pressed.connect(func(): settings_pressed.emit())
+	_canvas.add_child(_settings_button)
 
 func _level_tile() -> Control:
 	var tile := Control.new()

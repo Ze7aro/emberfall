@@ -7,7 +7,8 @@ const UiTheme := preload("res://scripts/ui/UiTheme.gd")
 ## Layout, top to bottom: tabs (with a red dot when that period has something
 ## to collect), the activity track (points earned by claiming missions, with a
 ## chest at each threshold), the mission list (ready-to-claim first, claimed
-## last) and a "claim all" button when several are ready.
+## last) and a floating "claim all" button when several are ready. When
+## several chests are ready, tapping the last one opens them all.
 ##
 ## All the rules live in GameState (missions_for, activity_points,
 ## milestones_for…); this screen only shows them.
@@ -18,8 +19,8 @@ const CLAIMED_BG := Color("140f1e")
 const TEXT_MUTED := UiTheme.TEXT_MUTED
 
 const ICON_BY_TYPE := {
-	"daily_kills": "res://assets/ui/equipment/weapon.png",
-	"weekly_kills": "res://assets/ui/equipment/weapon.png",
+	"daily_kills": "res://assets/ui/icons/espada.png",
+	"weekly_kills": "res://assets/ui/icons/espada.png",
 	"daily_gold": "res://assets/ui/shop/gold_stack.png",
 	"weekly_gold": "res://assets/ui/shop/gold_pile.png",
 	"daily_runs": "res://assets/ui/navigation/dungeons.png",
@@ -57,6 +58,8 @@ var _track_info: Label
 var _info_threshold := -1
 var _mission_list: VBoxContainer
 var _claim_all: Button
+var _claim_all_float: Control
+const CLAIM_ALL_SIZE := Vector2(240, 50)
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -110,21 +113,54 @@ func _build_content(root: VBoxContainer) -> void:
 
 	_build_activity_panel(root)
 
+	# The list fills this area; the "claim all" button floats over its bottom.
+	var list_area := Control.new()
+	list_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(list_area)
 	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(scroll)
+	list_area.add_child(scroll)
 	_mission_list = VBoxContainer.new()
 	_mission_list.add_theme_constant_override("separation", 8)
 	_mission_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_mission_list)
+	list_area.add_child(_build_claim_all())
 
+## Floating "claim all" pill, shown while 2+ missions of the tab are ready.
+func _build_claim_all() -> Control:
+	_claim_all_float = Control.new()
+	_claim_all_float.anchor_left = 0.5
+	_claim_all_float.anchor_right = 0.5
+	_claim_all_float.anchor_top = 1.0
+	_claim_all_float.anchor_bottom = 1.0
+	_claim_all_float.offset_left = -CLAIM_ALL_SIZE.x / 2.0
+	_claim_all_float.offset_right = CLAIM_ALL_SIZE.x / 2.0
+	_claim_all_float.offset_top = -CLAIM_ALL_SIZE.y - 10.0
+	_claim_all_float.offset_bottom = -10.0
+	_claim_all_float.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Gold halo that breathes behind the button so it reads as "tap me".
+	var glow := Panel.new()
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var glow_style := StyleBoxFlat.new()
+	glow_style.bg_color = Color(GOLD, 0.0)
+	glow_style.set_corner_radius_all(UiTheme.CORNER + 4)
+	glow_style.shadow_color = Color(GOLD, 0.55)
+	glow_style.shadow_size = 12
+	glow.add_theme_stylebox_override("panel", glow_style)
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_claim_all_float.add_child(glow)
+	var pulse := glow.create_tween().set_loops()
+	pulse.tween_property(glow, "modulate:a", 0.25, 0.7).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(glow, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
 	_claim_all = Button.new()
-	_claim_all.custom_minimum_size = Vector2(0, 48)
+	_claim_all.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_claim_all.add_theme_font_size_override("font_size", 16)
 	UiTheme.apply_primary(_claim_all)
 	_claim_all.pressed.connect(func(): GameState.claim_all_missions(_current_tab))
-	root.add_child(_claim_all)
+	_claim_all_float.add_child(_claim_all)
+	_claim_all_float.visible = false
+	return _claim_all_float
 
 func _process(_delta: float) -> void:
 	var seconds := GameState.seconds_until_daily_reset() if _current_tab == "daily" else GameState.seconds_until_weekly_reset()
@@ -250,22 +286,27 @@ func _refresh_track() -> void:
 	_activity_title.text = "ACTIVIDAD DIARIA" if is_daily else "ACTIVIDAD SEMANAL"
 	_points_label.text = "%d / %d" % [points, GameState.ACTIVITY_MAX]
 	var milestones: Array = GameState.milestones_for(_current_tab)
-	var claimed: Array = GameState.claimed_milestones_for(_current_tab)
+	var ready_chests := GameState.claimable_milestones(_current_tab)
 	var next: Dictionary = {}
 	for i in milestones.size():
 		var milestone: Dictionary = milestones[i]
 		var threshold := int(milestone.threshold)
-		var is_claimed := claimed.has(threshold)
+		var is_claimed := GameState.is_milestone_claimed(_current_tab, threshold)
 		var can_claim := GameState.can_claim_milestone(_current_tab, threshold)
 		if next.is_empty() and not is_claimed:
 			next = milestone
-		_track.add_child(_build_chest(milestone, i == milestones.size() - 1, is_claimed, can_claim))
+		# The last ready chest opens every ready one, and says how many.
+		var batch := ready_chests.size() if ready_chests.size() > 1 and threshold == ready_chests.back() else 0
+		_track.add_child(_build_chest(milestone, i == milestones.size() - 1, is_claimed, can_claim, batch))
 	var shown: Dictionary = next
 	for milestone in milestones:
 		if int(milestone.threshold) == _info_threshold:
 			shown = milestone
 	if shown.is_empty():
 		_track_info.text = "¡Todos los cofres reclamados!"
+		_track_info.add_theme_color_override("font_color", GOLD)
+	elif ready_chests.size() > 1 and _info_threshold == -1:
+		_track_info.text = "¡%d cofres listos! Toca el último para abrirlos todos" % ready_chests.size()
 		_track_info.add_theme_color_override("font_color", GOLD)
 	else:
 		var ready := GameState.can_claim_milestone(_current_tab, int(shown.threshold))
@@ -274,7 +315,9 @@ func _refresh_track() -> void:
 	_layout_track()
 	_track.queue_redraw()
 
-func _build_chest(milestone: Dictionary, is_final: bool, is_claimed: bool, can_claim: bool) -> Control:
+## `batch` > 0 marks the last ready chest: tapping it opens all `batch` ready
+## chests at once, and an "xN" badge says so.
+func _build_chest(milestone: Dictionary, is_final: bool, is_claimed: bool, can_claim: bool, batch: int = 0) -> Control:
 	var threshold := int(milestone.threshold)
 	var holder := Control.new()
 	holder.set_meta("threshold", threshold)
@@ -307,11 +350,20 @@ func _build_chest(milestone: Dictionary, is_final: bool, is_claimed: bool, can_c
 	button.pressed.connect(func():
 		if GameState.can_claim_milestone(_current_tab, threshold):
 			_info_threshold = -1
-			GameState.claim_milestone(_current_tab, threshold)
+			var rewards := _milestone_reward_totals(_current_tab, batch, milestone)
+			var claimed := false
+			if batch > 1:
+				claimed = GameState.claim_all_milestones(_current_tab) > 0
+			else:
+				claimed = GameState.claim_milestone(_current_tab, threshold)
+			if claimed:
+				_show_chest_reward(rewards)
 		else:
 			_info_threshold = threshold
 			_refresh_track()
 	)
+	if batch > 1:
+		holder.add_child(_batch_badge(batch))
 	var label := Label.new()
 	label.text = str(threshold)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -323,6 +375,78 @@ func _build_chest(milestone: Dictionary, is_final: bool, is_claimed: bool, can_c
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(label)
 	return holder
+
+func _milestone_reward_totals(period: String, batch: int, current: Dictionary) -> Dictionary:
+	var totals := {"gold": 0, "gems": 0, "essence": 0, "item": false}
+	var entries: Array = [current]
+	if batch > 1:
+		entries.clear()
+		for threshold in GameState.claimable_milestones(period):
+			for entry in GameState.milestones_for(period):
+				if int(entry.get("threshold", -1)) == threshold:
+					entries.append(entry)
+					break
+	for entry in entries:
+		for key in ["gold", "gems", "essence"]:
+			totals[key] = int(totals[key]) + int(entry.get(key, 0))
+		if str(entry.get("item", "")) != "":
+			totals["item"] = true
+	return totals
+
+func _show_chest_reward(rewards: Dictionary) -> void:
+	var parts := PackedStringArray()
+	if int(rewards.get("gold", 0)) > 0:
+		parts.append("+%d oro" % int(rewards.gold))
+	if int(rewards.get("gems", 0)) > 0:
+		parts.append("+%d gemas" % int(rewards.gems))
+	if int(rewards.get("essence", 0)) > 0:
+		parts.append("+%d esencia" % int(rewards.essence))
+	if bool(rewards.get("item", false)):
+		parts.append("+1 objeto")
+	if parts.is_empty():
+		return
+	var floater := Label.new()
+	floater.text = "¡Recompensa!  " + "  ·  ".join(parts)
+	floater.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	floater.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	floater.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	floater.anchor_left = 0.08
+	floater.anchor_right = 0.92
+	floater.anchor_top = 0.38
+	floater.anchor_bottom = 0.38
+	floater.offset_top = -24.0
+	floater.offset_bottom = 24.0
+	floater.add_theme_font_size_override("font_size", 17)
+	floater.add_theme_color_override("font_color", GOLD)
+	floater.add_theme_color_override("font_outline_color", Color("160d20"))
+	floater.add_theme_constant_override("outline_size", 7)
+	floater.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(floater)
+	var tween := floater.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(floater, "position:y", floater.position.y - 48.0, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(floater, "modulate:a", 0.0, 1.1).set_delay(0.45)
+	tween.chain().tween_callback(floater.queue_free)
+
+## Red "xN" pill on the chest's top-right corner.
+func _batch_badge(count: int) -> Control:
+	var badge := Label.new()
+	badge.text = "x%d" % count
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.position = Vector2(CHEST_SIZE - 20.0, TRACK_BAR_Y - CHEST_SIZE / 2.0 - 8.0)
+	badge.size = Vector2(26, 18)
+	badge.add_theme_font_override("font", UiTheme.bold_font())
+	badge.add_theme_font_size_override("font_size", 11)
+	badge.add_theme_color_override("font_color", Color.WHITE)
+	var style := StyleBoxFlat.new()
+	style.bg_color = UiTheme.DANGER
+	style.border_color = Color("ffe3e3")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(9)
+	badge.add_theme_stylebox_override("normal", style)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return badge
 
 func _layout_track() -> void:
 	for holder in _track.get_children():
@@ -365,8 +489,15 @@ func _refresh() -> void:
 			ongoing.append(mission)
 	for mission in ready + ongoing + done:
 		_mission_list.add_child(_build_mission_card(mission))
-	_claim_all.visible = ready.size() >= 2
+	var show_claim_all := ready.size() >= 2
+	_claim_all_float.visible = show_claim_all
 	_claim_all.text = "RECLAMAR TODO (%d)" % ready.size()
+	if show_claim_all:
+		# Room below the last card so the floating button never hides it.
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(0, CLAIM_ALL_SIZE.y + 14.0)
+		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_mission_list.add_child(spacer)
 
 func _build_mission_card(mission: Dictionary) -> Control:
 	var claimed := GameState.is_mission_claimed(mission)

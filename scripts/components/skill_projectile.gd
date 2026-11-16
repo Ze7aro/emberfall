@@ -126,13 +126,14 @@ func _bounce_off_screen() -> void:
 func _check_hits() -> void:
 	if not is_instance_valid(game_ref):
 		return
+	var effective_rehit_interval: float = rehit_interval * game_ref.haste_upgrade_multiplier()
 	for enemy in game_ref.enemies:
 		if not is_instance_valid(enemy) or enemy.dead:
 			continue
 		if global_position.distance_to(enemy.global_position) > hit_radius + 18.0:
 			continue
 		var key: int = enemy.get_instance_id()
-		if _last_hit.has(key) and (rehit_interval <= 0.0 or _age - float(_last_hit[key]) < rehit_interval):
+		if _last_hit.has(key) and (effective_rehit_interval <= 0.0 or _age - float(_last_hit[key]) < effective_rehit_interval):
 			continue
 		_last_hit[key] = _age
 		game_ref._apply_damage(enemy, damage, true, true, source_id)

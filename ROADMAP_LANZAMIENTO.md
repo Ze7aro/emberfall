@@ -65,7 +65,7 @@ Público de diseño: jugadores de supervivencia y acción accesible que buscan s
 | Elemento | Alcance cerrado propuesto |
 |---|---|
 | Plataforma | Android, orientación vertical, juego individual; combate y progreso disponibles sin conexión |
-| Duración | Primera experiencia de 3–5 minutos; escenarios normales de 8–12 minutos incluyendo desenlace. Ajustar después de pruebas |
+| Duración | Primera experiencia de 3–5 minutos; el jefe llega a los 15 minutos y la run termina al derrotarlo. Ajustar después de pruebas |
 | Campaña | 10 encuentros distribuidos en 3 biomas, con oleadas y combinaciones distintas; final explícito |
 | Enemigos | 5 arquetipos con decisiones distintas: perseguidor, veloz, tanque, tirador y cargador; combinaciones progresivas |
 | Jefes | 3 jefes con patrones y anticipación visible; reutilización con variantes explícitas en campaña |
